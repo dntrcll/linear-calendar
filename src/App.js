@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { signInWithPopup, signOut } from "firebase/auth";
+import { useEffect, useState, useRef } from "react";
+import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import {
   collection,
@@ -15,14 +15,12 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
-/* ===================== CONSTANTS ===================== */
-
 const PIXELS_PER_MINUTE = 3;
 const EVENT_HEIGHT = 56;
 const ROW_GAP = 12;
 const DAY_WIDTH = 1440 * PIXELS_PER_MINUTE;
-
-/* ===================== APP ===================== */
+const SNAP_MINUTES = 15;
+const MIN_EVENT_DURATION = 15;
 
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
@@ -45,16 +43,39 @@ export default function App() {
 
   const [showActivityOverlay, setShowActivityOverlay] = useState(false);
   const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-
-  /* ===================== AUTH ===================== */
-
-  useEffect(() => auth.onAuthStateChanged(setUser), []);
   
-  /* ===================== MIDNIGHT + NOW UPDATER ===================== */
+  const [viewMode, setViewMode] = useState("day");
+  
+  const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(() => {
+    const saved = localStorage.getItem('weekStartsOnMonday');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const [draggingEvent, setDraggingEvent] = useState(null);
+  const [resizingEvent, setResizingEvent] = useState(null);
+  const [resizeHandle, setResizeHandle] = useState(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [dragStartX, setDragStartX] = useState(0);
+  const [previewTimes, setPreviewTimes] = useState(null);
+  const timelineRef = useRef(null);
+  const isSavingRef = useRef(false);
+  const previewTimesRef = useRef(null);
+  const currentStartMinutesRef = useRef(null);
+  const currentEndMinutesRef = useRef(null);
+
+  useEffect(() => {
+    setPersistence(auth, browserLocalPersistence).catch(err => {
+      console.error("Auth persistence error:", err);
+    });
+    
+    const unsubscribe = auth.onAuthStateChanged(setUser);
+    return () => unsubscribe();
+  }, []);
   
   useEffect(() => {
     const nowInterval = setInterval(() => {
@@ -88,24 +109,29 @@ export default function App() {
     };
   }, []);
 
-  /* ===================== AUTO SCROLL TO NOW ===================== */
-  
-  useEffect(() => {
-    if (isToday && dayEvents.length >= 0) {
+  const scrollToCurrentTime = () => {
+    if (viewMode === "day") {
       setTimeout(() => {
-        const timeline = document.querySelector('.timeline-scroll');
+        const timeline = timelineRef.current;
         if (timeline) {
-          const nowPosition = toLeft(now);
+          const startOfDay = new Date(currentDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const nowPosition = ((now - startOfDay) / 60000) * PIXELS_PER_MINUTE;
           timeline.scrollTo({
             left: nowPosition - (window.innerWidth / 2),
             behavior: 'smooth'
           });
         }
-      }, 300);
+      }, 100);
     }
-  }, [currentDate]);
+  };
 
-  /* ===================== LOAD EVENTS ===================== */
+  useEffect(() => {
+    const isToday = currentDate.toDateString() === now.toDateString();
+    if (isToday && viewMode === "day" && !isSavingRef.current) {
+      scrollToCurrentTime();
+    }
+  }, [currentDate, viewMode]);
 
   const loadEvents = async () => {
     if (!user || !spaceId) return;
@@ -177,6 +203,10 @@ export default function App() {
     loadEvents();
     loadActivity();
   }, [user, spaceId]);
+
+  useEffect(() => {
+    localStorage.setItem('weekStartsOnMonday', JSON.stringify(weekStartsOnMonday));
+  }, [weekStartsOnMonday]);
 
   const logActivity = async (action, eventId) => {
     try {
@@ -311,6 +341,267 @@ export default function App() {
     }
   };
 
+  const formatTime = d => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+
+  const today = currentDate;
+  const startOfDay = new Date(today);
+  startOfDay.setHours(0, 0, 0, 0);
+  const toLeft = d => ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
+
+  const handleResizeStart = (e, ev, handle) => {
+    e.stopPropagation();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    
+    setResizingEvent(ev);
+    setResizeHandle(handle);
+    setDragStartX(clientX);
+    
+    const startMinutes = ((ev.start - startOfDay) / 60000);
+    const endMinutes = ((ev.end - startOfDay) / 60000);
+    currentStartMinutesRef.current = startMinutes;
+    currentEndMinutesRef.current = endMinutes;
+    
+    const times = { start: ev.start, end: ev.end };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleResizeMove = (e) => {
+    if (!resizingEvent) return;
+    
+    e.preventDefault();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+    
+    const mouseX = clientX - rect.left + scrollLeft;
+    const minutes = mouseX / PIXELS_PER_MINUTE;
+    const snappedMinutes = Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+    
+    let newStartMinutes, newEndMinutes;
+    
+    if (resizeHandle === 'left') {
+      const maxStartMinutes = currentEndMinutesRef.current - MIN_EVENT_DURATION;
+      newStartMinutes = Math.max(0, Math.min(snappedMinutes, maxStartMinutes));
+      newEndMinutes = currentEndMinutesRef.current;
+    } else {
+      const minEndMinutes = currentStartMinutesRef.current + MIN_EVENT_DURATION;
+      newStartMinutes = currentStartMinutesRef.current;
+      newEndMinutes = Math.max(minEndMinutes, Math.min(snappedMinutes, 1440));
+    }
+    
+    currentStartMinutesRef.current = newStartMinutes;
+    currentEndMinutesRef.current = newEndMinutes;
+    
+    const newLeft = newStartMinutes * PIXELS_PER_MINUTE;
+    const newWidth = (newEndMinutes - newStartMinutes) * PIXELS_PER_MINUTE;
+    
+    const eventElement = document.querySelector(`[data-event-id="${resizingEvent.id}"]`);
+    if (eventElement) {
+      eventElement.style.left = `${newLeft}px`;
+      eventElement.style.width = `${newWidth}px`;
+      eventElement.style.opacity = '0.7';
+    }
+    
+    const newStart = new Date(startOfDay.getTime() + newStartMinutes * 60000);
+    const newEnd = new Date(startOfDay.getTime() + newEndMinutes * 60000);
+    const times = { start: newStart, end: newEnd };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleResizeEnd = async (e) => {
+    if (!resizingEvent || !previewTimesRef.current) {
+      return;
+    }
+    
+    const currentScrollPosition = timelineRef.current?.scrollLeft;
+    isSavingRef.current = true;
+    
+    const newStart = previewTimesRef.current.start;
+    const newEnd = previewTimesRef.current.end;
+    
+    console.log("=== RESIZE END ===");
+    console.log("Event:", resizingEvent.title);
+    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
+    
+    try {
+      await updateDoc(doc(db, "events", resizingEvent.id), {
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+      });
+      
+      await logActivity("updated", resizingEvent.id);
+      await loadEvents();
+      await loadActivity();
+      
+      setTimeout(() => {
+        if (timelineRef.current && currentScrollPosition !== null) {
+          timelineRef.current.scrollLeft = currentScrollPosition;
+        }
+        isSavingRef.current = false;
+      }, 50);
+      
+    } catch (err) {
+      console.error("Error updating event:", err);
+      setError("Failed to resize event: " + err.message);
+      await loadEvents();
+      isSavingRef.current = false;
+    }
+    
+    setResizingEvent(null);
+    setResizeHandle(null);
+    setDragStartX(0);
+    setPreviewTimes(null);
+    previewTimesRef.current = null;
+    currentStartMinutesRef.current = null;
+    currentEndMinutesRef.current = null;
+  };
+
+  const handleDragStart = (e, ev) => {
+    e.stopPropagation();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+    
+    setDraggingEvent(ev);
+    setDragStartX(clientX);
+    
+    const eventLeft = toLeft(ev.start);
+    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
+    setDragOffset(mousePositionInTimeline - eventLeft);
+    
+    const startMinutes = ((ev.start - startOfDay) / 60000);
+    const endMinutes = ((ev.end - startOfDay) / 60000);
+    currentStartMinutesRef.current = startMinutes;
+    currentEndMinutesRef.current = endMinutes;
+    
+    const times = { start: ev.start, end: ev.end };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleDragMove = (e) => {
+    if (!draggingEvent) return;
+    
+    e.preventDefault();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+    
+    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
+    let newLeft = mousePositionInTimeline - dragOffset;
+    
+    const durationMinutes = currentEndMinutesRef.current - currentStartMinutesRef.current;
+    
+    const newStartMinutes = Math.round((newLeft / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
+    
+    const clampedStartMinutes = Math.max(0, Math.min(newStartMinutes, 1440 - durationMinutes));
+    const clampedEndMinutes = clampedStartMinutes + durationMinutes;
+    
+    currentStartMinutesRef.current = clampedStartMinutes;
+    currentEndMinutesRef.current = clampedEndMinutes;
+    
+    const snappedLeft = clampedStartMinutes * PIXELS_PER_MINUTE;
+    const width = durationMinutes * PIXELS_PER_MINUTE;
+    
+    const eventElement = document.querySelector(`[data-event-id="${draggingEvent.id}"]`);
+    if (eventElement) {
+      eventElement.style.left = `${snappedLeft}px`;
+      eventElement.style.width = `${width}px`;
+      eventElement.style.opacity = '0.7';
+      eventElement.style.cursor = 'grabbing';
+    }
+    
+    const newStart = new Date(startOfDay.getTime() + clampedStartMinutes * 60000);
+    const newEnd = new Date(startOfDay.getTime() + clampedEndMinutes * 60000);
+    const times = { start: newStart, end: newEnd };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleDragEnd = async (e) => {
+    if (!draggingEvent || !previewTimesRef.current) {
+      return;
+    }
+    
+    const currentScrollPosition = timelineRef.current?.scrollLeft;
+    isSavingRef.current = true;
+    
+    const newStart = previewTimesRef.current.start;
+    const newEnd = previewTimesRef.current.end;
+    
+    console.log("=== DRAG END ===");
+    console.log("Event:", draggingEvent.title);
+    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
+    
+    try {
+      await updateDoc(doc(db, "events", draggingEvent.id), {
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+      });
+      
+      await logActivity("updated", draggingEvent.id);
+      await loadEvents();
+      await loadActivity();
+      
+      setTimeout(() => {
+        if (timelineRef.current && currentScrollPosition !== null) {
+          timelineRef.current.scrollLeft = currentScrollPosition;
+        }
+        isSavingRef.current = false;
+      }, 50);
+      
+    } catch (err) {
+      console.error("Error updating event:", err);
+      setError("Failed to reschedule event: " + err.message);
+      await loadEvents();
+      isSavingRef.current = false;
+    }
+    
+    setDraggingEvent(null);
+    setDragOffset(0);
+    setDragStartX(0);
+    setPreviewTimes(null);
+    previewTimesRef.current = null;
+    currentStartMinutesRef.current = null;
+    currentEndMinutesRef.current = null;
+  };
+
+  useEffect(() => {
+    if (draggingEvent || resizingEvent) {
+      const handleMove = (e) => {
+        if (draggingEvent) handleDragMove(e);
+        if (resizingEvent) handleResizeMove(e);
+      };
+      const handleEnd = (e) => {
+        if (draggingEvent) handleDragEnd(e);
+        if (resizingEvent) handleResizeEnd(e);
+      };
+      
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', handleEnd);
+        document.removeEventListener('touchmove', handleMove);
+        document.removeEventListener('touchend', handleEnd);
+      };
+    }
+  }, [draggingEvent, resizingEvent, dragOffset]);
+
   const goToPreviousDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 1);
@@ -323,25 +614,82 @@ export default function App() {
     setCurrentDate(newDate);
   };
 
-  const goToToday = () => {
-    setCurrentDate(new Date());
+  const goToPreviousWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
   };
 
-  /* ===================== TIME HELPERS ===================== */
+  const goToNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
 
-  const today = currentDate;
+  const goToToday = () => {
+    setCurrentDate(new Date());
+    setTimeout(() => scrollToCurrentTime(), 100);
+  };
+
+  const getWeekDays = (date) => {
+    const days = [];
+    const current = new Date(date);
+    let dayOfWeek = current.getDay();
+    
+    if (weekStartsOnMonday) {
+      dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    }
+    
+    const startOfWeek = new Date(current);
+    startOfWeek.setDate(current.getDate() - dayOfWeek);
+    
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+    
+    return days;
+  };
+
   const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
   const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
   const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  
-  const startOfDay = new Date(today);
-  startOfDay.setHours(0, 0, 0, 0);
 
-  const toLeft = d => ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
   const nowLeft = toLeft(now);
   const isToday = today.toDateString() === now.toDateString();
-  const formatTime = d => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    let startingDayOfWeek = firstDay.getDay();
+    
+    if (weekStartsOnMonday) {
+      startingDayOfWeek = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
+    }
+    
+    const days = [];
+    
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+    
+    return days;
+  };
+
+  const weekDayHeaders = weekStartsOnMonday 
+    ? ["M", "T", "W", "T", "F", "S", "S"]
+    : ["S", "M", "T", "W", "T", "F", "S"];
+
+  const monthDays = getDaysInMonth(currentDate);
+  const weekDays = getWeekDays(currentDate);
   const dayEvents = events.filter(ev => ev.start.toDateString() === today.toDateString());
 
   const stacked = [];
@@ -354,8 +702,6 @@ export default function App() {
   const actionEmoji = action => ({
     created: "🟢", updated: "🟡", deleted: "🔴", restored: "🟣"
   }[action] || "⚪");
-
-  /* ===================== AUTH UI ===================== */
 
   if (!user) {
     return (
@@ -396,26 +742,49 @@ export default function App() {
     );
   }
 
-  /* ===================== RENDER ===================== */
-
   return (
     <div style={{ 
       minHeight: "100vh",
-      background: "linear-gradient(to bottom, #f8fafc 0%, #e2e8f0 100%)",
+      background: "#f8fafc",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
-      paddingBottom: "env(safe-area-inset-bottom, 24px)"
+      paddingBottom: "24px"
     }}>
       <style>
 {`
-@keyframes shimmer {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
+
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.4);
+  }
+}
+
+@keyframes dayPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  }
 }
 
 .timeline-scroll {
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 .timeline-scroll::-webkit-scrollbar {
@@ -429,7 +798,7 @@ export default function App() {
 
 .timeline-scroll::-webkit-scrollbar-thumb {
   background: #cbd5e1;
-  border-radius: 10px;
+  borderRadius: 10px;
 }
 
 .timeline-scroll::-webkit-scrollbar-thumb:hover {
@@ -439,16 +808,83 @@ export default function App() {
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
+  user-select: none;
 }
 
 input, button {
   -webkit-appearance: none;
   appearance: none;
 }
+
+.event-card {
+  touch-action: none;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: background 0.2s ease;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.resize-handle-left {
+  left: 0;
+  border-radius: 12px 0 0 12px;
+}
+
+.resize-handle-right {
+  right: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+.current-day-pulse {
+  animation: dayPulse 2s ease-in-out infinite;
+}
+
+div::-webkit-scrollbar {
+  display: none;
+}
 `}
 </style>
 
-      {/* ===================== HEADER ===================== */}
+      {previewTimes && (draggingEvent || resizingEvent) && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          background: "linear-gradient(135deg, #667eea, #764ba2)",
+          color: "#fff",
+          padding: "16px 24px",
+          borderRadius: 16,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          zIndex: 1000,
+          pointerEvents: "none",
+          fontWeight: 600,
+          fontSize: 18,
+          textAlign: "center",
+          backdropFilter: "blur(10px)",
+          border: "2px solid rgba(255,255,255,0.2)"
+        }}>
+          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
+            {resizingEvent ? "Resizing" : "Moving"}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            {formatTime(previewTimes.start)} – {formatTime(previewTimes.end)}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
+            {Math.round((previewTimes.end - previewTimes.start) / 60000)} minutes
+          </div>
+        </div>
+      )}
+
       <div style={{
         background: "rgba(255, 255, 255, 0.95)",
         backdropFilter: "blur(20px)",
@@ -460,19 +896,11 @@ input, button {
         boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
       }}>
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
-          {/* Top Row */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
-              <h1 style={{ 
-                margin: 0, 
-                fontSize: 28, 
-                fontWeight: 700,
-                background: "linear-gradient(135deg, #667eea, #764ba2)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent"
-              }}>
-                Timeline
-              </h1>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+                Welcome, {user.displayName}
+              </h2>
               <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
                 {monthYear}
               </p>
@@ -495,7 +923,6 @@ input, button {
             </button>
           </div>
 
-          {/* Error Banner */}
           {error && (
             <div style={{
               padding: "12px 16px",
@@ -526,7 +953,6 @@ input, button {
             </div>
           )}
 
-          {/* Space Tabs */}
           <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto" }}>
             <button
               onClick={() => setSpaceId(PERSONAL_SPACE_ID)}
@@ -569,7 +995,68 @@ input, button {
             </button>
           </div>
 
-          {/* Date Navigation */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <button
+              onClick={() => setViewMode("day")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "day" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "day" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "day" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Day
+            </button>
+
+            <button
+              onClick={() => setViewMode("week")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "week" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "week" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "week" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Week
+            </button>
+
+            <button
+              onClick={() => setViewMode("month")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "month" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "month" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "month" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Month
+            </button>
+          </div>
+
           <div style={{ 
             display: "flex", 
             alignItems: "center", 
@@ -580,45 +1067,51 @@ input, button {
             borderRadius: 12
           }}>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={goToPreviousDay} style={{ 
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 8,
-                padding: "8px 12px",
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#475569",
-                transition: "all 0.2s ease"
-              }}>
+              <button 
+                onClick={viewMode === "week" ? goToPreviousWeek : goToPreviousDay} 
+                style={{ 
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#475569",
+                  transition: "all 0.2s ease"
+                }}
+              >
                 ←
               </button>
               
-              <button onClick={goToToday} disabled={isToday} style={{ 
-                background: isToday ? "#e2e8f0" : "#fff",
+              <button onClick={goToToday} disabled={isToday && viewMode === "day"} style={{ 
+                background: (isToday && viewMode === "day") ? "#e2e8f0" : "#fff",
                 border: "1px solid #e2e8f0",
                 borderRadius: 8,
                 padding: "8px 14px",
-                cursor: isToday ? "not-allowed" : "pointer",
+                cursor: (isToday && viewMode === "day") ? "not-allowed" : "pointer",
                 fontSize: 14,
                 fontWeight: 600,
-                color: isToday ? "#94a3b8" : "#475569",
+                color: (isToday && viewMode === "day") ? "#94a3b8" : "#475569",
                 transition: "all 0.2s ease"
               }}>
                 Today
               </button>
 
-              <button onClick={goToNextDay} style={{ 
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 8,
-                padding: "8px 12px",
-                cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                color: "#475569",
-                transition: "all 0.2s ease"
-              }}>
+              <button 
+                onClick={viewMode === "week" ? goToNextWeek : goToNextDay} 
+                style={{ 
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#475569",
+                  transition: "all 0.2s ease"
+                }}
+              >
                 →
               </button>
             </div>
@@ -626,25 +1119,27 @@ input, button {
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div>
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", textAlign: "right" }}>
-                  {weekday}
+                  {viewMode === "week" 
+                    ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    : weekday
+                  }
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
-                  {dayDate}
+                  {viewMode === "week" ? "Week View" : dayDate}
                 </div>
               </div>
-              {isToday && (
+              {isToday && viewMode !== "week" && (
                 <div style={{
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
                   background: "linear-gradient(135deg, #667eea, #764ba2)",
-                  animation: "shimmer 2s infinite"
+                  animation: "pulse 2s ease-in-out infinite"
                 }} />
               )}
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <button
               onClick={openNewEvent}
@@ -699,11 +1194,26 @@ input, button {
             >
               📊
             </button>
+
+            <button
+              onClick={() => setShowSettings(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              ⚙️
+            </button>
           </div>
         </div>
       </div>
-
-      {/* ===================== TIMELINE ===================== */}
 
       <div style={{ padding: "20px", maxWidth: 1600, margin: "0 auto" }}>
         {loading ? (
@@ -715,7 +1225,7 @@ input, button {
           }}>
             Loading your timeline...
           </div>
-        ) : (
+        ) : viewMode === "day" ? (
           <div style={{ 
             background: "#fff",
             borderRadius: 16,
@@ -723,23 +1233,27 @@ input, button {
             boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
             border: "1px solid #e2e8f0"
           }}>
-            <div className="timeline-scroll" style={{ overflowX: "auto" }}>
+            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }}>
               <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
 
-                {/* Grid lines */}
-                {[...Array(48)].map((_, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      position: "absolute",
-                      left: i * 30 * PIXELS_PER_MINUTE,
-                      top: 0,
-                      bottom: 0,
-                      width: 1,
-                      background: i % 2 === 0 ? "#e2e8f0" : "#f1f5f9",
-                    }}
-                  />
-                ))}
+                {/* 15-minute interval gridlines */}
+                {[...Array(96)].map((_, i) => {
+                  const isHour = i % 4 === 0;
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        left: i * 15 * PIXELS_PER_MINUTE,
+                        top: 0,
+                        bottom: 0,
+                        width: isHour ? 2 : 1,
+                        background: isHour ? "#cbd5e1" : "#f1f5f9",
+                        zIndex: 1
+                      }}
+                    />
+                  );
+                })}
 
                 {/* Hour labels */}
                 {[...Array(24)].map((_, h) => (
@@ -750,18 +1264,20 @@ input, button {
                       left: h * 60 * PIXELS_PER_MINUTE + 8,
                       top: 12,
                       fontSize: 13,
-                      color: "#64748b",
-                      fontWeight: 600,
+                      color: "#475569",
+                      fontWeight: 700,
                       background: "#fff",
-                      padding: "2px 6px",
-                      borderRadius: 6
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      pointerEvents: "none",
+                      zIndex: 2,
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
                     }}
                   >
                     {String(h).padStart(2, "0")}:00
                   </div>
                 ))}
 
-                {/* Now indicator */}
                 {isToday && (
                   <>
                     <div style={{
@@ -773,7 +1289,8 @@ input, button {
                       background: "linear-gradient(180deg, #667eea, #764ba2)",
                       zIndex: 10,
                       boxShadow: "0 0 10px rgba(102, 126, 234, 0.5)",
-                      borderRadius: 2
+                      borderRadius: 2,
+                      pointerEvents: "none"
                     }} />
                     <div style={{
                       position: "absolute",
@@ -783,13 +1300,13 @@ input, button {
                       height: 14,
                       borderRadius: "50%",
                       background: "linear-gradient(135deg, #667eea, #764ba2)",
-                      boxShadow: "0 0 0 4px rgba(102, 126, 234, 0.2)",
-                      zIndex: 11
+                      zIndex: 11,
+                      pointerEvents: "none",
+                      animation: "glow 2s ease-in-out infinite"
                     }} />
                   </>
                 )}
 
-                {/* Empty state */}
                 {stacked.length === 0 && (
                   <div style={{
                     position: "absolute",
@@ -798,7 +1315,8 @@ input, button {
                     transform: "translate(-50%, -50%)",
                     textAlign: "center",
                     color: "#94a3b8",
-                    fontSize: 15
+                    fontSize: 15,
+                    pointerEvents: "none"
                   }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                     <div style={{ fontWeight: 600 }}>No events today</div>
@@ -806,67 +1324,338 @@ input, button {
                   </div>
                 )}
 
-                {/* Events */}
                 {stacked.map(ev => {
                   const width = toLeft(ev.end) - toLeft(ev.start);
                   const isSmall = width < 180;
+                  const isDragging = draggingEvent?.id === ev.id;
+                  const isResizing = resizingEvent?.id === ev.id;
                   
                   return (
                     <div
                       key={ev.id}
-                      onClick={() => openEditEvent(ev)}
+                      data-event-id={ev.id}
+                      className="event-card"
+                      onMouseDown={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onTouchStart={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onClick={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        if (Math.abs(e.clientX - dragStartX) < 5) {
+                          openEditEvent(ev);
+                        }
+                      }}
                       style={{
                         position: "absolute",
                         left: toLeft(ev.start),
                         top: 70 + ev.row * (EVENT_HEIGHT + ROW_GAP),
                         width,
                         height: EVENT_HEIGHT,
-                        background: "linear-gradient(135deg, #667eea, #764ba2)",
+                        background: (isDragging || isResizing)
+                          ? "linear-gradient(135deg, #818cf8, #9333ea)" 
+                          : "linear-gradient(135deg, #667eea, #764ba2)",
                         color: "#fff",
                         borderRadius: 12,
                         padding: "12px 14px",
-                        cursor: "pointer",
-                        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-                        transition: "all 0.2s ease",
+                        cursor: isDragging ? "grabbing" : "grab",
+                        boxShadow: (isDragging || isResizing)
+                          ? "0 12px 35px rgba(102, 126, 234, 0.5)" 
+                          : "0 4px 15px rgba(102, 126, 234, 0.3)",
+                        transition: (isDragging || isResizing) ? "none" : "all 0.2s ease",
                         overflow: "hidden",
-                        border: "1px solid rgba(255,255,255,0.2)"
+                        border: "none",
+                        opacity: (isDragging || isResizing) ? 0.7 : 1,
+                        zIndex: (isDragging || isResizing) ? 100 : 5,
+                        boxSizing: "border-box"
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
-                        e.currentTarget.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)";
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                          e.currentTarget.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)";
+                        }
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.transform = "translateY(0) scale(1)";
-                        e.currentTarget.style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.3)";
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(0) scale(1)";
+                          e.currentTarget.style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.3)";
+                        }
                       }}
                     >
+                      <div
+                        className="resize-handle resize-handle-left"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'left')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'left')}
+                      />
+                      
                       <div style={{ 
                         fontWeight: 600, 
                         fontSize: isSmall ? 13 : 15,
                         marginBottom: 4,
                         whiteSpace: "nowrap",
                         overflow: "hidden",
-                        textOverflow: "ellipsis"
+                        textOverflow: "ellipsis",
+                        pointerEvents: "none"
                       }}>
                         {ev.title}
                       </div>
                       {!isSmall && (
-                        <div style={{ fontSize: 12, opacity: 0.9 }}>
+                        <div style={{ fontSize: 12, opacity: 0.9, pointerEvents: "none" }}>
                           {formatTime(ev.start)} – {formatTime(ev.end)}
                         </div>
                       )}
+                      
+                      <div
+                        className="resize-handle resize-handle-right"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'right')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'right')}
+                      />
                     </div>
                   );
                 })}
               </div>
             </div>
           </div>
+        ) : viewMode === "week" ? (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ 
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none"
+            }}>
+              <div style={{ 
+                display: "flex",
+                gap: 8,
+                padding: "12px",
+                minWidth: "min-content"
+              }}>
+                {weekDays.map((day, index) => {
+                  const dayEventsForWeek = events.filter(ev => 
+                    ev.start.toDateString() === day.toDateString()
+                  );
+                  const isDayToday = day.toDateString() === now.toDateString();
+        
+                  return (
+                    <div
+                      key={index}
+                      style={{
+                        background: "#fff",
+                        minWidth: "260px",
+                        width: "260px",
+                        flexShrink: 0,
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 12,
+                        padding: "16px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                      onClick={() => {
+                        setCurrentDate(day);
+                        setViewMode("day");
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      <div style={{ 
+                        textAlign: "center", 
+                        marginBottom: 16,
+                        paddingBottom: 16,
+                        borderBottom: "2px solid #f1f5f9"
+                      }}>
+                        <div style={{ 
+                          fontSize: 13, 
+                          fontWeight: 700, 
+                          color: "#94a3b8",
+                          marginBottom: 8,
+                          letterSpacing: "0.5px"
+                        }}>
+                          {day.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase()}
+                        </div>
+                        <div 
+                          className={isDayToday ? "current-day-pulse" : ""}
+                          style={{ 
+                            fontSize: 32, 
+                            fontWeight: 700,
+                            color: isDayToday ? "#fff" : "#0f172a",
+                            background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
+                            width: 56,
+                            height: 56,
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            margin: "0 auto"
+                          }}
+                        >
+                          {day.getDate()}
+                        </div>
+                        <div style={{
+                          fontSize: 12,
+                          color: "#64748b",
+                          marginTop: 8,
+                          fontWeight: 500
+                        }}>
+                          {day.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                        </div>
+                      </div>
+        
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {dayEventsForWeek.length === 0 ? (
+                          <div style={{ 
+                            textAlign: "center", 
+                            color: "#cbd5e1", 
+                            fontSize: 13,
+                            padding: "32px 0",
+                            fontWeight: 500
+                          }}>
+                            No events
+                          </div>
+                        ) : (
+                          dayEventsForWeek.map(ev => (
+                            <div
+                              key={ev.id}
+                              style={{
+                                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                                color: "#fff",
+                                padding: "12px 14px",
+                                borderRadius: 10,
+                                fontSize: 13,
+                                fontWeight: 600,
+                                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease"
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditEvent(ev);
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.transform = "translateX(4px)";
+                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = "translateX(0)";
+                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
+                              }}
+                            >
+                              <div style={{ 
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                marginBottom: 4
+                              }}>
+                                {ev.title}
+                              </div>
+                              <div style={{ fontSize: 11, opacity: 0.9 }}>
+                                {formatTime(ev.start)} – {formatTime(ev.end)}
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            padding: "20px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0",
+            maxWidth: 600,
+            margin: "0 auto"
+          }}>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6,
+              marginBottom: 12
+            }}>
+              {weekDayHeaders.map((day, i) => (
+                <div key={i} style={{
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "#94a3b8",
+                  padding: "4px 0"
+                }}>
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6
+            }}>
+              {monthDays.map((day, index) => {
+                const isCurrentDay = day && day.toDateString() === now.toDateString();
+                
+                return (
+                  <div
+                    key={index}
+                    className={isCurrentDay ? "current-day-pulse" : ""}
+                    style={{
+                      aspectRatio: "1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      background: day ? (isCurrentDay ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent") : "transparent",
+                      color: day ? (isCurrentDay ? "#fff" : "#0f172a") : "transparent",
+                      fontWeight: isCurrentDay ? 700 : 500,
+                      fontSize: 14,
+                      cursor: day ? "pointer" : "default",
+                      transition: "all 0.15s ease",
+                      border: "none",
+                      minHeight: 40
+                    }}
+                    onMouseEnter={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "#f1f5f9";
+                        e.currentTarget.style.fontWeight = "600";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.fontWeight = "500";
+                      }
+                    }}
+                  >
+                    {day ? day.getDate() : ""}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
 
-      {/* ===================== ACTIVITY OVERLAY ===================== */}
+{/* I'll continue with the modals and overlays in the next message due to length */}
 
-      {showActivityOverlay && (
+{showActivityOverlay && (
         <Overlay title="Activity Log" onClose={() => setShowActivityOverlay(false)}>
           {activityLogs.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
@@ -902,8 +1691,6 @@ input, button {
           )}
         </Overlay>
       )}
-
-      {/* ===================== DELETED OVERLAY ===================== */}
 
       {showDeletedOverlay && (
         <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
@@ -955,7 +1742,79 @@ input, button {
         </Overlay>
       )}
 
-      {/* ===================== EVENT MODAL ===================== */}
+      {showSettings && (
+        <Overlay title="Settings" onClose={() => setShowSettings(false)}>
+          <div style={{ padding: "16px 0" }}>
+            <div style={{
+              padding: "16px 0",
+              borderBottom: "1px solid #f1f5f9"
+            }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8
+              }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 4 }}>
+                    Week Starts On
+                  </div>
+                  <div style={{ fontSize: 13, color: "#64748b" }}>
+                    Choose whether your week starts on Sunday or Monday
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button
+                  onClick={() => setWeekStartsOnMonday(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid #e2e8f0" : "2px solid #667eea",
+                    background: weekStartsOnMonday ? "#fff" : "#eef2ff",
+                    color: weekStartsOnMonday ? "#64748b" : "#1e3a8a",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Sunday
+                </button>
+                
+                <button
+                  onClick={() => setWeekStartsOnMonday(true)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid #e2e8f0",
+                    background: weekStartsOnMonday ? "#eef2ff" : "#fff",
+                    color: weekStartsOnMonday ? "#1e3a8a" : "#64748b",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Monday
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              padding: "20px 0",
+              textAlign: "center",
+              color: "#94a3b8",
+              fontSize: 13
+            }}>
+              More customization options coming soon...
+            </div>
+          </div>
+        </Overlay>
+      )}
 
       {showModal && (
         <div style={{
@@ -977,15 +1836,15 @@ input, button {
             boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
             overflow: "hidden"
           }}>
-            <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid #f1f5f9" }}>
-              <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a" }}>
+            <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>
                 {editingEvent ? "Edit Event" : "New Event"}
               </h3>
             </div>
 
-            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 24 }}>
               <div>
-                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
                   Event Title
                 </label>
                 <input
@@ -994,22 +1853,23 @@ input, button {
                   placeholder="What's happening?"
                   style={{
                     width: "100%",
-                    padding: "12px 14px",
-                    borderRadius: 10,
+                    padding: "14px 16px",
+                    borderRadius: 12,
                     border: "2px solid #e2e8f0",
-                    fontSize: 15,
+                    fontSize: 16,
                     fontFamily: "inherit",
                     outline: "none",
-                    transition: "border 0.2s ease"
+                    transition: "border 0.2s ease",
+                    boxSizing: "border-box"
                   }}
                   onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
                   onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
                     Start
                   </label>
                   <input
@@ -1018,17 +1878,18 @@ input, button {
                     onChange={e => setStartTime(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "12px 14px",
-                      borderRadius: 10,
+                      padding: "14px 16px",
+                      borderRadius: 12,
                       border: "2px solid #e2e8f0",
-                      fontSize: 14,
-                      fontFamily: "inherit"
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      boxSizing: "border-box"
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
                     End
                   </label>
                   <input
@@ -1037,65 +1898,74 @@ input, button {
                     onChange={e => setEndTime(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "12px 14px",
-                      borderRadius: 10,
+                      padding: "14px 16px",
+                      borderRadius: 12,
                       border: "2px solid #e2e8f0",
-                      fontSize: 14,
-                      fontFamily: "inherit"
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      boxSizing: "border-box"
                     }}
                   />
                 </div>
               </div>
 
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 8 }}>
-                <div style={{ display: "flex", gap: 10 }}>
-                  <button
-                    onClick={saveEvent}
-                    disabled={loading}
-                    style={{
-                      background: loading ? "#94a3b8" : "linear-gradient(135deg, #667eea, #764ba2)",
-                      color: "#fff",
-                      border: "none",
-                      borderRadius: 10,
-                      padding: "12px 24px",
-                      fontWeight: 600,
-                      cursor: loading ? "not-allowed" : "pointer",
-                      fontSize: 15,
-                      boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
-                    }}
-                  >
-                    {loading ? "Saving..." : "Save"}
-                  </button>
+              <div style={{ 
+                display: "flex", 
+                gap: 12, 
+                marginTop: 8,
+                flexWrap: "wrap"
+              }}>
+                <button
+                  onClick={saveEvent}
+                  disabled={loading}
+                  style={{
+                    background: loading ? "#94a3b8" : "linear-gradient(135deg, #667eea, #764ba2)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    fontSize: 16,
+                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </button>
 
-                  <button
-                    onClick={() => setShowModal(false)}
-                    style={{
-                      background: "#f8fafc",
-                      border: "1px solid #e2e8f0",
-                      borderRadius: 10,
-                      padding: "12px 24px",
-                      cursor: "pointer",
-                      fontSize: 15,
-                      fontWeight: 600,
-                      color: "#64748b"
-                    }}
-                  >
-                    Cancel
-                  </button>
-                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    background: "#f8fafc",
+                    border: "2px solid #e2e8f0",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#64748b",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  Cancel
+                </button>
 
                 {editingEvent && (
                   <button
                     onClick={deleteEvent}
                     style={{
                       background: "#fef2f2",
-                      border: "1px solid #fecaca",
-                      borderRadius: 10,
-                      padding: "12px 20px",
+                      border: "2px solid #fecaca",
+                      borderRadius: 12,
+                      padding: "14px 32px",
                       cursor: "pointer",
                       color: "#dc2626",
                       fontWeight: 600,
-                      fontSize: 15
+                      fontSize: 16,
+                      width: "100%"
                     }}
                   >
                     Delete
@@ -1109,8 +1979,6 @@ input, button {
     </div>
   );
 }
-
-/* ===================== OVERLAY COMPONENT ===================== */
 
 function Overlay({ title, onClose, children }) {
   return (
