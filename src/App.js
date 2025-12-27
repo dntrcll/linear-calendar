@@ -18,37 +18,9 @@ import { db } from "./firebase";
 /* ===================== CONSTANTS ===================== */
 
 const PIXELS_PER_MINUTE = 3;
-const EVENT_HEIGHT = 52;
-const ROW_GAP = 10;
+const EVENT_HEIGHT = 56;
+const ROW_GAP = 12;
 const DAY_WIDTH = 1440 * PIXELS_PER_MINUTE;
-const headerButtonBase = {
-  padding: "8px 14px",
-  borderRadius: 10,
-  border: "1px solid #e5e7eb",
-  background: "#f8fafc",
-  color: "#1f2937",
-  fontSize: 14,
-  fontWeight: 500,
-  cursor: "pointer",
-  display: "flex",
-  alignItems: "center",
-  gap: 6,
-  transition: "all 0.15s ease",
-};
-
-const headerButtonActive = {
-  background: "#eef2ff",
-  borderColor: "#2563eb",
-  color: "#1e3a8a",
-  fontWeight: 600,
-};
-
-const headerButtonPrimary = {
-  background: "#2563eb",
-  border: "1px solid #2563eb",
-  color: "#ffffff",
-  fontWeight: 600,
-};
 
 /* ===================== APP ===================== */
 
@@ -85,12 +57,10 @@ export default function App() {
   /* ===================== MIDNIGHT + NOW UPDATER ===================== */
   
   useEffect(() => {
-    // Update "now" every minute for red line accuracy
     const nowInterval = setInterval(() => {
       setNow(new Date());
-    }, 60000); // Every 60 seconds
+    }, 60000);
 
-    // Schedule midnight rollover
     const scheduleMidnightUpdate = () => {
       const currentTime = new Date();
       const nextMidnight = new Date(
@@ -102,11 +72,8 @@ export default function App() {
       
       const msUntilMidnight = nextMidnight.getTime() - currentTime.getTime();
       
-      console.log(`⏰ Midnight update scheduled in ${Math.round(msUntilMidnight / 1000 / 60)} minutes`);
-      
       return setTimeout(() => {
         const newDate = new Date();
-        console.log(`🌅 Midnight rollover: ${newDate.toDateString()}`);
         setCurrentDate(newDate);
         setNow(newDate);
         scheduleMidnightUpdate();
@@ -120,6 +87,23 @@ export default function App() {
       clearTimeout(midnightTimer);
     };
   }, []);
+
+  /* ===================== AUTO SCROLL TO NOW ===================== */
+  
+  useEffect(() => {
+    if (isToday && dayEvents.length >= 0) {
+      setTimeout(() => {
+        const timeline = document.querySelector('.timeline-scroll');
+        if (timeline) {
+          const nowPosition = toLeft(now);
+          timeline.scrollTo({
+            left: nowPosition - (window.innerWidth / 2),
+            behavior: 'smooth'
+          });
+        }
+      }, 300);
+    }
+  }, [currentDate]);
 
   /* ===================== LOAD EVENTS ===================== */
 
@@ -172,8 +156,6 @@ export default function App() {
     }
   };
 
-  /* ===================== LOAD ACTIVITY ===================== */
-
   const loadActivity = async () => {
     if (!user || !spaceId) return;
 
@@ -196,8 +178,6 @@ export default function App() {
     loadActivity();
   }, [user, spaceId]);
 
-  /* ===================== ACTIVITY LOGGER ===================== */
-
   const logActivity = async (action, eventId) => {
     try {
       await addDoc(collection(db, "activityLogs"), {
@@ -211,8 +191,6 @@ export default function App() {
       console.error("Error logging activity:", err);
     }
   };
-
-  /* ===================== SPACES ===================== */
 
   const createFamilySpace = async () => {
     try {
@@ -230,8 +208,6 @@ export default function App() {
       setError("Failed to create family space.");
     }
   };
-
-  /* ===================== EVENT MODAL ===================== */
 
   const openNewEvent = () => {
     setEditingEvent(null);
@@ -335,8 +311,6 @@ export default function App() {
     }
   };
 
-  /* ===================== DATE NAVIGATION ===================== */
-
   const goToPreviousDay = () => {
     const newDate = new Date(currentDate);
     newDate.setDate(newDate.getDate() - 1);
@@ -356,59 +330,30 @@ export default function App() {
   /* ===================== TIME HELPERS ===================== */
 
   const today = currentDate;
-
-  const weekday = today.toLocaleDateString(undefined, {
-    weekday: "long",
-  });
-
-  const dayDate = today.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-
+  const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
+  const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+  
   const startOfDay = new Date(today);
   startOfDay.setHours(0, 0, 0, 0);
 
-  const toLeft = d =>
-    ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
-
+  const toLeft = d => ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
   const nowLeft = toLeft(now);
-
   const isToday = today.toDateString() === now.toDateString();
+  const formatTime = d => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
-  const formatTime = d =>
-    d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-
-  /* ===================== FILTER EVENTS FOR CURRENT DAY ===================== */
-
-  const dayEvents = events.filter(ev => {
-    const evDate = ev.start.toDateString();
-    return evDate === today.toDateString();
-  });
-
-  /* ===================== STACK EVENTS ===================== */
+  const dayEvents = events.filter(ev => ev.start.toDateString() === today.toDateString());
 
   const stacked = [];
   dayEvents.forEach(ev => {
     let row = 0;
-    while (
-      stacked.some(
-        e => e.row === row && !(ev.end <= e.start || ev.start >= e.end)
-      )
-    ) row++;
+    while (stacked.some(e => e.row === row && !(ev.end <= e.start || ev.start >= e.end))) row++;
     stacked.push({ ...ev, row });
   });
 
-  /* ===================== ACTIVITY ICONS ===================== */
-
-  const actionEmoji = action =>
-    ({
-      created: "🟢",
-      updated: "🟡",
-      deleted: "🔴",
-      restored: "🟣",
-    }[action] || "⚪");
+  const actionEmoji = action => ({
+    created: "🟢", updated: "🟡", deleted: "🔴", restored: "🟣"
+  }[action] || "⚪");
 
   /* ===================== AUTH UI ===================== */
 
@@ -419,20 +364,30 @@ export default function App() {
         alignItems: "center", 
         justifyContent: "center", 
         minHeight: "100vh",
-        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-        background: "#f9fafb"
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+        padding: 20
       }}>
-        <div style={{ textAlign: "center", padding: 32 }}>
-          <h1 style={{ marginBottom: 8, fontSize: 28, fontWeight: 700 }}>Timeline Calendar</h1>
-          <p style={{ color: "#6b7280", marginBottom: 24, fontSize: 15 }}>Your linear calendar experience</p>
+        <div style={{ textAlign: "center", background: "rgba(255,255,255,0.98)", padding: "48px 32px", borderRadius: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxWidth: 400 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+          <h1 style={{ margin: "0 0 8px 0", fontSize: 32, fontWeight: 700, background: "linear-gradient(135deg, #667eea, #764ba2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Timeline</h1>
+          <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 16 }}>Your life, beautifully organized</p>
           <button 
             onClick={() => signInWithPopup(auth, provider)}
             style={{
-              ...headerButtonBase,
-              ...headerButtonPrimary,
+              background: "linear-gradient(135deg, #667eea, #764ba2)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              padding: "14px 28px",
               fontSize: 16,
-              padding: "12px 24px"
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)",
+              transition: "all 0.3s ease"
             }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
           >
             Sign in with Google
           </button>
@@ -445,45 +400,42 @@ export default function App() {
 
   return (
     <div style={{ 
-      padding: "12px 16px",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-      maxWidth: 1600, 
-      margin: "0 auto",
-      paddingBottom: "env(safe-area-inset-bottom, 20px)"
+      minHeight: "100vh",
+      background: "linear-gradient(to bottom, #f8fafc 0%, #e2e8f0 100%)",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+      paddingBottom: "env(safe-area-inset-bottom, 24px)"
     }}>
       <style>
 {`
-@keyframes todayPulse {
-  0%, 100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0);
-  }
+@keyframes shimmer {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
-.today-badge {
-  padding: 3px 10px;
-  font-size: 11px;
-  font-weight: 600;
-  color: #065f46;
-  background: #ecfdf5;
-  border-radius: 999px;
-  display: inline-flex;
-  align-items: center;
-  height: 22px;
-  gap: 6px;
+.timeline-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
-.today-dot {
-  width: 6px;
+.timeline-scroll::-webkit-scrollbar {
   height: 6px;
-  border-radius: 50%;
-  background: #10b981;
-  animation: todayPulse 2s ease-in-out infinite;
 }
 
-/* iOS Safari fixes */
+.timeline-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
 * {
   -webkit-tap-highlight-color: transparent;
   -webkit-touch-callout: none;
@@ -493,377 +445,456 @@ input, button {
   -webkit-appearance: none;
   appearance: none;
 }
-
-/* Smooth scrolling for timeline */
-.timeline-container {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-}
 `}
 </style>
 
-      <h2 style={{ marginBottom: 16, fontSize: 22, fontWeight: 700 }}>
-        Welcome, {user.displayName?.split(' ')[0] || 'there'}
-      </h2>
-
-      {error && (
-        <div style={{
-          padding: "12px 16px",
-          background: "#fef2f2",
-          border: "1px solid #fecaca",
-          borderRadius: 10,
-          color: "#991b1b",
-          marginBottom: 16,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          fontSize: 14
-        }}>
-          <span>{error}</span>
-          <button 
-            onClick={() => setError(null)}
-            style={{
-              background: "transparent",
-              border: "none",
-              cursor: "pointer",
-              fontSize: 20,
-              color: "#991b1b",
-              padding: 0,
-              width: 28,
-              height: 28,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center"
-            }}
-          >
-            ✕
-          </button>
-        </div>
-      )}
-
-      <header style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button
-          onClick={() => setSpaceId(PERSONAL_SPACE_ID)}
-          style={{
-            ...headerButtonBase,
-            ...(spaceId === PERSONAL_SPACE_ID ? headerButtonActive : {}),
-          }}
-        >
-          Personal
-        </button>
-
-        <button
-          onClick={() =>
-            familySpaceId ? setSpaceId(familySpaceId) : createFamilySpace()
-          }
-          style={{
-            ...headerButtonBase,
-            ...(spaceId === familySpaceId ? headerButtonActive : {}),
-          }}
-        >
-          {familySpaceId ? "Family" : "Create Family Space"}
-        </button>
-
-        <button
-          onClick={openNewEvent}
-          style={{
-            ...headerButtonBase,
-            ...headerButtonPrimary,
-          }}
-        >
-          + Add Event
-        </button>
-
-        <button
-          onClick={() => setShowDeletedOverlay(true)}
-          style={{
-            ...headerButtonBase,
-            color: "#dc2626",
-            fontWeight: 600,
-          }}
-        >
-          Recently Deleted {deletedEvents.length > 0 && `(${deletedEvents.length})`}
-        </button>
-
-        <button
-          onClick={() => setShowActivityOverlay(true)}
-          style={headerButtonBase}
-        >
-          Activity Log
-        </button>
-
-        <button
-          onClick={() => signOut(auth)}
-          style={{
-            ...headerButtonBase,
-            opacity: 0.85,
-            marginLeft: "auto"
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-
-      {/* ===================== DATE NAVIGATION ===================== */}
-
-      <div style={{ 
-        display: "flex", 
-        alignItems: "center", 
-        gap: 10,
-        marginTop: 20,
-        marginBottom: 16,
-        flexWrap: "wrap"
+      {/* ===================== HEADER ===================== */}
+      <div style={{
+        background: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        padding: "16px 20px",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
       }}>
-        <div style={{ display: "flex", gap: 8 }}>
-          <button
-            onClick={goToPreviousDay}
-            style={{
-              ...headerButtonBase,
-              padding: "8px 14px",
-              minWidth: 70
-            }}
-          >
-            ← Prev
-          </button>
-          
-          <button
-            onClick={goToToday}
-            disabled={isToday}
-            style={{
-              ...headerButtonBase,
-              padding: "8px 14px",
-              opacity: isToday ? 0.5 : 1,
-              cursor: isToday ? "not-allowed" : "pointer",
-              minWidth: 70
-            }}
-          >
-            Today
-          </button>
-
-          <button
-            onClick={goToNextDay}
-            style={{
-              ...headerButtonBase,
-              padding: "8px 14px",
-              minWidth: 70
-            }}
-          >
-            Next →
-          </button>
-        </div>
-
-        <div style={{ 
-          flex: 1,
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          minWidth: 200
-        }}>
-          <div style={{
-            fontSize: 18,
-            fontWeight: 700,
-            color: "#111827",
-          }}>
-            {weekday}
+        <div style={{ maxWidth: 1600, margin: "0 auto" }}>
+          {/* Top Row */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <div>
+              <h1 style={{ 
+                margin: 0, 
+                fontSize: 28, 
+                fontWeight: 700,
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent"
+              }}>
+                Timeline
+              </h1>
+              <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+                {monthYear}
+              </p>
+            </div>
+            <button
+              onClick={() => signOut(auth)}
+              style={{
+                background: "transparent",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "8px 14px",
+                cursor: "pointer",
+                fontSize: 14,
+                color: "#64748b",
+                fontWeight: 500,
+                transition: "all 0.2s ease"
+              }}
+            >
+              Sign out
+            </button>
           </div>
 
-          {isToday && (
-            <span className="today-badge">
-              <span className="today-dot" />
-              Today
-            </span>
+          {/* Error Banner */}
+          {error && (
+            <div style={{
+              padding: "12px 16px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 10,
+              color: "#991b1b",
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 14
+            }}>
+              <span>{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#991b1b",
+                  padding: 4
+                }}
+              >
+                ✕
+              </button>
+            </div>
           )}
 
-          <div style={{
-            fontSize: 14,
-            fontWeight: 600,
-            color: "#6b7280"
+          {/* Space Tabs */}
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto" }}>
+            <button
+              onClick={() => setSpaceId(PERSONAL_SPACE_ID)}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: spaceId === PERSONAL_SPACE_ID 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: spaceId === PERSONAL_SPACE_ID ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: spaceId === PERSONAL_SPACE_ID ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Personal
+            </button>
+
+            <button
+              onClick={() => familySpaceId ? setSpaceId(familySpaceId) : createFamilySpace()}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: spaceId === familySpaceId 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: spaceId === familySpaceId ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: spaceId === familySpaceId ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              {familySpaceId ? "Family" : "+ Create Family"}
+            </button>
+          </div>
+
+          {/* Date Navigation */}
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            gap: 12,
+            background: "#f8fafc",
+            padding: "12px 16px",
+            borderRadius: 12
           }}>
-            {dayDate}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={goToPreviousDay} style={{ 
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#475569",
+                transition: "all 0.2s ease"
+              }}>
+                ←
+              </button>
+              
+              <button onClick={goToToday} disabled={isToday} style={{ 
+                background: isToday ? "#e2e8f0" : "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "8px 14px",
+                cursor: isToday ? "not-allowed" : "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: isToday ? "#94a3b8" : "#475569",
+                transition: "all 0.2s ease"
+              }}>
+                Today
+              </button>
+
+              <button onClick={goToNextDay} style={{ 
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "8px 12px",
+                cursor: "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: "#475569",
+                transition: "all 0.2s ease"
+              }}>
+                →
+              </button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", textAlign: "right" }}>
+                  {weekday}
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
+                  {dayDate}
+                </div>
+              </div>
+              {isToday && (
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #667eea, #764ba2)",
+                  animation: "shimmer 2s infinite"
+                }} />
+              )}
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <button
+              onClick={openNewEvent}
+              style={{
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                padding: "10px 20px",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                transition: "all 0.2s ease",
+                flex: 1,
+                minWidth: 140
+              }}
+            >
+              + Add Event
+            </button>
+
+            <button
+              onClick={() => setShowDeletedOverlay(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              🗑️ {deletedEvents.length > 0 && `(${deletedEvents.length})`}
+            </button>
+
+            <button
+              onClick={() => setShowActivityOverlay(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              📊
+            </button>
           </div>
         </div>
       </div>
 
       {/* ===================== TIMELINE ===================== */}
 
-      {loading && (
-        <div style={{
-          padding: 40,
-          textAlign: "center",
-          color: "#6b7280",
-          fontSize: 15
-        }}>
-          Loading events...
-        </div>
-      )}
+      <div style={{ padding: "20px", maxWidth: 1600, margin: "0 auto" }}>
+        {loading ? (
+          <div style={{
+            padding: 60,
+            textAlign: "center",
+            color: "#64748b",
+            fontSize: 15
+          }}>
+            Loading your timeline...
+          </div>
+        ) : (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div className="timeline-scroll" style={{ overflowX: "auto" }}>
+              <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
 
-      {!loading && (
-        <div style={{ 
-          marginTop: 12, 
-          border: "1px solid #d1d5db", 
-          borderRadius: 12,
-          overflow: "hidden",
-          background: "#fff",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
-        }}>
-          <div className="timeline-container" style={{ overflowX: "auto" }}>
-            <div style={{ position: "relative", width: DAY_WIDTH, height: 320, minHeight: 320 }}>
+                {/* Grid lines */}
+                {[...Array(48)].map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      position: "absolute",
+                      left: i * 30 * PIXELS_PER_MINUTE,
+                      top: 0,
+                      bottom: 0,
+                      width: 1,
+                      background: i % 2 === 0 ? "#e2e8f0" : "#f1f5f9",
+                    }}
+                  />
+                ))}
 
-              {/* Half-hour grid lines */}
-              {[...Array(48)].map((_, i) => (
-                <div
-                  key={i}
-                  style={{
+                {/* Hour labels */}
+                {[...Array(24)].map((_, h) => (
+                  <div
+                    key={h}
+                    style={{
+                      position: "absolute",
+                      left: h * 60 * PIXELS_PER_MINUTE + 8,
+                      top: 12,
+                      fontSize: 13,
+                      color: "#64748b",
+                      fontWeight: 600,
+                      background: "#fff",
+                      padding: "2px 6px",
+                      borderRadius: 6
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                ))}
+
+                {/* Now indicator */}
+                {isToday && (
+                  <>
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft,
+                      top: 0,
+                      bottom: 0,
+                      width: 3,
+                      background: "linear-gradient(180deg, #667eea, #764ba2)",
+                      zIndex: 10,
+                      boxShadow: "0 0 10px rgba(102, 126, 234, 0.5)",
+                      borderRadius: 2
+                    }} />
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft - 6,
+                      top: 8,
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #667eea, #764ba2)",
+                      boxShadow: "0 0 0 4px rgba(102, 126, 234, 0.2)",
+                      zIndex: 11
+                    }} />
+                  </>
+                )}
+
+                {/* Empty state */}
+                {stacked.length === 0 && (
+                  <div style={{
                     position: "absolute",
-                    left: i * 30 * PIXELS_PER_MINUTE,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    background: i % 2 === 0 ? "#e5e7eb" : "#f3f4f6",
-                  }}
-                />
-              ))}
-
-              {/* Hour labels */}
-              {[...Array(24)].map((_, h) => (
-                <div
-                  key={h}
-                  style={{
-                    position: "absolute",
-                    left: h * 60 * PIXELS_PER_MINUTE + 6,
-                    top: 8,
-                    fontSize: 12,
-                    color: "#374151",
-                    fontWeight: 600,
-                  }}
-                >
-                  {String(h).padStart(2, "0")}:00
-                </div>
-              ))}
-
-              {/* Current time indicator (red line) */}
-              {isToday && (
-                <div
-                  style={{
-                    position: "absolute",
-                    left: nowLeft,
-                    top: 0,
-                    bottom: 0,
-                    width: 2,
-                    background: "#ef4444",
-                    zIndex: 10,
-                    boxShadow: "0 0 4px rgba(239, 68, 68, 0.5)"
-                  }}
-                />
-              )}
-
-              {/* Empty state */}
-              {stacked.length === 0 && (
-                <div style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "50%",
-                  transform: "translate(-50%, -50%)",
-                  color: "#9ca3af",
-                  fontSize: 14,
-                  textAlign: "center"
-                }}>
-                  No events scheduled for this day
-                </div>
-              )}
-
-              {/* Event blocks */}
-              {stacked.map(ev => (
-                <div
-                  key={ev.id}
-                  onClick={() => openEditEvent(ev)}
-                  style={{
-                    position: "absolute",
-                    left: toLeft(ev.start),
-                    top: 60 + ev.row * (EVENT_HEIGHT + ROW_GAP),
-                    width: toLeft(ev.end) - toLeft(ev.start),
-                    height: EVENT_HEIGHT,
-                    background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-                    color: "#fff",
-                    borderRadius: 10,
-                    padding: "10px 12px",
-                    cursor: "pointer",
-                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.3)",
-                    transition: "all 0.2s ease",
-                    overflow: "hidden"
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 4px 12px rgba(37, 99, 235, 0.4)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = "0 2px 8px rgba(37, 99, 235, 0.3)";
-                  }}
-                >
-                  <div style={{ 
-                    fontWeight: 600, 
-                    fontSize: 14,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis"
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    textAlign: "center",
+                    color: "#94a3b8",
+                    fontSize: 15
                   }}>
-                    {ev.title}
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
+                    <div style={{ fontWeight: 600 }}>No events today</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>Tap "+ Add Event" to get started</div>
                   </div>
-                  <div style={{ fontSize: 12, opacity: 0.95, marginTop: 2 }}>
-                    {formatTime(ev.start)} – {formatTime(ev.end)}
-                  </div>
-                </div>
-              ))}
+                )}
+
+                {/* Events */}
+                {stacked.map(ev => {
+                  const width = toLeft(ev.end) - toLeft(ev.start);
+                  const isSmall = width < 180;
+                  
+                  return (
+                    <div
+                      key={ev.id}
+                      onClick={() => openEditEvent(ev)}
+                      style={{
+                        position: "absolute",
+                        left: toLeft(ev.start),
+                        top: 70 + ev.row * (EVENT_HEIGHT + ROW_GAP),
+                        width,
+                        height: EVENT_HEIGHT,
+                        background: "linear-gradient(135deg, #667eea, #764ba2)",
+                        color: "#fff",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        cursor: "pointer",
+                        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+                        transition: "all 0.2s ease",
+                        overflow: "hidden",
+                        border: "1px solid rgba(255,255,255,0.2)"
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                        e.currentTarget.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "translateY(0) scale(1)";
+                        e.currentTarget.style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.3)";
+                      }}
+                    >
+                      <div style={{ 
+                        fontWeight: 600, 
+                        fontSize: isSmall ? 13 : 15,
+                        marginBottom: 4,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis"
+                      }}>
+                        {ev.title}
+                      </div>
+                      {!isSmall && (
+                        <div style={{ fontSize: 12, opacity: 0.9 }}>
+                          {formatTime(ev.start)} – {formatTime(ev.end)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* ===================== ACTIVITY OVERLAY ===================== */}
 
       {showActivityOverlay && (
-        <Overlay
-          title="Activity Log"
-          onClose={() => setShowActivityOverlay(false)}
-        >
+        <Overlay title="Activity Log" onClose={() => setShowActivityOverlay(false)}>
           {activityLogs.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>
-              No activity yet
+            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+              <div>No activity yet</div>
             </div>
           ) : (
             activityLogs.map(log => (
-              <div
-                key={log.id}
-                style={{
-                  padding: "14px 0",
-                  borderBottom: "1px solid #e5e7eb",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 6,
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 18 }}>
-                    {actionEmoji(log.action)}
-                  </span>
-                  <strong style={{ textTransform: "capitalize", fontSize: 15 }}>
+              <div key={log.id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{actionEmoji(log.action)}</span>
+                  <strong style={{ textTransform: "capitalize", fontSize: 15, color: "#0f172a" }}>
                     {log.action}
                   </strong>
                 </div>
-
-                <div style={{ fontSize: 13, color: "#374151" }}>
+                <div style={{ fontSize: 13, color: "#64748b", paddingLeft: 30 }}>
                   {log.userEmail}
                 </div>
-
-                <div style={{ fontSize: 12, color: "#6b7280" }}>
+                <div style={{ fontSize: 12, color: "#94a3b8", paddingLeft: 30 }}>
                   {log.createdAt?.toDate?.().toLocaleString(undefined, {
-                    weekday: "short",
-                    year: "numeric",
-                    month: "short",
-                    day: "numeric",
-                    hour: "2-digit",
-                    minute: "2-digit",
+                    weekday: "short", year: "numeric", month: "short",
+                    day: "numeric", hour: "2-digit", minute: "2-digit",
                   })}
                 </div>
               </div>
@@ -877,58 +908,47 @@ input, button {
       {showDeletedOverlay && (
         <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
           {deletedEvents.length === 0 ? (
-            <div style={{ padding: 20, textAlign: "center", color: "#6b7280" }}>
-              No deleted events
+            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
+              <div>No deleted events</div>
             </div>
           ) : (
             deletedEvents.map(ev => (
-              <div
-                key={ev.id}
-                style={{
-                  padding: "14px 0",
-                  borderBottom: "1px solid #e5e7eb",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                <div style={{ fontWeight: 600, fontSize: 15 }}>
+              <div key={ev.id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a" }}>
                   {ev.title}
                 </div>
-
                 {ev.deletedAt && (
-                  <div style={{ fontSize: 12, color: "#6b7280" }}>
+                  <div style={{ fontSize: 12, color: "#94a3b8" }}>
                     Deleted {ev.deletedAt.toDate().toLocaleString(undefined, {
-                      weekday: "short",
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                      hour: "2-digit",
-                      minute: "2-digit",
+                      weekday: "short", month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit"
                     })}
                   </div>
                 )}
-
-                <div style={{ marginTop: 4 }}>
-                  <button
-                    onClick={() => restoreEvent(ev)}
-                    style={{
-                      background: "#ecfeff",
-                      border: "1px solid #06b6d4",
-                      color: "#0e7490",
-                      borderRadius: 8,
-                      padding: "8px 16px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      fontSize: 14,
-                      transition: "all 0.15s ease"
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = "#cffafe"}
-                    onMouseLeave={e => e.currentTarget.style.background = "#ecfeff"}
-                  >
-                    Restore Event
-                  </button>
-                </div>
+                <button
+                  onClick={() => restoreEvent(ev)}
+                  style={{
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    border: "none",
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "10px 18px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    alignSelf: "flex-start",
+                    boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)"
+                  }}
+                >
+                  Restore
+                </button>
               </div>
             ))
           )}
@@ -936,148 +956,152 @@ input, button {
       )}
 
       {/* ===================== EVENT MODAL ===================== */}
+
       {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 200,
-            padding: 16
-          }}
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            onClick={e => e.stopPropagation()}
-            style={{
-              background: "#ffffff",
-              padding: "24px",
-              borderRadius: 16,
-              width: "100%",
-              maxWidth: 460,
-              boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
-              display: "flex",
-              flexDirection: "column",
-              gap: 18,
-            }}
-          >
-            <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>
-              {editingEvent ? "Edit Event" : "Add Event"}
-            </h3>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Title</label>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Enter event title"
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  fontSize: 15,
-                  fontFamily: "inherit"
-                }}
-              />
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 200,
+          padding: 20
+        }} onClick={() => setShowModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#fff",
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 480,
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+            overflow: "hidden"
+          }}>
+            <div style={{ padding: "24px 24px 20px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: "#0f172a" }}>
+                {editingEvent ? "Edit Event" : "New Event"}
+              </h3>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>Start</label>
-              <input
-                type="datetime-local"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  fontSize: 15,
-                  fontFamily: "inherit"
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 13, fontWeight: 600, color: "#374151" }}>End</label>
-              <input
-                type="datetime-local"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                style={{
-                  padding: "10px 12px",
-                  borderRadius: 8,
-                  border: "1px solid #d1d5db",
-                  fontSize: 15,
-                  fontFamily: "inherit"
-                }}
-              />
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 10,
-                gap: 10,
-                flexWrap: "wrap"
-              }}
-            >
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  onClick={saveEvent}
-                  disabled={loading}
+            <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                  Event Title
+                </label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="What's happening?"
                   style={{
-                    background: loading ? "#93c5fd" : "#2563eb",
-                    color: "#fff",
-                    border: "none",
+                    width: "100%",
+                    padding: "12px 14px",
                     borderRadius: 10,
-                    padding: "10px 20px",
-                    fontWeight: 600,
-                    cursor: loading ? "not-allowed" : "pointer",
+                    border: "2px solid #e2e8f0",
                     fontSize: 15,
-                    transition: "all 0.15s ease"
+                    fontFamily: "inherit",
+                    outline: "none",
+                    transition: "border 0.2s ease"
                   }}
-                >
-                  {loading ? "Saving..." : "Save"}
-                </button>
-
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    background: "#f3f4f6",
-                    border: "1px solid #d1d5db",
-                    borderRadius: 10,
-                    padding: "10px 20px",
-                    cursor: "pointer",
-                    fontSize: 15,
-                    transition: "all 0.15s ease"
-                  }}
-                >
-                  Cancel
-                </button>
+                  onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
+                  onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                />
               </div>
 
-              {editingEvent && (
-                <button
-                  onClick={deleteEvent}
-                  style={{
-                    background: "#fef2f2",
-                    border: "1px solid #fecaca",
-                    borderRadius: 10,
-                    padding: "10px 20px",
-                    cursor: "pointer",
-                    color: "#dc2626",
-                    fontWeight: 600,
-                    fontSize: 15,
-                    transition: "all 0.15s ease"
-                  }}
-                >
-                  Delete
-                </button>
-              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                    Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "2px solid #e2e8f0",
+                      fontSize: 14,
+                      fontFamily: "inherit"
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 13, fontWeight: 600, color: "#64748b", marginBottom: 8 }}>
+                    End
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "12px 14px",
+                      borderRadius: 10,
+                      border: "2px solid #e2e8f0",
+                      fontSize: 14,
+                      fontFamily: "inherit"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12, marginTop: 8 }}>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button
+                    onClick={saveEvent}
+                    disabled={loading}
+                    style={{
+                      background: loading ? "#94a3b8" : "linear-gradient(135deg, #667eea, #764ba2)",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 10,
+                      padding: "12px 24px",
+                      fontWeight: 600,
+                      cursor: loading ? "not-allowed" : "pointer",
+                      fontSize: 15,
+                      boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                    }}
+                  >
+                    {loading ? "Saving..." : "Save"}
+                  </button>
+
+                  <button
+                    onClick={() => setShowModal(false)}
+                    style={{
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      padding: "12px 24px",
+                      cursor: "pointer",
+                      fontSize: 15,
+                      fontWeight: 600,
+                      color: "#64748b"
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                {editingEvent && (
+                  <button
+                    onClick={deleteEvent}
+                    style={{
+                      background: "#fef2f2",
+                      border: "1px solid #fecaca",
+                      borderRadius: 10,
+                      padding: "12px 20px",
+                      cursor: "pointer",
+                      color: "#dc2626",
+                      fontWeight: 600,
+                      fontSize: 15
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -1090,59 +1114,59 @@ input, button {
 
 function Overlay({ title, onClose, children }) {
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(0,0,0,0.4)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        zIndex: 100,
-        padding: 16
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          background: "#fff",
-          width: "100%",
-          maxWidth: 420,
-          maxHeight: "80vh",
-          borderRadius: 12,
-          padding: 20,
-          overflowY: "auto",
-          position: "relative",
-          boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
-        }}
-      >
-        <button
-          onClick={onClose}
-          style={{
-            position: "absolute",
-            top: 12,
-            right: 12,
-            border: "none",
-            background: "transparent",
-            fontSize: 20,
-            cursor: "pointer",
-            width: 32,
-            height: 32,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background 0.15s ease",
-            color: "#6b7280"
-          }}
-          onMouseEnter={e => e.currentTarget.style.background = "#f3f4f6"}
-          onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-        >
-          ✕
-        </button>
-        <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 16 }}>{title}</h3>
-        {children}
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15, 23, 42, 0.6)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 100,
+      padding: 20
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff",
+        width: "100%",
+        maxWidth: 440,
+        maxHeight: "85vh",
+        borderRadius: 20,
+        overflow: "hidden",
+        boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+      }}>
+        <div style={{
+          padding: "20px 24px",
+          borderBottom: "1px solid #f1f5f9",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0f172a" }}>
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "#f8fafc",
+              fontSize: 18,
+              cursor: "pointer",
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              transition: "all 0.2s ease"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ padding: "4px 24px 24px", overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
+          {children}
+        </div>
       </div>
     </div>
   );
