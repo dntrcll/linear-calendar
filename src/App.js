@@ -23,14 +23,20 @@ const SNAP_MINUTES = 15;
 const MIN_EVENT_DURATION = 15;
 
 const EVENT_COLORS = {
-  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea" },
-  blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe" },
-  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b" },
-  orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a" },
-  red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb" },
+  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea", dot: "#667eea" },
+  blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe", dot: "#4facfe" },
+  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
+  orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a", dot: "#fa709a" },
+  red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb", dot: "#f093fb" },
 };
 
-const CATEGORIES = ["Work", "Personal", "Meeting", "Event", "Other"];
+const DEFAULT_CATEGORIES = [
+  { id: "work", name: "Work", color: "blue" },
+  { id: "personal", name: "Personal", color: "purple" },
+  { id: "meeting", name: "Meeting", color: "orange" },
+  { id: "event", name: "Event", color: "green" },
+  { id: "other", name: "Other", color: "red" },
+];
 
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
@@ -54,6 +60,7 @@ export default function App() {
   const [showActivityOverlay, setShowActivityOverlay] = useState(false);
   const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
 
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -65,6 +72,16 @@ export default function App() {
   const [filterCategory, setFilterCategory] = useState("All");
   
   const [viewMode, setViewMode] = useState("day");
+  
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('categories');
+    return saved ? JSON.parse(saved) : DEFAULT_CATEGORIES;
+  });
+  
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [newCategoryColor, setNewCategoryColor] = useState("purple");
+  
+  const [draggingCategoryId, setDraggingCategoryId] = useState(null);
   
   const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(() => {
     const saved = localStorage.getItem('weekStartsOnMonday');
@@ -147,6 +164,10 @@ export default function App() {
       scrollToCurrentTime();
     }
   }, [currentDate, viewMode]);
+
+  useEffect(() => {
+    localStorage.setItem('categories', JSON.stringify(categories));
+  }, [categories]);
 
   const loadEvents = async () => {
     if (!user || !spaceId) return;
@@ -252,6 +273,57 @@ export default function App() {
       console.error("Error creating family space:", err);
       setError("Failed to create family space.");
     }
+  };
+
+  const addCategory = () => {
+    if (!newCategoryName.trim()) {
+      setError("Category name cannot be empty");
+      return;
+    }
+    
+    const newCategory = {
+      id: Date.now().toString(),
+      name: newCategoryName.trim(),
+      color: newCategoryColor
+    };
+    
+    setCategories([...categories, newCategory]);
+    setNewCategoryName("");
+    setNewCategoryColor("purple");
+    setShowAddCategoryModal(false);
+  };
+  
+  const deleteCategory = (categoryId) => {
+    setCategories(categories.filter(cat => cat.id !== categoryId));
+  };
+  
+  const handleCategoryDragStart = (e, categoryId) => {
+    setDraggingCategoryId(categoryId);
+    e.dataTransfer.effectAllowed = "move";
+  };
+  
+  const handleCategoryDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  
+  const handleCategoryDrop = (e, targetCategoryId) => {
+    e.preventDefault();
+    
+    if (draggingCategoryId === targetCategoryId) {
+      setDraggingCategoryId(null);
+      return;
+    }
+    
+    const draggedIndex = categories.findIndex(cat => cat.id === draggingCategoryId);
+    const targetIndex = categories.findIndex(cat => cat.id === targetCategoryId);
+    
+    const newCategories = [...categories];
+    const [removed] = newCategories.splice(draggedIndex, 1);
+    newCategories.splice(targetIndex, 0, removed);
+    
+    setCategories(newCategories);
+    setDraggingCategoryId(null);
   };
 
   const openNewEvent = (presetStart = null, presetEnd = null) => {
@@ -877,21 +949,7 @@ export default function App() {
 }
 
 .timeline-scroll::-webkit-scrollbar {
-  height: 6px;
-}
-
-.timeline-scroll::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 10px;
-}
-
-.timeline-scroll::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  borderRadius: 10px;
-}
-
-.timeline-scroll::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+  display: none;
 }
 
 * {
@@ -1105,25 +1163,77 @@ div::-webkit-scrollbar {
               {familySpaceId ? "Family" : "+ Create Family"}
             </button>
 
-            {["All", ...CATEGORIES].map(cat => (
+            <button
+              onClick={() => setFilterCategory("All")}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                background: filterCategory === "All" ? "#eef2ff" : "#fff",
+                color: filterCategory === "All" ? "#4338ca" : "#64748b",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: 6
+              }}
+            >
+              All
+            </button>
+            
+            {categories.map(cat => (
               <button
-                key={cat}
-                onClick={() => setFilterCategory(cat)}
+                key={cat.id}
+                draggable
+                onDragStart={(e) => handleCategoryDragStart(e, cat.id)}
+                onDragOver={handleCategoryDragOver}
+                onDrop={(e) => handleCategoryDrop(e, cat.id)}
+                onClick={() => setFilterCategory(cat.name)}
                 style={{
                   padding: "10px 16px",
                   borderRadius: 10,
                   border: "1px solid #e2e8f0",
-                  background: filterCategory === cat ? "#eef2ff" : "#fff",
-                  color: filterCategory === cat ? "#4338ca" : "#64748b",
+                  background: filterCategory === cat.name ? "#eef2ff" : "#fff",
+                  color: filterCategory === cat.name ? "#4338ca" : "#64748b",
                   fontSize: 14,
                   fontWeight: 600,
-                  cursor: "pointer",
-                  transition: "all 0.2s ease"
+                  cursor: draggingCategoryId === cat.id ? "grabbing" : "grab",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  opacity: draggingCategoryId === cat.id ? 0.5 : 1
                 }}
               >
-                {cat}
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: EVENT_COLORS[cat.color].dot,
+                  flexShrink: 0
+                }} />
+                {cat.name}
               </button>
             ))}
+            
+            <button
+              onClick={() => setShowAddCategoryModal(true)}
+              style={{
+                padding: "10px 16px",
+                borderRadius: 10,
+                border: "1px dashed #cbd5e1",
+                background: "#fff",
+                color: "#64748b",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease"
+              }}
+            >
+              + Add Tag
+            </button>
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -1913,6 +2023,48 @@ div::-webkit-scrollbar {
                 </button>
               </div>
             </div>
+            
+            <div style={{
+              padding: "16px 0",
+              borderBottom: "1px solid #f1f5f9"
+            }}>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 12 }}>
+                Manage Categories
+              </div>
+              {categories.map(cat => (
+                <div key={cat.id} style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 0"
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{
+                      width: 12,
+                      height: 12,
+                      borderRadius: "50%",
+                      background: EVENT_COLORS[cat.color].dot
+                    }} />
+                    <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
+                  </div>
+                  {!DEFAULT_CATEGORIES.find(dc => dc.id === cat.id) && (
+                    <button
+                      onClick={() => deleteCategory(cat.id)}
+                      style={{
+                        background: "transparent",
+                        border: "none",
+                        color: "#ef4444",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        padding: "4px 8px"
+                      }}
+                    >
+                      Delete
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
 
             <div style={{
               padding: "20px 0",
@@ -1924,6 +2076,121 @@ div::-webkit-scrollbar {
             </div>
           </div>
         </Overlay>
+      )}
+      
+      {showAddCategoryModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 200,
+          padding: 20
+        }} onClick={() => setShowAddCategoryModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#fff",
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 400,
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+            overflow: "hidden"
+          }}>
+            <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0f172a" }}>
+                Add New Category
+              </h3>
+            </div>
+
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 20 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Category Name
+                </label>
+                <input
+                  value={newCategoryName}
+                  onChange={e => setNewCategoryName(e.target.value)}
+                  placeholder="Enter category name"
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    border: "2px solid #e2e8f0",
+                    fontSize: 15,
+                    fontFamily: "inherit",
+                    outline: "none",
+                    boxSizing: "border-box"
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
+                  onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Color
+                </label>
+                <div style={{ display: "flex", gap: 10 }}>
+                  {Object.entries(EVENT_COLORS).map(([colorName, colorStyle]) => (
+                    <button
+                      key={colorName}
+                      onClick={() => setNewCategoryColor(colorName)}
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        border: newCategoryColor === colorName ? "3px solid #0f172a" : "2px solid transparent",
+                        background: colorStyle.bg,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        boxShadow: newCategoryColor === colorName ? "0 4px 12px rgba(0,0,0,0.2)" : "0 2px 6px rgba(0,0,0,0.1)"
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+                <button
+                  onClick={addCategory}
+                  style={{
+                    flex: 1,
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "12px 20px",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                  }}
+                >
+                  Add Category
+                </button>
+                
+                <button
+                  onClick={() => setShowAddCategoryModal(false)}
+                  style={{
+                    flex: 1,
+                    background: "#f8fafc",
+                    border: "2px solid #e2e8f0",
+                    borderRadius: 10,
+                    padding: "12px 20px",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: "#64748b",
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {showModal && (
@@ -1984,23 +2251,32 @@ div::-webkit-scrollbar {
                   Category
                 </label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {CATEGORIES.map(cat => (
+                  {categories.map(cat => (
                     <button
-                      key={cat}
-                      onClick={() => setEventCategory(cat)}
+                      key={cat.id}
+                      onClick={() => setEventCategory(cat.name)}
                       style={{
                         padding: "8px 16px",
                         borderRadius: 8,
-                        border: eventCategory === cat ? "2px solid #667eea" : "2px solid #e2e8f0",
-                        background: eventCategory === cat ? "#eef2ff" : "#fff",
-                        color: eventCategory === cat ? "#4338ca" : "#64748b",
+                        border: eventCategory === cat.name ? "2px solid #667eea" : "2px solid #e2e8f0",
+                        background: eventCategory === cat.name ? "#eef2ff" : "#fff",
+                        color: eventCategory === cat.name ? "#4338ca" : "#64748b",
                         fontSize: 13,
                         fontWeight: 600,
                         cursor: "pointer",
-                        transition: "all 0.2s ease"
+                        transition: "all 0.2s ease",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6
                       }}
                     >
-                      {cat}
+                      <div style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: EVENT_COLORS[cat.color].dot
+                      }} />
+                      {cat.name}
                     </button>
                   ))}
                 </div>
