@@ -23,19 +23,21 @@ const SNAP_MINUTES = 15;
 const MIN_EVENT_DURATION = 15;
 
 const EVENT_COLORS = {
-  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea", dot: "#667eea" },
   blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe", dot: "#4facfe" },
-  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
+  teal: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
+  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea", dot: "#667eea" },
   orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a", dot: "#fa709a" },
   red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb", dot: "#f093fb" },
+  cyan: { bg: "linear-gradient(135deg, #30cfd0, #330867)", border: "#30cfd0", dot: "#30cfd0" },
 };
 
 const DEFAULT_CATEGORIES = [
   { id: "work", name: "Work", color: "blue" },
+  { id: "project", name: "Project", color: "teal" },
+  { id: "deadline", name: "Deadline", color: "red" },
   { id: "personal", name: "Personal", color: "purple" },
-  { id: "meeting", name: "Meeting", color: "orange" },
-  { id: "event", name: "Event", color: "green" },
-  { id: "other", name: "Other", color: "red" },
+  { id: "travel", name: "Travel", color: "orange" },
+  { id: "health", name: "Health", color: "cyan" },
 ];
 
 export default function App() {
@@ -49,7 +51,6 @@ export default function App() {
 
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
-  const [activityLogs, setActivityLogs] = useState([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -57,7 +58,6 @@ export default function App() {
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
 
-  const [showActivityOverlay, setShowActivityOverlay] = useState(false);
   const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showAddCategoryModal, setShowAddCategoryModal] = useState(false);
@@ -65,8 +65,7 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [eventColor, setEventColor] = useState("purple");
-  const [eventCategory, setEventCategory] = useState("Personal");
+  const [eventCategory, setEventCategory] = useState("Work");
   
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
@@ -79,7 +78,7 @@ export default function App() {
   });
   
   const [newCategoryName, setNewCategoryName] = useState("");
-  const [newCategoryColor, setNewCategoryColor] = useState("purple");
+  const [newCategoryColor, setNewCategoryColor] = useState("blue");
   
   const [draggingCategoryId, setDraggingCategoryId] = useState(null);
   
@@ -91,14 +90,12 @@ export default function App() {
   const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
-  const [dragOffset, setDragOffset] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
-  const [previewTimes, setPreviewTimes] = useState(null);
+  const [dragStartLeft, setDragStartLeft] = useState(0);
+  const [dragStartWidth, setDragStartWidth] = useState(0);
+  
   const timelineRef = useRef(null);
   const isSavingRef = useRef(false);
-  const previewTimesRef = useRef(null);
-  const currentStartMinutesRef = useRef(null);
-  const currentEndMinutesRef = useRef(null);
 
   useEffect(() => {
     setPersistence(auth, browserLocalPersistence).catch(err => {
@@ -218,45 +215,13 @@ export default function App() {
     }
   };
 
-  const loadActivity = async () => {
-    if (!user || !spaceId) return;
-
-    try {
-      const q = query(
-        collection(db, "activityLogs"),
-        where("spaceId", "==", spaceId),
-        orderBy("createdAt", "desc")
-      );
-
-      const snap = await getDocs(q);
-      setActivityLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
-    } catch (err) {
-      console.error("Error loading activity:", err);
-    }
-  };
-
   useEffect(() => {
     loadEvents();
-    loadActivity();
   }, [user, spaceId]);
 
   useEffect(() => {
     localStorage.setItem('weekStartsOnMonday', JSON.stringify(weekStartsOnMonday));
   }, [weekStartsOnMonday]);
-
-  const logActivity = async (action, eventId) => {
-    try {
-      await addDoc(collection(db, "activityLogs"), {
-        action,
-        eventId,
-        spaceId,
-        userEmail: user.email,
-        createdAt: serverTimestamp(),
-      });
-    } catch (err) {
-      console.error("Error logging activity:", err);
-    }
-  };
 
   const createFamilySpace = async () => {
     try {
@@ -289,7 +254,7 @@ export default function App() {
     
     setCategories([...categories, newCategory]);
     setNewCategoryName("");
-    setNewCategoryColor("purple");
+    setNewCategoryColor("blue");
     setShowAddCategoryModal(false);
   };
   
@@ -329,8 +294,7 @@ export default function App() {
   const openNewEvent = (presetStart = null, presetEnd = null) => {
     setEditingEvent(null);
     setTitle("");
-    setEventColor("purple");
-    setEventCategory("Personal");
+    setEventCategory("Work");
     
     if (presetStart && presetEnd) {
       setStartTime(presetStart.toISOString().slice(0, 16));
@@ -352,8 +316,7 @@ export default function App() {
     setTitle(ev.title);
     setStartTime(ev.start.toISOString().slice(0, 16));
     setEndTime(ev.end.toISOString().slice(0, 16));
-    setEventColor(ev.color || "purple");
-    setEventCategory(ev.category || "Personal");
+    setEventCategory(ev.category || "Work");
     setShowModal(true);
   };
 
@@ -364,19 +327,20 @@ export default function App() {
       const newEnd = new Date(ev.end);
       newEnd.setDate(newEnd.getDate() + 1);
 
+      const category = ev.category || "Work";
+      const categoryColor = categories.find(c => c.name === category)?.color || "blue";
+
       const ref = await addDoc(collection(db, "events"), {
         spaceId,
         title: ev.title + " (Copy)",
         startTime: Timestamp.fromDate(newStart),
         endTime: Timestamp.fromDate(newEnd),
-        color: ev.color || "purple",
-        category: ev.category || "Personal",
+        color: categoryColor,
+        category: category,
         deleted: false,
         createdAt: serverTimestamp(),
       });
-      await logActivity("created", ref.id);
       await loadEvents();
-      await loadActivity();
     } catch (err) {
       console.error("Error duplicating event:", err);
       setError("Failed to duplicate event.");
@@ -397,6 +361,8 @@ export default function App() {
       return;
     }
 
+    const categoryColor = categories.find(c => c.name === eventCategory)?.color || "blue";
+
     try {
       setLoading(true);
       setError(null);
@@ -406,27 +372,24 @@ export default function App() {
           title,
           startTime: Timestamp.fromDate(startDate),
           endTime: Timestamp.fromDate(endDate),
-          color: eventColor,
+          color: categoryColor,
           category: eventCategory,
         });
-        await logActivity("updated", editingEvent.id);
       } else {
-        const ref = await addDoc(collection(db, "events"), {
+        await addDoc(collection(db, "events"), {
           spaceId,
           title,
           startTime: Timestamp.fromDate(startDate),
           endTime: Timestamp.fromDate(endDate),
-          color: eventColor,
+          color: categoryColor,
           category: eventCategory,
           deleted: false,
           createdAt: serverTimestamp(),
         });
-        await logActivity("created", ref.id);
       }
 
       setShowModal(false);
       await loadEvents();
-      await loadActivity();
     } catch (err) {
       console.error("Error saving event:", err);
       setError("Failed to save event. Please try again.");
@@ -445,10 +408,8 @@ export default function App() {
         deletedAt: serverTimestamp(),
       });
 
-      await logActivity("deleted", editingEvent.id);
       setShowModal(false);
       await loadEvents();
-      await loadActivity();
     } catch (err) {
       console.error("Error deleting event:", err);
       setError("Failed to delete event.");
@@ -458,9 +419,7 @@ export default function App() {
   const restoreEvent = async ev => {
     try {
       await updateDoc(doc(db, "events", ev.id), { deleted: false });
-      await logActivity("restored", ev.id);
       await loadEvents();
-      await loadActivity();
     } catch (err) {
       console.error("Error restoring event:", err);
       setError("Failed to restore event.");
@@ -501,14 +460,11 @@ export default function App() {
     setResizeHandle(handle);
     setDragStartX(clientX);
     
-    const startMinutes = ((ev.start - startOfDay) / 60000);
-    const endMinutes = ((ev.end - startOfDay) / 60000);
-    currentStartMinutesRef.current = startMinutes;
-    currentEndMinutesRef.current = endMinutes;
+    const eventLeft = toLeft(ev.start);
+    const eventWidth = toLeft(ev.end) - toLeft(ev.start);
     
-    const times = { start: ev.start, end: ev.end };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
+    setDragStartLeft(eventLeft);
+    setDragStartWidth(eventWidth);
   };
 
   const handleResizeMove = (e) => {
@@ -518,56 +474,52 @@ export default function App() {
     const timeline = timelineRef.current;
     if (!timeline) return;
     
-    const rect = timeline.getBoundingClientRect();
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    const scrollLeft = timeline.scrollLeft;
-    
-    const mouseX = clientX - rect.left + scrollLeft;
-    const minutes = mouseX / PIXELS_PER_MINUTE;
-    const snappedMinutes = Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
-    
-    let newStartMinutes, newEndMinutes;
-    
-    if (resizeHandle === 'left') {
-      const maxStartMinutes = currentEndMinutesRef.current - MIN_EVENT_DURATION;
-      newStartMinutes = Math.max(0, Math.min(snappedMinutes, maxStartMinutes));
-      newEndMinutes = currentEndMinutesRef.current;
-    } else {
-      const minEndMinutes = currentStartMinutesRef.current + MIN_EVENT_DURATION;
-      newStartMinutes = currentStartMinutesRef.current;
-      newEndMinutes = Math.max(minEndMinutes, Math.min(snappedMinutes, 1440));
-    }
-    
-    currentStartMinutesRef.current = newStartMinutes;
-    currentEndMinutesRef.current = newEndMinutes;
-    
-    const newLeft = newStartMinutes * PIXELS_PER_MINUTE;
-    const newWidth = (newEndMinutes - newStartMinutes) * PIXELS_PER_MINUTE;
+    const deltaX = clientX - dragStartX;
     
     const eventElement = document.querySelector(`[data-event-id="${resizingEvent.id}"]`);
-    if (eventElement) {
-      eventElement.style.left = `${newLeft}px`;
-      eventElement.style.width = `${newWidth}px`;
-      eventElement.style.opacity = '0.7';
+    if (!eventElement) return;
+    
+    if (resizeHandle === 'left') {
+      const newLeft = Math.round((dragStartLeft + deltaX) / (SNAP_MINUTES * PIXELS_PER_MINUTE)) * (SNAP_MINUTES * PIXELS_PER_MINUTE);
+      const newWidth = dragStartLeft + dragStartWidth - newLeft;
+      
+      if (newWidth >= MIN_EVENT_DURATION * PIXELS_PER_MINUTE && newLeft >= 0) {
+        eventElement.style.left = `${newLeft}px`;
+        eventElement.style.width = `${newWidth}px`;
+      }
+    } else {
+      const newWidth = Math.round((dragStartWidth + deltaX) / (SNAP_MINUTES * PIXELS_PER_MINUTE)) * (SNAP_MINUTES * PIXELS_PER_MINUTE);
+      
+      if (newWidth >= MIN_EVENT_DURATION * PIXELS_PER_MINUTE && dragStartLeft + newWidth <= DAY_WIDTH) {
+        eventElement.style.width = `${newWidth}px`;
+      }
     }
     
-    const newStart = new Date(startOfDay.getTime() + newStartMinutes * 60000);
-    const newEnd = new Date(startOfDay.getTime() + newEndMinutes * 60000);
-    const times = { start: newStart, end: newEnd };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
+    eventElement.style.opacity = '0.7';
   };
 
   const handleResizeEnd = async (e) => {
-    if (!resizingEvent || !previewTimesRef.current) {
-      return;
-    }
+    if (!resizingEvent) return;
+    
+    const eventElement = document.querySelector(`[data-event-id="${resizingEvent.id}"]`);
+    if (!eventElement) return;
+    
+    const finalLeft = parseFloat(eventElement.style.left);
+    const finalWidth = parseFloat(eventElement.style.width);
+    
+    const newStartMinutes = finalLeft / PIXELS_PER_MINUTE;
+    const newEndMinutes = (finalLeft + finalWidth) / PIXELS_PER_MINUTE;
+    
+    // CRITICAL FIX: Use the event's ORIGINAL date, not the viewed date
+    const originalEventDate = new Date(resizingEvent.start);
+    originalEventDate.setHours(0, 0, 0, 0);
+    
+    const newStart = new Date(originalEventDate.getTime() + newStartMinutes * 60000);
+    const newEnd = new Date(originalEventDate.getTime() + newEndMinutes * 60000);
     
     const currentScrollPosition = timelineRef.current?.scrollLeft;
     isSavingRef.current = true;
-    
-    const newStart = previewTimesRef.current.start;
-    const newEnd = previewTimesRef.current.end;
     
     try {
       await updateDoc(doc(db, "events", resizingEvent.id), {
@@ -575,9 +527,7 @@ export default function App() {
         endTime: Timestamp.fromDate(newEnd),
       });
       
-      await logActivity("updated", resizingEvent.id);
       await loadEvents();
-      await loadActivity();
       
       setTimeout(() => {
         if (timelineRef.current && currentScrollPosition !== null) {
@@ -588,7 +538,7 @@ export default function App() {
       
     } catch (err) {
       console.error("Error updating event:", err);
-      setError("Failed to resize event: " + err.message);
+      setError("Failed to resize event");
       await loadEvents();
       isSavingRef.current = false;
     }
@@ -596,90 +546,63 @@ export default function App() {
     setResizingEvent(null);
     setResizeHandle(null);
     setDragStartX(0);
-    setPreviewTimes(null);
-    previewTimesRef.current = null;
-    currentStartMinutesRef.current = null;
-    currentEndMinutesRef.current = null;
+    setDragStartLeft(0);
+    setDragStartWidth(0);
   };
 
   const handleDragStart = (e, ev) => {
     e.stopPropagation();
-    const timeline = timelineRef.current;
-    if (!timeline) return;
-    
-    const rect = timeline.getBoundingClientRect();
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    const scrollLeft = timeline.scrollLeft;
     
     setDraggingEvent(ev);
     setDragStartX(clientX);
     
     const eventLeft = toLeft(ev.start);
-    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
-    setDragOffset(mousePositionInTimeline - eventLeft);
+    const eventWidth = toLeft(ev.end) - toLeft(ev.start);
     
-    const startMinutes = ((ev.start - startOfDay) / 60000);
-    const endMinutes = ((ev.end - startOfDay) / 60000);
-    currentStartMinutesRef.current = startMinutes;
-    currentEndMinutesRef.current = endMinutes;
-    
-    const times = { start: ev.start, end: ev.end };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
+    setDragStartLeft(eventLeft);
+    setDragStartWidth(eventWidth);
   };
 
   const handleDragMove = (e) => {
     if (!draggingEvent) return;
     
     e.preventDefault();
-    const timeline = timelineRef.current;
-    if (!timeline) return;
-    
-    const rect = timeline.getBoundingClientRect();
     const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    const scrollLeft = timeline.scrollLeft;
+    const deltaX = clientX - dragStartX;
     
-    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
-    let newLeft = mousePositionInTimeline - dragOffset;
+    const newLeft = Math.round((dragStartLeft + deltaX) / (SNAP_MINUTES * PIXELS_PER_MINUTE)) * (SNAP_MINUTES * PIXELS_PER_MINUTE);
     
-    const durationMinutes = currentEndMinutesRef.current - currentStartMinutesRef.current;
-    
-    const newStartMinutes = Math.round((newLeft / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
-    
-    const clampedStartMinutes = Math.max(0, Math.min(newStartMinutes, 1440 - durationMinutes));
-    const clampedEndMinutes = clampedStartMinutes + durationMinutes;
-    
-    currentStartMinutesRef.current = clampedStartMinutes;
-    currentEndMinutesRef.current = clampedEndMinutes;
-    
-    const snappedLeft = clampedStartMinutes * PIXELS_PER_MINUTE;
-    const width = durationMinutes * PIXELS_PER_MINUTE;
+    const clampedLeft = Math.max(0, Math.min(newLeft, DAY_WIDTH - dragStartWidth));
     
     const eventElement = document.querySelector(`[data-event-id="${draggingEvent.id}"]`);
     if (eventElement) {
-      eventElement.style.left = `${snappedLeft}px`;
-      eventElement.style.width = `${width}px`;
+      eventElement.style.left = `${clampedLeft}px`;
       eventElement.style.opacity = '0.7';
       eventElement.style.cursor = 'grabbing';
     }
-    
-    const newStart = new Date(startOfDay.getTime() + clampedStartMinutes * 60000);
-    const newEnd = new Date(startOfDay.getTime() + clampedEndMinutes * 60000);
-    const times = { start: newStart, end: newEnd };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
   };
 
   const handleDragEnd = async (e) => {
-    if (!draggingEvent || !previewTimesRef.current) {
-      return;
-    }
+    if (!draggingEvent) return;
+    
+    const eventElement = document.querySelector(`[data-event-id="${draggingEvent.id}"]`);
+    if (!eventElement) return;
+    
+    const finalLeft = parseFloat(eventElement.style.left);
+    
+    const newStartMinutes = finalLeft / PIXELS_PER_MINUTE;
+    const durationMinutes = dragStartWidth / PIXELS_PER_MINUTE;
+    
+    // CRITICAL FIX: Use the event's ORIGINAL date, not the viewed date
+    const originalEventDate = new Date(draggingEvent.start);
+    originalEventDate.setHours(0, 0, 0, 0);
+    
+    const newStart = new Date(originalEventDate.getTime() + newStartMinutes * 60000);
+    const newEnd = new Date(newStart.getTime() + durationMinutes * 60000);
     
     const currentScrollPosition = timelineRef.current?.scrollLeft;
     isSavingRef.current = true;
-    
-    const newStart = previewTimesRef.current.start;
-    const newEnd = previewTimesRef.current.end;
     
     try {
       await updateDoc(doc(db, "events", draggingEvent.id), {
@@ -687,9 +610,7 @@ export default function App() {
         endTime: Timestamp.fromDate(newEnd),
       });
       
-      await logActivity("updated", draggingEvent.id);
       await loadEvents();
-      await loadActivity();
       
       setTimeout(() => {
         if (timelineRef.current && currentScrollPosition !== null) {
@@ -700,18 +621,15 @@ export default function App() {
       
     } catch (err) {
       console.error("Error updating event:", err);
-      setError("Failed to reschedule event: " + err.message);
+      setError("Failed to reschedule event");
       await loadEvents();
       isSavingRef.current = false;
     }
     
     setDraggingEvent(null);
-    setDragOffset(0);
     setDragStartX(0);
-    setPreviewTimes(null);
-    previewTimesRef.current = null;
-    currentStartMinutesRef.current = null;
-    currentEndMinutesRef.current = null;
+    setDragStartLeft(0);
+    setDragStartWidth(0);
   };
 
   useEffect(() => {
@@ -737,7 +655,7 @@ export default function App() {
         document.removeEventListener('touchend', handleEnd);
       };
     }
-  }, [draggingEvent, resizingEvent, dragOffset]);
+  }, [draggingEvent, resizingEvent]);
 
   const goToPreviousDay = () => {
     const newDate = new Date(currentDate);
@@ -806,13 +724,6 @@ export default function App() {
     return days;
   };
 
-  const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
-  const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
-  const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-
-  const nowLeft = toLeft(now);
-  const isToday = today.toDateString() === now.toDateString();
-
   const getDaysInMonth = (date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -837,6 +748,25 @@ export default function App() {
     
     return days;
   };
+  
+  const getAllDaysInYear = (year) => {
+    const days = [];
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
+    
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      days.push(new Date(d));
+    }
+    
+    return days;
+  };
+
+  const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
+  const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
+  const nowLeft = toLeft(now);
+  const isToday = today.toDateString() === now.toDateString();
 
   const weekDayHeaders = weekStartsOnMonday 
     ? ["M", "T", "W", "T", "F", "S", "S"]
@@ -844,6 +774,7 @@ export default function App() {
 
   const monthDays = getDaysInMonth(currentDate);
   const weekDays = getWeekDays(currentDate);
+  const yearDays = getAllDaysInYear(currentDate.getFullYear());
   
   const filteredEvents = events.filter(ev => {
     const matchesSearch = ev.title.toLowerCase().includes(searchQuery.toLowerCase());
@@ -859,10 +790,6 @@ export default function App() {
     while (stacked.some(e => e.row === row && !(ev.end <= e.start || ev.start >= e.end))) row++;
     stacked.push({ ...ev, row });
   });
-
-  const actionEmoji = action => ({
-    created: "🟢", updated: "🟡", deleted: "🔴", restored: "🟣"
-  }[action] || "⚪");
 
   if (!user) {
     return (
@@ -1000,37 +927,6 @@ div::-webkit-scrollbar {
 }
 `}
 </style>
-
-{previewTimes && (draggingEvent || resizingEvent) && (
-        <div style={{
-          position: "fixed",
-          top: "50%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          background: "linear-gradient(135deg, #667eea, #764ba2)",
-          color: "#fff",
-          padding: "16px 24px",
-          borderRadius: 16,
-          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
-          zIndex: 1000,
-          pointerEvents: "none",
-          fontWeight: 600,
-          fontSize: 18,
-          textAlign: "center",
-          backdropFilter: "blur(10px)",
-          border: "2px solid rgba(255,255,255,0.2)"
-        }}>
-          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
-            {resizingEvent ? "Resizing" : "Moving"}
-          </div>
-          <div style={{ fontSize: 20, fontWeight: 700 }}>
-            {formatTime(previewTimes.start)} – {formatTime(previewTimes.end)}
-          </div>
-          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
-            {Math.round((previewTimes.end - previewTimes.start) / 60000)} minutes
-          </div>
-        </div>
-      )}
 
       <div style={{
         background: "rgba(255, 255, 255, 0.95)",
@@ -1296,6 +1192,26 @@ div::-webkit-scrollbar {
             >
               Month
             </button>
+            
+            <button
+              onClick={() => setViewMode("year")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "year" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "year" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "year" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Year
+            </button>
           </div>
 
           <div style={{ 
@@ -1364,11 +1280,13 @@ div::-webkit-scrollbar {
                     ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
                     : viewMode === "month"
                     ? currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+                    : viewMode === "year"
+                    ? currentDate.getFullYear()
                     : weekday
                   }
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
-                  {viewMode === "week" ? "Week View" : viewMode === "month" ? "Month View" : dayDate}
+                  {viewMode === "week" ? "Week View" : viewMode === "month" ? "Month View" : viewMode === "year" ? "Linear Year View" : dayDate}
                 </div>
               </div>
               {isToday && viewMode === "day" && (
@@ -1422,23 +1340,6 @@ div::-webkit-scrollbar {
             </button>
 
             <button
-              onClick={() => setShowActivityOverlay(true)}
-              style={{
-                background: "#fff",
-                border: "1px solid #e2e8f0",
-                borderRadius: 10,
-                padding: "10px 16px",
-                fontSize: 14,
-                fontWeight: 600,
-                cursor: "pointer",
-                color: "#64748b",
-                transition: "all 0.2s ease"
-              }}
-            >
-              📊
-            </button>
-
-            <button
               onClick={() => setShowSettings(true)}
               style={{
                 background: "#fff",
@@ -1479,7 +1380,6 @@ div::-webkit-scrollbar {
             <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }} onClick={handleTimelineClick}>
               <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
 
-                {/* 15-minute interval gridlines */}
                 {[...Array(96)].map((_, i) => {
                   const isHour = i % 4 === 0;
                   return (
@@ -1498,7 +1398,6 @@ div::-webkit-scrollbar {
                   );
                 })}
 
-                {/* Hour labels */}
                 {[...Array(24)].map((_, h) => (
                   <div
                     key={h}
@@ -1572,7 +1471,7 @@ div::-webkit-scrollbar {
                   const isSmall = width < 180;
                   const isDragging = draggingEvent?.id === ev.id;
                   const isResizing = resizingEvent?.id === ev.id;
-                  const colorStyle = EVENT_COLORS[ev.color || "purple"];
+                  const colorStyle = EVENT_COLORS[ev.color || "blue"];
                   
                   return (
                     <div
@@ -1754,7 +1653,7 @@ div::-webkit-scrollbar {
                         </div>
                       ) : (
                         dayEventsForWeek.slice(0, 3).map(ev => {
-                          const colorStyle = EVENT_COLORS[ev.color || "purple"];
+                          const colorStyle = EVENT_COLORS[ev.color || "blue"];
                           return (
                             <div
                               key={ev.id}
@@ -1796,7 +1695,7 @@ div::-webkit-scrollbar {
               })}
             </div>
           </div>
-        ) : (
+        ) : viewMode === "month" ? (
           <div style={{ 
             background: "#fff",
             borderRadius: 16,
@@ -1872,45 +1771,119 @@ div::-webkit-scrollbar {
               })}
             </div>
           </div>
+        ) : (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ 
+              overflowX: "auto",
+              padding: "20px"
+            }}>
+              <div style={{ 
+                display: "flex",
+                gap: 2,
+                minWidth: "max-content"
+              }}>
+                {yearDays.map((day, index) => {
+                  const dayEvents = filteredEvents.filter(ev => 
+                    ev.start.toDateString() === day.toDateString()
+                  );
+                  const isCurrentDay = day.toDateString() === now.toDateString();
+                  const isFirstOfMonth = day.getDate() === 1;
+                  
+                  return (
+                    <div
+                      key={index}
+                      onClick={() => goToDate(day)}
+                      style={{
+                        width: 16,
+                        height: 80,
+                        background: isCurrentDay ? "linear-gradient(180deg, #667eea, #764ba2)" : "#f1f5f9",
+                        cursor: "pointer",
+                        position: "relative",
+                        transition: "all 0.2s ease",
+                        borderRadius: isFirstOfMonth ? "4px" : "2px",
+                        border: isFirstOfMonth ? "2px solid #cbd5e1" : "none"
+                      }}
+                      onMouseEnter={e => {
+                        if (!isCurrentDay) {
+                          e.currentTarget.style.background = "#cbd5e1";
+                          e.currentTarget.style.transform = "scaleY(1.1)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isCurrentDay) {
+                          e.currentTarget.style.background = "#f1f5f9";
+                          e.currentTarget.style.transform = "scaleY(1)";
+                        }
+                      }}
+                      title={`${day.toLocaleDateString()} - ${dayEvents.length} event${dayEvents.length !== 1 ? 's' : ''}`}
+                    >
+                      {isFirstOfMonth && (
+                        <div style={{
+                          position: "absolute",
+                          bottom: -24,
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "#475569",
+                          whiteSpace: "nowrap"
+                        }}>
+                          {day.toLocaleDateString(undefined, { month: "short" })}
+                        </div>
+                      )}
+                      
+                      {dayEvents.length > 0 && (
+                        <div style={{
+                          position: "absolute",
+                          bottom: 2,
+                          left: "50%",
+                          transform: "translateX(-50%)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 1,
+                          alignItems: "center"
+                        }}>
+                          {dayEvents.slice(0, 3).map((ev, i) => {
+                            const colorStyle = EVENT_COLORS[ev.color || "blue"];
+                            return (
+                              <div
+                                key={i}
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
+                                  background: colorStyle.dot,
+                                  boxShadow: "0 1px 2px rgba(0,0,0,0.2)"
+                                }}
+                              />
+                            );
+                          })}
+                          {dayEvents.length > 3 && (
+                            <div style={{
+                              fontSize: 8,
+                              color: "#fff",
+                              fontWeight: 700,
+                              marginTop: 1
+                            }}>
+                              +{dayEvents.length - 3}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         )}
       </div>
-
-      {showActivityOverlay && (
-        <Overlay title="Activity Log" onClose={() => setShowActivityOverlay(false)}>
-          {activityLogs.length === 0 ? (
-            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
-              <div>No activity yet</div>
-            </div>
-          ) : (
-            activityLogs.map(log => (
-              <div key={log.id} style={{
-                padding: "16px 0",
-                borderBottom: "1px solid #f1f5f9",
-                display: "flex",
-                flexDirection: "column",
-                gap: 6,
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <span style={{ fontSize: 20 }}>{actionEmoji(log.action)}</span>
-                  <strong style={{ textTransform: "capitalize", fontSize: 15, color: "#0f172a" }}>
-                    {log.action}
-                  </strong>
-                </div>
-                <div style={{ fontSize: 13, color: "#64748b", paddingLeft: 30 }}>
-                  {log.userEmail}
-                </div>
-                <div style={{ fontSize: 12, color: "#94a3b8", paddingLeft: 30 }}>
-                  {log.createdAt?.toDate?.().toLocaleString(undefined, {
-                    weekday: "short", year: "numeric", month: "short",
-                    day: "numeric", hour: "2-digit", minute: "2-digit",
-                  })}
-                </div>
-              </div>
-            ))
-          )}
-        </Overlay>
-      )}
 
       {showDeletedOverlay && (
         <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
@@ -1966,26 +1939,13 @@ div::-webkit-scrollbar {
         <Overlay title="Settings" onClose={() => setShowSettings(false)}>
           <div style={{ padding: "16px 0" }}>
             <div style={{
-              padding: "16px 0",
-              borderBottom: "1px solid #f1f5f9"
+              padding: "16px 0"
             }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                marginBottom: 8
-              }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 4 }}>
-                    Week Starts On
-                  </div>
-                  <div style={{ fontSize: 13, color: "#64748b" }}>
-                    Choose whether your week starts on Sunday or Monday
-                  </div>
-                </div>
+              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 12 }}>
+                Week Starts On
               </div>
               
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+              <div style={{ display: "flex", gap: 8 }}>
                 <button
                   onClick={() => setWeekStartsOnMonday(false)}
                   style={{
@@ -2022,57 +1982,6 @@ div::-webkit-scrollbar {
                   Monday
                 </button>
               </div>
-            </div>
-            
-            <div style={{
-              padding: "16px 0",
-              borderBottom: "1px solid #f1f5f9"
-            }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 12 }}>
-                Manage Categories
-              </div>
-              {categories.map(cat => (
-                <div key={cat.id} style={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  padding: "8px 0"
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{
-                      width: 12,
-                      height: 12,
-                      borderRadius: "50%",
-                      background: EVENT_COLORS[cat.color].dot
-                    }} />
-                    <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
-                  </div>
-                  {!DEFAULT_CATEGORIES.find(dc => dc.id === cat.id) && (
-                    <button
-                      onClick={() => deleteCategory(cat.id)}
-                      style={{
-                        background: "transparent",
-                        border: "none",
-                        color: "#ef4444",
-                        cursor: "pointer",
-                        fontSize: 14,
-                        padding: "4px 8px"
-                      }}
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <div style={{
-              padding: "20px 0",
-              textAlign: "center",
-              color: "#94a3b8",
-              fontSize: 13
-            }}>
-              More customization options coming soon...
             </div>
           </div>
         </Overlay>
@@ -2278,30 +2187,6 @@ div::-webkit-scrollbar {
                       }} />
                       {cat.name}
                     </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
-                  Color
-                </label>
-                <div style={{ display: "flex", gap: 12 }}>
-                  {Object.entries(EVENT_COLORS).map(([colorName, colorStyle]) => (
-                    <button
-                      key={colorName}
-                      onClick={() => setEventColor(colorName)}
-                      style={{
-                        width: 44,
-                        height: 44,
-                        borderRadius: "50%",
-                        border: eventColor === colorName ? "3px solid #0f172a" : "3px solid transparent",
-                        background: colorStyle.bg,
-                        cursor: "pointer",
-                        transition: "all 0.2s ease",
-                        boxShadow: eventColor === colorName ? "0 4px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(0,0,0,0.1)"
-                      }}
-                    />
                   ))}
                 </div>
               </div>
