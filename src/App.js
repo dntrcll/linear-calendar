@@ -12,7 +12,6 @@ import {
   serverTimestamp,
   Timestamp,
   orderBy,
-  getDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -167,7 +166,7 @@ export default function App() {
     if (isToday && viewMode === "day" && !isSavingRef.current) {
       scrollToCurrentTime();
     }
-  }, [currentDate, viewMode]);
+  }, [currentDate, viewMode, now]);
 
   const loadEvents = async () => {
     if (!user || !spaceId) return;
@@ -315,7 +314,6 @@ export default function App() {
     setTitle(ev.title);
     setEventCategory(ev.category || "Personal");
     
-    // CRITICAL FIX: Preserve exact times without any modifications
     const startISO = ev.start.toISOString().slice(0, 16);
     const endISO = ev.end.toISOString().slice(0, 16);
     
@@ -457,6 +455,7 @@ export default function App() {
           case "-": result = prev - current; break;
           case "×": result = prev * current; break;
           case "÷": result = prev / current; break;
+          default: break;
         }
         
         setCalcDisplay(result.toString());
@@ -912,501 +911,218 @@ export default function App() {
     );
   }
 
-Due to length, I'll continue with the rest in the next message...
-
-{showDeletedOverlay && (
-  <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
-    {deletedEvents.length === 0 ? (
-      <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>
-        <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
-        <div>No deleted events</div>
-      </div>
-    ) : (
-      deletedEvents.map(ev => (
-        <div key={ev.id} style={{
-          padding: "16px 0",
-          borderBottom: "1px solid rgba(255,255,255,0.05)",
-          display: "flex",
-          flexDirection: "column",
-          gap: 8,
-        }}>
-          <div style={{ fontWeight: 600, fontSize: 15, color: "#fff" }}>
-            {ev.title}
+  return (
+    <div style={{ 
+      minHeight: "100vh",
+      background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+    }}>
+      <div style={{
+        background: "rgba(15, 12, 41, 0.95)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(255,255,255,0.1)",
+        padding: "12px 16px",
+        position: "sticky",
+        top: 0,
+        zIndex: 50
+      }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>Timeline</h2>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={() => openNewEvent()} style={{ background: "linear-gradient(135deg, #667eea, #764ba2)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
+              + Event
+            </button>
+            <button onClick={() => signOut(auth)} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14 }}>
+              Sign Out
+            </button>
           </div>
-          {ev.deletedAt && (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
-              Deleted {ev.deletedAt.toDate().toLocaleString(undefined, {
-                weekday: "short", month: "short", day: "numeric",
-                hour: "2-digit", minute: "2-digit"
-              })}
+        </div>
+      </div>
+
+      <div style={{ padding: 20 }}>
+        <div style={{ color: "#fff", marginBottom: 20 }}>
+          <h3>Events</h3>
+          {loading && <p>Loading...</p>}
+          {error && <p style={{ color: "#fca5a5" }}>{error}</p>}
+          {events.length === 0 ? (
+            <p>No events yet. Click + Event to create one!</p>
+          ) : (
+            <div>
+              {events.map(ev => (
+                <div key={ev.id} onClick={() => openEditEvent(ev)} style={{ padding: 12, background: "rgba(255,255,255,0.05)", borderRadius: 8, marginBottom: 8, cursor: "pointer" }}>
+                  <div style={{ fontWeight: 600 }}>{ev.title}</div>
+                  <div style={{ fontSize: 13, opacity: 0.7 }}>
+                    {formatTime(ev.start)} – {formatTime(ev.end)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
-          <button
-            onClick={() => restoreEvent(ev)}
-            style={{
-              background: "linear-gradient(135deg, #667eea, #764ba2)",
-              border: "none",
-              color: "#fff",
-              borderRadius: 8,
-              padding: "10px 18px",
-              fontWeight: 600,
-              cursor: "pointer",
-              fontSize: 14,
-              alignSelf: "flex-start",
-              boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
-            }}
-          >
-            Restore
-          </button>
         </div>
-      ))
-    )}
-  </Overlay>
-)}
+      </div>
 
-{showSettings && (
-  <Overlay title="Settings" onClose={() => setShowSettings(false)}>
-    <div style={{ padding: "16px 0" }}>
-      <div style={{
-        padding: "16px 0",
-        borderBottom: "1px solid rgba(255,255,255,0.05)"
-      }}>
+      {showModal && (
         <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0, 0, 0, 0.8)",
           display: "flex",
-          justifyContent: "space-between",
           alignItems: "center",
-          marginBottom: 8
-        }}>
-          <div>
-            <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 4 }}>
-              Week Starts On
-            </div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
-              Choose whether your week starts on Sunday or Monday
-            </div>
-          </div>
-        </div>
-        
-        <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-          <button
-            onClick={() => setWeekStartsOnMonday(false)}
-            style={{
-              flex: 1,
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: weekStartsOnMonday ? "2px solid rgba(255,255,255,0.1)" : "2px solid #667eea",
-              background: weekStartsOnMonday ? "rgba(255,255,255,0.05)" : "rgba(102, 126, 234, 0.2)",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s ease"
-            }}
-          >
-            Sunday
-          </button>
-          
-          <button
-            onClick={() => setWeekStartsOnMonday(true)}
-            style={{
-              flex: 1,
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid rgba(255,255,255,0.1)",
-              background: weekStartsOnMonday ? "rgba(102, 126, 234, 0.2)" : "rgba(255,255,255,0.05)",
-              color: "#fff",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "all 0.2s ease"
-            }}
-          >
-            Monday
-          </button>
-        </div>
-      </div>
-
-      <div style={{
-        padding: "20px 0",
-        textAlign: "center",
-        color: "rgba(255,255,255,0.3)",
-        fontSize: 13
-      }}>
-        More customization options coming soon...
-      </div>
-    </div>
-  </Overlay>
-)}
-
-{showInviteModal && (
-  <Overlay title="Family Space Invite" onClose={() => setShowInviteModal(false)}>
-    <div style={{ padding: "16px 0" }}>
-      <div style={{ marginBottom: 20, textAlign: "center" }}>
-        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-          Share this code with family members:
-        </div>
-        <div style={{
-          background: "rgba(102, 126, 234, 0.2)",
-          padding: "16px",
-          borderRadius: 12,
-          fontSize: 28,
-          fontWeight: 700,
-          color: "#fff",
-          letterSpacing: "4px",
-          fontFamily: "monospace",
-          border: "2px dashed rgba(102, 126, 234, 0.4)"
-        }}>
-          {inviteCode}
-        </div>
-        <button
-          onClick={() => {
-            navigator.clipboard.writeText(inviteCode);
-            alert("Code copied to clipboard!");
-          }}
-          style={{
-            marginTop: 12,
-            background: "rgba(255,255,255,0.1)",
-            border: "1px solid rgba(255,255,255,0.2)",
-            borderRadius: 8,
-            padding: "8px 16px",
-            color: "#fff",
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: "pointer"
-          }}
-        >
-          📋 Copy Code
-        </button>
-      </div>
-
-      <div style={{ 
-        borderTop: "1px solid rgba(255,255,255,0.05)",
-        paddingTop: 20
-      }}>
-        <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
-          Or enter a code to join:
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <input
-            type="text"
-            placeholder="Enter code..."
-            onChange={e => setInviteCode(e.target.value.toUpperCase())}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              borderRadius: 10,
-              border: "1px solid rgba(255,255,255,0.1)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              fontSize: 15,
-              fontFamily: "monospace",
-              letterSpacing: "2px",
-              outline: "none"
-            }}
-          />
-          <button
-            onClick={() => joinFamilySpace(inviteCode)}
-            style={{
-              background: "linear-gradient(135deg, #667eea, #764ba2)",
-              border: "none",
-              borderRadius: 10,
-              padding: "12px 24px",
-              color: "#fff",
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: "pointer"
-            }}
-          >
-            Join
-          </button>
-        </div>
-      </div>
-    </div>
-  </Overlay>
-)}
-
-{showModal && (
-  <div style={{
-    position: "fixed",
-    inset: 0,
-    background: "rgba(0, 0, 0, 0.8)",
-    backdropFilter: "blur(8px)",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    zIndex: 200,
-    padding: 20
-  }} onClick={() => setShowModal(false)}>
-    <div onClick={e => e.stopPropagation()} style={{
-      background: "rgba(15, 12, 41, 0.98)",
-      borderRadius: 20,
-      width: "100%",
-      maxWidth: 480,
-      boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-      overflow: "hidden",
-      maxHeight: "90vh",
-      overflowY: "auto",
-      border: "1px solid rgba(255,255,255,0.1)"
-    }}>
-      <div style={{ padding: "24px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-        <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#fff" }}>
-          {editingEvent ? "Edit Event" : "New Event"}
-        </h3>
-      </div>
-
-      <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 24 }}>
-        <div>
-          <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
-            Event Title
-          </label>
-          <input
-            value={title}
-            onChange={e => setTitle(e.target.value)}
-            placeholder="What's happening?"
-            style={{
-              width: "100%",
-              padding: "14px 16px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.1)",
-              fontSize: 16,
-              fontFamily: "inherit",
-              outline: "none",
-              background: "rgba(255,255,255,0.05)",
-              color: "#fff",
-              transition: "border 0.2s ease",
-              boxSizing: "border-box"
-            }}
-            onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
-            onBlur={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
-          />
-        </div>
-
-        <div>
-          <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
-            Category
-          </label>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {CATEGORIES.map(cat => {
-              const catStyle = CATEGORY_COLORS[cat];
-              return (
-                <button
-                  key={cat}
-                  onClick={() => setEventCategory(cat)}
-                  style={{
-                    padding: "8px 16px",
-                    borderRadius: 8,
-                    border: eventCategory === cat ? `2px solid ${catStyle.text}` : "2px solid rgba(255,255,255,0.1)",
-                    background: eventCategory === cat ? catStyle.light : "rgba(255,255,255,0.05)",
-                    color: eventCategory === cat ? catStyle.text : "#fff",
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
-              Start
-            </label>
-            <input
-              type="datetime-local"
-              value={startTime}
-              onChange={e => setStartTime(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.1)",
-                fontSize: 15,
-                fontFamily: "inherit",
-                background: "rgba(255,255,255,0.05)",
-                color: "#fff",
-                boxSizing: "border-box"
-              }}
-            />
-          </div>
-
-          <div>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
-              End
-            </label>
-            <input
-              type="datetime-local"
-              value={endTime}
-              onChange={e => setEndTime(e.target.value)}
-              style={{
-                width: "100%",
-                padding: "14px 16px",
-                borderRadius: 12,
-                border: "1px solid rgba(255,255,255,0.1)",
-                fontSize: 15,
-                fontFamily: "inherit",
-                background: "rgba(255,255,255,0.05)",
-                color: "#fff",
-                boxSizing: "border-box"
-              }}
-            />
-          </div>
-        </div>
-
-        <div style={{ 
-          display: "flex", 
-          gap: 12, 
-          marginTop: 8,
-          flexWrap: "wrap"
-        }}>
-          <button
-            onClick={saveEvent}
-            disabled={loading}
-            style={{
-              background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #667eea, #764ba2)",
-              color: "#fff",
-              border: "none",
-              borderRadius: 12,
-              padding: "14px 32px",
-              fontWeight: 600,
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: 16,
-              boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
-              flex: 1,
-              minWidth: 120
-            }}
-          >
-            {loading ? "Saving..." : "Save"}
-          </button>
-
-          <button
-            onClick={() => setShowModal(false)}
-            style={{
-              background: "rgba(255,255,255,0.05)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 12,
-              padding: "14px 32px",
-              cursor: "pointer",
-              fontSize: 16,
-              fontWeight: 600,
-              color: "#fff",
-              flex: 1,
-              minWidth: 120
-            }}
-          >
-            Cancel
-          </button>
-
-          {editingEvent && (
-            <>
-              <button
-                onClick={() => {
-                  duplicateEvent(editingEvent);
-                  setShowModal(false);
-                }}
+          justifyContent: "center",
+          zIndex: 200,
+          padding: 20
+        }} onClick={() => setShowModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "rgba(15, 12, 41, 0.98)",
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 480,
+            padding: 24,
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}>
+            <h3 style={{ margin: "0 0 20px 0", color: "#fff" }}>{editingEvent ? "Edit Event" : "New Event"}</h3>
+            
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Title</label>
+              <input
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                placeholder="Event title"
                 style={{
-                  background: "rgba(59, 130, 246, 0.1)",
-                  border: "1px solid rgba(59, 130, 246, 0.2)",
-                  borderRadius: 12,
-                  padding: "14px 32px",
-                  cursor: "pointer",
-                  color: "#60a5fa",
-                  fontWeight: 600,
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#fff",
                   fontSize: 16,
-                  width: "100%"
+                  outline: "none",
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Category</label>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                {CATEGORIES.map(cat => (
+                  <button
+                    key={cat}
+                    onClick={() => setEventCategory(cat)}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 8,
+                      border: eventCategory === cat ? "2px solid #667eea" : "2px solid rgba(255,255,255,0.1)",
+                      background: eventCategory === cat ? "rgba(102, 126, 234, 0.2)" : "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 600
+                    }}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ marginBottom: 16 }}>
+              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Start</label>
+              <input
+                type="datetime-local"
+                value={startTime}
+                onChange={e => setStartTime(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  fontSize: 15,
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ marginBottom: 20 }}>
+              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>End</label>
+              <input
+                type="datetime-local"
+                value={endTime}
+                onChange={e => setEndTime(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  fontSize: 15,
+                  boxSizing: "border-box"
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 12 }}>
+              <button
+                onClick={saveEvent}
+                disabled={loading}
+                style={{
+                  flex: 1,
+                  background: "linear-gradient(135deg, #667eea, #764ba2)",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 12,
+                  padding: "14px",
+                  fontWeight: 600,
+                  cursor: loading ? "not-allowed" : "pointer",
+                  fontSize: 16
                 }}
               >
-                📋 Duplicate
+                {loading ? "Saving..." : "Save"}
               </button>
-              
+
+              <button
+                onClick={() => setShowModal(false)}
+                style={{
+                  flex: 1,
+                  background: "rgba(255,255,255,0.05)",
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  borderRadius: 12,
+                  padding: "14px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  color: "#fff",
+                  fontSize: 16
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+
+            {editingEvent && (
               <button
                 onClick={deleteEvent}
                 style={{
+                  width: "100%",
+                  marginTop: 12,
                   background: "rgba(239, 68, 68, 0.1)",
                   border: "1px solid rgba(239, 68, 68, 0.2)",
                   borderRadius: 12,
-                  padding: "14px 32px",
+                  padding: "14px",
                   cursor: "pointer",
                   color: "#fca5a5",
                   fontWeight: 600,
-                  fontSize: 16,
-                  width: "100%"
+                  fontSize: 16
                 }}
               >
-                🗑️ Delete
+                Delete Event
               </button>
-            </>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
-  </div>
-)}
-</div>
-);
-}
-
-function Overlay({ title, onClose, children }) {
-return (
-<div style={{
-position: "fixed",
-inset: 0,
-background: "rgba(0, 0, 0, 0.8)",
-backdropFilter: "blur(8px)",
-display: "flex",
-alignItems: "center",
-justifyContent: "center",
-zIndex: 100,
-padding: 20
-}} onClick={onClose}>
-<div onClick={e => e.stopPropagation()} style={{
-  background: "rgba(15, 12, 41, 0.98)",
-  width: "100%",
-  maxWidth: 440,
-  maxHeight: "85vh",
-  borderRadius: 20,
-  overflow: "hidden",
-  boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
-  border: "1px solid rgba(255,255,255,0.1)"
-}}>
-  <div style={{
-    padding: "20px 24px",
-    borderBottom: "1px solid rgba(255,255,255,0.05)",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center"
-  }}>
-    <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#fff" }}>
-      {title}
-    </h3>
-    <button
-      onClick={onClose}
-      style={{
-        border: "none",
-        background: "rgba(255,255,255,0.1)",
-        fontSize: 18,
-        cursor: "pointer",
-        width: 36,
-        height: 36,
-        borderRadius: "50%",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        color: "#fff",
-        transition: "all 0.2s ease"
-      }}
-    >
-      ✕
-    </button>
-  </div>
-  <div style={{ padding: "4px 24px 24px", overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
-    {children}
-  </div>
-</div>
-</div>
-);
+  );
 }
