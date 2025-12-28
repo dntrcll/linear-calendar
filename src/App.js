@@ -22,6 +22,16 @@ const DAY_WIDTH = 1440 * PIXELS_PER_MINUTE;
 const SNAP_MINUTES = 15;
 const MIN_EVENT_DURATION = 15;
 
+const EVENT_COLORS = {
+  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea" },
+  blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe" },
+  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b" },
+  orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a" },
+  red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb" },
+};
+
+const CATEGORIES = ["Work", "Personal", "Meeting", "Event", "Other"];
+
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
   
@@ -48,6 +58,11 @@ export default function App() {
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [eventColor, setEventColor] = useState("purple");
+  const [eventCategory, setEventCategory] = useState("Personal");
+  
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterCategory, setFilterCategory] = useState("All");
   
   const [viewMode, setViewMode] = useState("day");
   
@@ -239,17 +254,24 @@ export default function App() {
     }
   };
 
-  const openNewEvent = () => {
+  const openNewEvent = (presetStart = null, presetEnd = null) => {
     setEditingEvent(null);
     setTitle("");
+    setEventColor("purple");
+    setEventCategory("Personal");
     
-    const start = new Date(currentDate);
-    start.setHours(now.getHours(), 0, 0, 0);
-    const end = new Date(start);
-    end.setHours(start.getHours() + 1);
-    
-    setStartTime(start.toISOString().slice(0, 16));
-    setEndTime(end.toISOString().slice(0, 16));
+    if (presetStart && presetEnd) {
+      setStartTime(presetStart.toISOString().slice(0, 16));
+      setEndTime(presetEnd.toISOString().slice(0, 16));
+    } else {
+      const start = new Date(currentDate);
+      start.setHours(now.getHours(), 0, 0, 0);
+      const end = new Date(start);
+      end.setHours(start.getHours() + 1);
+      
+      setStartTime(start.toISOString().slice(0, 16));
+      setEndTime(end.toISOString().slice(0, 16));
+    }
     setShowModal(true);
   };
 
@@ -258,7 +280,35 @@ export default function App() {
     setTitle(ev.title);
     setStartTime(ev.start.toISOString().slice(0, 16));
     setEndTime(ev.end.toISOString().slice(0, 16));
+    setEventColor(ev.color || "purple");
+    setEventCategory(ev.category || "Personal");
     setShowModal(true);
+  };
+
+  const duplicateEvent = async (ev) => {
+    try {
+      const newStart = new Date(ev.start);
+      newStart.setDate(newStart.getDate() + 1);
+      const newEnd = new Date(ev.end);
+      newEnd.setDate(newEnd.getDate() + 1);
+
+      const ref = await addDoc(collection(db, "events"), {
+        spaceId,
+        title: ev.title + " (Copy)",
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+        color: ev.color || "purple",
+        category: ev.category || "Personal",
+        deleted: false,
+        createdAt: serverTimestamp(),
+      });
+      await logActivity("created", ref.id);
+      await loadEvents();
+      await loadActivity();
+    } catch (err) {
+      console.error("Error duplicating event:", err);
+      setError("Failed to duplicate event.");
+    }
   };
 
   const saveEvent = async () => {
@@ -284,6 +334,8 @@ export default function App() {
           title,
           startTime: Timestamp.fromDate(startDate),
           endTime: Timestamp.fromDate(endDate),
+          color: eventColor,
+          category: eventCategory,
         });
         await logActivity("updated", editingEvent.id);
       } else {
@@ -292,6 +344,8 @@ export default function App() {
           title,
           startTime: Timestamp.fromDate(startDate),
           endTime: Timestamp.fromDate(endDate),
+          color: eventColor,
+          category: eventCategory,
           deleted: false,
           createdAt: serverTimestamp(),
         });
@@ -347,6 +401,25 @@ export default function App() {
   const startOfDay = new Date(today);
   startOfDay.setHours(0, 0, 0, 0);
   const toLeft = d => ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
+
+  const handleTimelineClick = (e) => {
+    if (draggingEvent || resizingEvent) return;
+    
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const scrollLeft = timeline.scrollLeft;
+    const clickX = e.clientX - rect.left + scrollLeft;
+    
+    const minutes = Math.round((clickX / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
+    const clampedMinutes = Math.max(0, Math.min(minutes, 1440 - 60));
+    
+    const startDate = new Date(startOfDay.getTime() + clampedMinutes * 60000);
+    const endDate = new Date(startDate.getTime() + 60 * 60000);
+    
+    openNewEvent(startDate, endDate);
+  };
 
   const handleResizeStart = (e, ev, handle) => {
     e.stopPropagation();
@@ -423,10 +496,6 @@ export default function App() {
     
     const newStart = previewTimesRef.current.start;
     const newEnd = previewTimesRef.current.end;
-    
-    console.log("=== RESIZE END ===");
-    console.log("Event:", resizingEvent.title);
-    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
     
     try {
       await updateDoc(doc(db, "events", resizingEvent.id), {
@@ -540,10 +609,6 @@ export default function App() {
     const newStart = previewTimesRef.current.start;
     const newEnd = previewTimesRef.current.end;
     
-    console.log("=== DRAG END ===");
-    console.log("Event:", draggingEvent.title);
-    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
-    
     try {
       await updateDoc(doc(db, "events", draggingEvent.id), {
         startTime: Timestamp.fromDate(newStart),
@@ -626,9 +691,26 @@ export default function App() {
     setCurrentDate(newDate);
   };
 
+  const goToPreviousMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setCurrentDate(newDate);
+  };
+
+  const goToNextMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setCurrentDate(newDate);
+  };
+
   const goToToday = () => {
     setCurrentDate(new Date());
     setTimeout(() => scrollToCurrentTime(), 100);
+  };
+
+  const goToDate = (date) => {
+    setCurrentDate(date);
+    setViewMode("day");
   };
 
   const getWeekDays = (date) => {
@@ -690,7 +772,14 @@ export default function App() {
 
   const monthDays = getDaysInMonth(currentDate);
   const weekDays = getWeekDays(currentDate);
-  const dayEvents = events.filter(ev => ev.start.toDateString() === today.toDateString());
+  
+  const filteredEvents = events.filter(ev => {
+    const matchesSearch = ev.title.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCategory = filterCategory === "All" || ev.category === filterCategory;
+    return matchesSearch && matchesCategory;
+  });
+  
+  const dayEvents = filteredEvents.filter(ev => ev.start.toDateString() === today.toDateString());
 
   const stacked = [];
   dayEvents.forEach(ev => {
@@ -854,7 +943,7 @@ div::-webkit-scrollbar {
 `}
 </style>
 
-      {previewTimes && (draggingEvent || resizingEvent) && (
+{previewTimes && (draggingEvent || resizingEvent) && (
         <div style={{
           position: "fixed",
           top: "50%",
@@ -953,7 +1042,29 @@ div::-webkit-scrollbar {
             </div>
           )}
 
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto" }}>
+          <div style={{ marginBottom: 16 }}>
+            <input
+              type="text"
+              placeholder="🔍 Search events..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                fontSize: 15,
+                fontFamily: "inherit",
+                outline: "none",
+                transition: "border 0.2s ease",
+                boxSizing: "border-box"
+              }}
+              onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
+              onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto", flexWrap: "wrap" }}>
             <button
               onClick={() => setSpaceId(PERSONAL_SPACE_ID)}
               style={{
@@ -993,6 +1104,26 @@ div::-webkit-scrollbar {
             >
               {familySpaceId ? "Family" : "+ Create Family"}
             </button>
+
+            {["All", ...CATEGORIES].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilterCategory(cat)}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  background: filterCategory === cat ? "#eef2ff" : "#fff",
+                  color: filterCategory === cat ? "#4338ca" : "#64748b",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                {cat}
+              </button>
+            ))}
           </div>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -1068,7 +1199,7 @@ div::-webkit-scrollbar {
           }}>
             <div style={{ display: "flex", gap: 8 }}>
               <button 
-                onClick={viewMode === "week" ? goToPreviousWeek : goToPreviousDay} 
+                onClick={viewMode === "month" ? goToPreviousMonth : viewMode === "week" ? goToPreviousWeek : goToPreviousDay} 
                 style={{ 
                   background: "#fff",
                   border: "1px solid #e2e8f0",
@@ -1099,7 +1230,7 @@ div::-webkit-scrollbar {
               </button>
 
               <button 
-                onClick={viewMode === "week" ? goToNextWeek : goToNextDay} 
+                onClick={viewMode === "month" ? goToNextMonth : viewMode === "week" ? goToNextWeek : goToNextDay} 
                 style={{ 
                   background: "#fff",
                   border: "1px solid #e2e8f0",
@@ -1121,14 +1252,16 @@ div::-webkit-scrollbar {
                 <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", textAlign: "right" }}>
                   {viewMode === "week" 
                     ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    : viewMode === "month"
+                    ? currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
                     : weekday
                   }
                 </div>
                 <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
-                  {viewMode === "week" ? "Week View" : dayDate}
+                  {viewMode === "week" ? "Week View" : viewMode === "month" ? "Month View" : dayDate}
                 </div>
               </div>
-              {isToday && viewMode !== "week" && (
+              {isToday && viewMode === "day" && (
                 <div style={{
                   width: 8,
                   height: 8,
@@ -1142,7 +1275,7 @@ div::-webkit-scrollbar {
 
           <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <button
-              onClick={openNewEvent}
+              onClick={() => openNewEvent()}
               style={{
                 background: "linear-gradient(135deg, #667eea, #764ba2)",
                 color: "#fff",
@@ -1233,7 +1366,7 @@ div::-webkit-scrollbar {
             boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
             border: "1px solid #e2e8f0"
           }}>
-            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }}>
+            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }} onClick={handleTimelineClick}>
               <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
 
                 {/* 15-minute interval gridlines */}
@@ -1320,7 +1453,7 @@ div::-webkit-scrollbar {
                   }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                     <div style={{ fontWeight: 600 }}>No events today</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>Tap "+ Add Event" to get started</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>Click timeline or "+ Add Event" to create</div>
                   </div>
                 )}
 
@@ -1329,6 +1462,7 @@ div::-webkit-scrollbar {
                   const isSmall = width < 180;
                   const isDragging = draggingEvent?.id === ev.id;
                   const isResizing = resizingEvent?.id === ev.id;
+                  const colorStyle = EVENT_COLORS[ev.color || "purple"];
                   
                   return (
                     <div
@@ -1345,6 +1479,7 @@ div::-webkit-scrollbar {
                       }}
                       onClick={(e) => {
                         if (e.target.classList.contains('resize-handle')) return;
+                        e.stopPropagation();
                         if (Math.abs(e.clientX - dragStartX) < 5) {
                           openEditEvent(ev);
                         }
@@ -1357,7 +1492,7 @@ div::-webkit-scrollbar {
                         height: EVENT_HEIGHT,
                         background: (isDragging || isResizing)
                           ? "linear-gradient(135deg, #818cf8, #9333ea)" 
-                          : "linear-gradient(135deg, #667eea, #764ba2)",
+                          : colorStyle.bg,
                         color: "#fff",
                         borderRadius: 12,
                         padding: "12px 14px",
@@ -1428,151 +1563,127 @@ div::-webkit-scrollbar {
             border: "1px solid #e2e8f0"
           }}>
             <div style={{ 
-              overflowX: "auto",
-              WebkitOverflowScrolling: "touch",
-              scrollbarWidth: "none",
-              msOverflowStyle: "none"
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: 8,
+              padding: "12px"
             }}>
-              <div style={{ 
-                display: "flex",
-                gap: 8,
-                padding: "12px",
-                minWidth: "min-content"
-              }}>
-                {weekDays.map((day, index) => {
-                  const dayEventsForWeek = events.filter(ev => 
-                    ev.start.toDateString() === day.toDateString()
-                  );
-                  const isDayToday = day.toDateString() === now.toDateString();
-        
-                  return (
-                    <div
-                      key={index}
-                      style={{
-                        background: "#fff",
-                        minWidth: "260px",
-                        width: "260px",
-                        flexShrink: 0,
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 12,
-                        padding: "16px",
-                        cursor: "pointer",
-                        transition: "all 0.2s ease"
-                      }}
-                      onClick={() => {
-                        setCurrentDate(day);
-                        setViewMode("day");
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = "translateY(-4px)";
-                        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = "translateY(0)";
-                        e.currentTarget.style.boxShadow = "none";
-                      }}
-                    >
+              {weekDays.map((day, index) => {
+                const dayEventsForWeek = filteredEvents.filter(ev => 
+                  ev.start.toDateString() === day.toDateString()
+                );
+                const isDayToday = day.toDateString() === now.toDateString();
+      
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: "16px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      minHeight: 200
+                    }}
+                    onClick={() => goToDate(day)}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div style={{ 
+                      textAlign: "center", 
+                      marginBottom: 16,
+                      paddingBottom: 16,
+                      borderBottom: "2px solid #f1f5f9"
+                    }}>
                       <div style={{ 
-                        textAlign: "center", 
-                        marginBottom: 16,
-                        paddingBottom: 16,
-                        borderBottom: "2px solid #f1f5f9"
+                        fontSize: 12, 
+                        fontWeight: 700, 
+                        color: "#94a3b8",
+                        marginBottom: 8,
+                        letterSpacing: "0.5px"
                       }}>
+                        {day.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}
+                      </div>
+                      <div 
+                        className={isDayToday ? "current-day-pulse" : ""}
+                        style={{ 
+                          fontSize: 28, 
+                          fontWeight: 700,
+                          color: isDayToday ? "#fff" : "#0f172a",
+                          background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto"
+                        }}
+                      >
+                        {day.getDate()}
+                      </div>
+                    </div>
+      
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {dayEventsForWeek.length === 0 ? (
                         <div style={{ 
-                          fontSize: 13, 
-                          fontWeight: 700, 
-                          color: "#94a3b8",
-                          marginBottom: 8,
-                          letterSpacing: "0.5px"
-                        }}>
-                          {day.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase()}
-                        </div>
-                        <div 
-                          className={isDayToday ? "current-day-pulse" : ""}
-                          style={{ 
-                            fontSize: 32, 
-                            fontWeight: 700,
-                            color: isDayToday ? "#fff" : "#0f172a",
-                            background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
-                            width: 56,
-                            height: 56,
-                            borderRadius: "50%",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            margin: "0 auto"
-                          }}
-                        >
-                          {day.getDate()}
-                        </div>
-                        <div style={{
+                          textAlign: "center", 
+                          color: "#cbd5e1", 
                           fontSize: 12,
-                          color: "#64748b",
-                          marginTop: 8,
+                          padding: "20px 0",
                           fontWeight: 500
                         }}>
-                          {day.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                          No events
                         </div>
-                      </div>
-        
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {dayEventsForWeek.length === 0 ? (
-                          <div style={{ 
-                            textAlign: "center", 
-                            color: "#cbd5e1", 
-                            fontSize: 13,
-                            padding: "32px 0",
-                            fontWeight: 500
-                          }}>
-                            No events
-                          </div>
-                        ) : (
-                          dayEventsForWeek.map(ev => (
+                      ) : (
+                        dayEventsForWeek.slice(0, 3).map(ev => {
+                          const colorStyle = EVENT_COLORS[ev.color || "purple"];
+                          return (
                             <div
                               key={ev.id}
                               style={{
-                                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                                background: colorStyle.bg,
                                 color: "#fff",
-                                padding: "12px 14px",
-                                borderRadius: 10,
-                                fontSize: 13,
+                                padding: "8px 10px",
+                                borderRadius: 8,
+                                fontSize: 11,
                                 fontWeight: 600,
                                 boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
-                                cursor: "pointer",
-                                transition: "all 0.2s ease"
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
                               }}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 openEditEvent(ev);
                               }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.transform = "translateX(4px)";
-                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.transform = "translateX(0)";
-                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
-                              }}
                             >
-                              <div style={{ 
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                whiteSpace: "nowrap",
-                                marginBottom: 4
-                              }}>
-                                {ev.title}
-                              </div>
-                              <div style={{ fontSize: 11, opacity: 0.9 }}>
-                                {formatTime(ev.start)} – {formatTime(ev.end)}
-                              </div>
+                              {ev.title}
                             </div>
-                          ))
-                        )}
-                      </div>
+                          );
+                        })
+                      )}
+                      {dayEventsForWeek.length > 3 && (
+                        <div style={{ 
+                          fontSize: 10, 
+                          color: "#64748b", 
+                          textAlign: "center",
+                          fontWeight: 600
+                        }}>
+                          +{dayEventsForWeek.length - 3} more
+                        </div>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -1616,6 +1727,7 @@ div::-webkit-scrollbar {
                   <div
                     key={index}
                     className={isCurrentDay ? "current-day-pulse" : ""}
+                    onClick={() => day && goToDate(day)}
                     style={{
                       aspectRatio: "1",
                       display: "flex",
@@ -1653,9 +1765,7 @@ div::-webkit-scrollbar {
         )}
       </div>
 
-{/* I'll continue with the modals and overlays in the next message due to length */}
-
-{showActivityOverlay && (
+      {showActivityOverlay && (
         <Overlay title="Activity Log" onClose={() => setShowActivityOverlay(false)}>
           {activityLogs.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
@@ -1834,7 +1944,9 @@ div::-webkit-scrollbar {
             width: "100%",
             maxWidth: 480,
             boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
-            overflow: "hidden"
+            overflow: "hidden",
+            maxHeight: "90vh",
+            overflowY: "auto"
           }}>
             <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9" }}>
               <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>
@@ -1865,6 +1977,57 @@ div::-webkit-scrollbar {
                   onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
                   onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
                 />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Category
+                </label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setEventCategory(cat)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        border: eventCategory === cat ? "2px solid #667eea" : "2px solid #e2e8f0",
+                        background: eventCategory === cat ? "#eef2ff" : "#fff",
+                        color: eventCategory === cat ? "#4338ca" : "#64748b",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Color
+                </label>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {Object.entries(EVENT_COLORS).map(([colorName, colorStyle]) => (
+                    <button
+                      key={colorName}
+                      onClick={() => setEventColor(colorName)}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        border: eventColor === colorName ? "3px solid #0f172a" : "3px solid transparent",
+                        background: colorStyle.bg,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        boxShadow: eventColor === colorName ? "0 4px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(0,0,0,0.1)"
+                      }}
+                    />
+                  ))}
+                </div>
               </div>
 
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -1954,22 +2117,44 @@ div::-webkit-scrollbar {
                 </button>
 
                 {editingEvent && (
-                  <button
-                    onClick={deleteEvent}
-                    style={{
-                      background: "#fef2f2",
-                      border: "2px solid #fecaca",
-                      borderRadius: 12,
-                      padding: "14px 32px",
-                      cursor: "pointer",
-                      color: "#dc2626",
-                      fontWeight: 600,
-                      fontSize: 16,
-                      width: "100%"
-                    }}
-                  >
-                    Delete
-                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        duplicateEvent(editingEvent);
+                        setShowModal(false);
+                      }}
+                      style={{
+                        background: "#f0f9ff",
+                        border: "2px solid #bae6fd",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#0369a1",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      📋 Duplicate
+                    </button>
+                    
+                    <button
+                      onClick={deleteEvent}
+                      style={{
+                        background: "#fef2f2",
+                        border: "2px solid #fecaca",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#dc2626",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </>
                 )}
               </div>
             </div>
