@@ -915,8 +915,122 @@ export default function App() {
     <div style={{ 
       minHeight: "100vh",
       background: "linear-gradient(135deg, #0f0c29, #302b63, #24243e)",
-      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+      padding: 0,
+      margin: 0
     }}>
+      <style>
+{`
+* {
+  -webkit-tap-highlight-color: transparent;
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2); }
+  50% { box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.4); }
+}
+
+@keyframes slideDown {
+  from { opacity: 0; transform: translateY(-10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.timeline-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,0.1);
+  border-radius: 10px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 10px;
+}
+
+.event-card {
+  touch-action: none;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: background 0.2s ease;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.resize-handle-left {
+  left: 0;
+  border-radius: 12px 0 0 12px;
+}
+
+.resize-handle-right {
+  right: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+div::-webkit-scrollbar {
+  display: none;
+}
+`}
+</style>
+
+      {previewTimes && (draggingEvent || resizingEvent) && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          background: "linear-gradient(135deg, #667eea, #764ba2)",
+          color: "#fff",
+          padding: "16px 24px",
+          borderRadius: 16,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          zIndex: 1000,
+          pointerEvents: "none",
+          fontWeight: 600,
+          fontSize: 18,
+          textAlign: "center",
+          backdropFilter: "blur(10px)",
+          border: "2px solid rgba(255,255,255,0.2)"
+        }}>
+          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
+            {resizingEvent ? "Resizing" : "Moving"}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            {formatTime(previewTimes.start)} – {formatTime(previewTimes.end)}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
+            {Math.round((previewTimes.end - previewTimes.start) / 60000)} minutes
+          </div>
+        </div>
+      )}
+
       <div style={{
         background: "rgba(15, 12, 41, 0.95)",
         backdropFilter: "blur(20px)",
@@ -926,46 +1040,1242 @@ export default function App() {
         top: 0,
         zIndex: 50
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>Timeline</h2>
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => openNewEvent()} style={{ background: "linear-gradient(135deg, #667eea, #764ba2)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14, fontWeight: 600 }}>
-              + Event
-            </button>
-            <button onClick={() => signOut(auth)} style={{ background: "rgba(255,255,255,0.1)", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", cursor: "pointer", fontSize: 14 }}>
-              Sign Out
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ padding: 20 }}>
-        <div style={{ color: "#fff", marginBottom: 20 }}>
-          <h3>Events</h3>
-          {loading && <p>Loading...</p>}
-          {error && <p style={{ color: "#fca5a5" }}>{error}</p>}
-          {events.length === 0 ? (
-            <p>No events yet. Click + Event to create one!</p>
-          ) : (
+        <div style={{ maxWidth: 1600, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              {events.map(ev => (
-                <div key={ev.id} onClick={() => openEditEvent(ev)} style={{ padding: 12, background: "rgba(255,255,255,0.05)", borderRadius: 8, marginBottom: 8, cursor: "pointer" }}>
-                  <div style={{ fontWeight: 600 }}>{ev.title}</div>
-                  <div style={{ fontSize: 13, opacity: 0.7 }}>
-                    {formatTime(ev.start)} – {formatTime(ev.end)}
-                  </div>
+              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#fff" }}>
+                Timeline
+              </h2>
+              <p style={{ margin: "2px 0 0 0", fontSize: 12, color: "rgba(255,255,255,0.6)", fontWeight: 500 }}>
+                {monthYear}
+              </p>
+            </div>
+            
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button
+                onClick={() => setShowTodoPanel(!showTodoPanel)}
+                style={{
+                  background: showTodoPanel ? "rgba(102, 126, 234, 0.3)" : "rgba(255,255,255,0.1)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: "#fff",
+                  fontWeight: 500
+                }}
+              >
+                📝
+              </button>
+              
+              <button
+                onClick={() => setShowCalculator(!showCalculator)}
+                style={{
+                  background: showCalculator ? "rgba(102, 126, 234, 0.3)" : "rgba(255,255,255,0.1)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: "#fff",
+                  fontWeight: 500
+                }}
+              >
+                🔢
+              </button>
+              
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                style={{
+                  background: "rgba(255,255,255,0.1)",
+                  border: "none",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#fff"
+                }}
+              >
+                {mobileMenuOpen ? "✕" : "☰"}
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div style={{
+              padding: "10px 14px",
+              background: "rgba(239, 68, 68, 0.2)",
+              border: "1px solid rgba(239, 68, 68, 0.3)",
+              borderRadius: 8,
+              color: "#fca5a5",
+              marginTop: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 13
+            }}>
+              <span>{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 16,
+                  color: "#fca5a5",
+                  padding: 4
+                }}
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          {mobileMenuOpen && (
+            <div style={{
+              marginTop: 12,
+              background: "rgba(255,255,255,0.05)",
+              borderRadius: 12,
+              padding: "12px",
+              animation: "slideDown 0.2s ease-out"
+            }}>
+              <input
+                type="text"
+                placeholder="🔍 Search events..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "10px 14px",
+                  borderRadius: 8,
+                  border: "1px solid rgba(255,255,255,0.1)",
+                  fontSize: 14,
+                  fontFamily: "inherit",
+                  outline: "none",
+                  background: "rgba(255,255,255,0.05)",
+                  color: "#fff",
+                  marginBottom: 12,
+                  boxSizing: "border-box"
+                }}
+              />
+
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <button
+                  onClick={() => { setSpaceId(PERSONAL_SPACE_ID); setMobileMenuOpen(false); }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: spaceId === PERSONAL_SPACE_ID 
+                      ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                      : "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Personal
+                </button>
+
+                <button
+                  onClick={() => { 
+                    if (familySpaceId) {
+                      setSpaceId(familySpaceId);
+                      setMobileMenuOpen(false);
+                    } else {
+                      createFamilySpace();
+                    }
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 14px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: spaceId === familySpaceId 
+                      ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                      : "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  {familySpaceId ? "Family" : "+ Family"}
+                </button>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.5px", fontWeight: 600 }}>
+                  Categories
                 </div>
-              ))}
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  <button
+                    onClick={() => setFilterCategory("All")}
+                    style={{
+                      padding: "6px 12px",
+                      borderRadius: 6,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      background: filterCategory === "All" ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer"
+                    }}
+                  >
+                    All
+                  </button>
+                  {CATEGORIES.map(cat => {
+                    const catStyle = CATEGORY_COLORS[cat];
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setFilterCategory(cat)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 6,
+                          border: "1px solid rgba(255,255,255,0.1)",
+                          background: filterCategory === cat ? catStyle.light : "rgba(255,255,255,0.05)",
+                          color: filterCategory === cat ? catStyle.text : "#fff",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                {["day", "week", "month", "year"].map(mode => (
+                  <button
+                    key={mode}
+                    onClick={() => { setViewMode(mode); setMobileMenuOpen(false); }}
+                    style={{
+                      flex: 1,
+                      padding: "8px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: viewMode === mode 
+                        ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                        : "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      textTransform: "capitalize"
+                    }}
+                  >
+                    {mode}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: "flex", gap: 6, marginBottom: 12 }}>
+                <button 
+                  onClick={() => {
+                    if (viewMode === "month") goToPreviousMonth();
+                    else if (viewMode === "week") goToPreviousWeek();
+                    else goToPreviousDay();
+                  }}
+                  style={{ 
+                    flex: 1,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "8px",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#fff"
+                  }}
+                >
+                  ←
+                </button>
+                
+                <button 
+                  onClick={() => { goToToday(); setMobileMenuOpen(false); }}
+                  style={{ 
+                    flex: 2,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "8px",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#fff"
+                  }}
+                >
+                  Today
+                </button>
+
+                <button 
+                  onClick={() => {
+                    if (viewMode === "month") goToNextMonth();
+                    else if (viewMode === "week") goToNextWeek();
+                    else goToNextDay();
+                  }}
+                  style={{ 
+                    flex: 1,
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "8px",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: "#fff"
+                  }}
+                >
+                  →
+                </button>
+              </div>
+
+              <div style={{ display: "flex", gap: 6 }}>
+                <button
+                  onClick={() => { openNewEvent(); }}
+                  style={{
+                    flex: 1,
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 8,
+                    padding: "10px",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  + Event
+                </button>
+
+                <button
+                  onClick={() => { setShowDeletedOverlay(true); setMobileMenuOpen(false); }}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#fff"
+                  }}
+                >
+                  🗑️
+                </button>
+
+                <button
+                  onClick={() => { setShowSettings(true); setMobileMenuOpen(false); }}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#fff"
+                  }}
+                >
+                  ⚙️
+                </button>
+
+                <button
+                  onClick={() => signOut(auth)}
+                  style={{
+                    background: "rgba(239, 68, 68, 0.1)",
+                    border: "1px solid rgba(239, 68, 68, 0.2)",
+                    borderRadius: 8,
+                    padding: "10px 14px",
+                    fontSize: 13,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    color: "#fca5a5"
+                  }}
+                >
+                  Exit
+                </button>
+              </div>
             </div>
           )}
         </div>
       </div>
+
+      {showTodoPanel && (
+        <div style={{
+          position: "fixed",
+          top: 70,
+          right: 16,
+          width: 300,
+          maxHeight: "calc(100vh - 90px)",
+          background: "rgba(15, 12, 41, 0.98)",
+          backdropFilter: "blur(20px)",
+          borderRadius: 16,
+          padding: 16,
+          zIndex: 100,
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
+          overflowY: "auto"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Quick Notes</h3>
+            <button onClick={() => setShowTodoPanel(false)} style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+            <input
+              value={todoInput}
+              onChange={e => setTodoInput(e.target.value)}
+              onKeyPress={e => e.key === "Enter" && addTodo()}
+              placeholder="Add a note..."
+              style={{
+                flex: 1,
+                padding: "8px 12px",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)",
+                background: "rgba(255,255,255,0.05)",
+                color: "#fff",
+                fontSize: 14,
+                outline: "none"
+              }}
+            />
+            <button
+              onClick={addTodo}
+              style={{
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                border: "none",
+                borderRadius: 8,
+                padding: "8px 16px",
+                color: "#fff",
+                fontWeight: 600,
+                cursor: "pointer",
+                fontSize: 14
+              }}
+            >
+              +
+            </button>
+          </div>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {todos.map(todo => (
+              <div key={todo.id} style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                padding: 8,
+                background: "rgba(255,255,255,0.05)",
+                borderRadius: 8,
+                border: "1px solid rgba(255,255,255,0.1)"
+              }}>
+                <input
+                  type="checkbox"
+                  checked={todo.done}
+                  onChange={() => toggleTodo(todo.id)}
+                  style={{ cursor: "pointer" }}
+                />
+                <span style={{
+                  flex: 1,
+                  color: "#fff",
+                  fontSize: 13,
+                  textDecoration: todo.done ? "line-through" : "none",
+                  opacity: todo.done ? 0.5 : 1
+                }}>
+                  {todo.text}
+                </span>
+                <button
+                  onClick={() => deleteTodo(todo.id)}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "#ef4444",
+                    cursor: "pointer",
+                    fontSize: 14
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {showCalculator && (
+        <div style={{
+          position: "fixed",
+          top: 70,
+          right: showTodoPanel ? 332 : 16,
+          width: 280,
+          background: "rgba(15, 12, 41, 0.98)",
+          backdropFilter: "blur(20px)",
+          borderRadius: 16,
+          padding: 16,
+          zIndex: 100,
+          border: "1px solid rgba(255,255,255,0.1)",
+          boxShadow: "0 20px 60px rgba(0,0,0,0.5)"
+        }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, color: "#fff" }}>Calculator</h3>
+            <button onClick={() => setShowCalculator(false)} style={{ background: "none", border: "none", color: "#fff", fontSize: 18, cursor: "pointer" }}>✕</button>
+          </div>
+
+          <div style={{
+            background: "rgba(0,0,0,0.3)",
+            padding: "16px",
+            borderRadius: 8,
+            marginBottom: 12,
+            textAlign: "right",
+            color: "#fff",
+            fontSize: 24,
+            fontWeight: 600,
+            minHeight: 40,
+            wordBreak: "break-all"
+          }}>
+            {calcDisplay}
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
+            {["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "-", "0", "C", "=", "+"].map(btn => (
+              <button
+                key={btn}
+                onClick={() => handleCalc(btn)}
+                style={{
+                  padding: "16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: ["÷", "×", "-", "+", "="].includes(btn) 
+                    ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                    : btn === "C" 
+                    ? "rgba(239, 68, 68, 0.3)" 
+                    : "rgba(255,255,255,0.1)",
+                  color: "#fff",
+                  fontSize: 18,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => e.currentTarget.style.transform = "scale(1.05)"}
+                onMouseLeave={e => e.currentTarget.style.transform = "scale(1)"}
+              >
+                {btn}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div style={{ padding: "20px", maxWidth: 1600, margin: "0 auto" }}>
+        {loading ? (
+          <div style={{
+            padding: 60,
+            textAlign: "center",
+            color: "rgba(255,255,255,0.5)",
+            fontSize: 15
+          }}>
+            Loading your timeline...
+          </div>
+        ) : viewMode === "day" ? (
+          <div style={{ 
+            background: "rgba(255,255,255,0.05)",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,255,255,0.1)"
+          }}>
+            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }} onClick={handleTimelineClick}>
+              <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
+                {[...Array(96)].map((_, i) => {
+                  const isHour = i % 4 === 0;
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        left: i * 15 * PIXELS_PER_MINUTE,
+                        top: 0,
+                        bottom: 0,
+                        width: isHour ? 2 : 1,
+                        background: isHour ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.05)",
+                        zIndex: 1
+                      }}
+                    />
+                  );
+                })}
+
+                {[...Array(24)].map((_, h) => (
+                  <div
+                    key={h}
+                    style={{
+                      position: "absolute",
+                      left: h * 60 * PIXELS_PER_MINUTE + 8,
+                      top: 12,
+                      fontSize: 13,
+                      color: "rgba(255,255,255,0.7)",
+                      fontWeight: 700,
+                      background: "rgba(15, 12, 41, 0.9)",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      pointerEvents: "none",
+                      zIndex: 2,
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)"
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}:00
+                  </div>
+                ))}
+
+                {isToday && (
+                  <>
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft,
+                      top: 0,
+                      bottom: 0,
+                      width: 3,
+                      background: "linear-gradient(180deg, #667eea, #764ba2)",
+                      zIndex: 10,
+                      boxShadow: "0 0 20px rgba(102, 126, 234, 0.8)",
+                      borderRadius: 2,
+                      pointerEvents: "none"
+                    }} />
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft - 6,
+                      top: 8,
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #667eea, #764ba2)",
+                      zIndex: 11,
+                      pointerEvents: "none",
+                      animation: "glow 2s ease-in-out infinite"
+                    }} />
+                  </>
+                )}
+
+                {stacked.length === 0 && (
+                  <div style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    textAlign: "center",
+                    color: "rgba(255,255,255,0.3)",
+                    fontSize: 15,
+                    pointerEvents: "none"
+                  }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>⚡</div>
+                    <div style={{ fontWeight: 600 }}>No events today</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>Click timeline to create</div>
+                  </div>
+                )}
+
+                {stacked.map(ev => {
+                  const width = toLeft(ev.end) - toLeft(ev.start);
+                  const isSmall = width < 180;
+                  const isDragging = draggingEvent?.id === ev.id;
+                  const isResizing = resizingEvent?.id === ev.id;
+                  const catStyle = CATEGORY_COLORS[ev.category || "Personal"];
+                  
+                  return (
+                    <div
+                      key={ev.id}
+                      data-event-id={ev.id}
+                      className="event-card"
+                      onMouseDown={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onTouchStart={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onClick={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        e.stopPropagation();
+                        if (Math.abs(e.clientX - dragStartX) < 5) {
+                          openEditEvent(ev);
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: toLeft(ev.start),
+                        top: 70 + ev.row * (EVENT_HEIGHT + ROW_GAP),
+                        width,
+                        height: EVENT_HEIGHT,
+                        background: (isDragging || isResizing)
+                          ? "linear-gradient(135deg, #818cf8, #9333ea)" 
+                          : catStyle.bg,
+                        color: "#fff",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        cursor: isDragging ? "grabbing" : "grab",
+                        boxShadow: (isDragging || isResizing)
+                          ? "0 12px 35px rgba(102, 126, 234, 0.5)" 
+                          : "0 4px 15px rgba(0,0,0,0.3)",
+                        transition: (isDragging || isResizing) ? "none" : "all 0.2s ease",
+                        overflow: "hidden",
+                        border: "1px solid rgba(255,255,255,0.1)",
+                        opacity: (isDragging || isResizing) ? 0.7 : 1,
+                        zIndex: (isDragging || isResizing) ? 100 : 5,
+                        boxSizing: "border-box"
+                      }}
+                      onMouseEnter={e => {
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                          e.currentTarget.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(0) scale(1)";
+                          e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.3)";
+                        }
+                      }}
+                    >
+                      <div
+                        className="resize-handle resize-handle-left"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'left')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'left')}
+                      />
+                      
+                      <div style={{ 
+                        fontWeight: 600, 
+                        fontSize: isSmall ? 13 : 15,
+                        marginBottom: 4,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        pointerEvents: "none"
+                      }}>
+                        {ev.title}
+                      </div>
+                      {!isSmall && (
+                        <div style={{ fontSize: 12, opacity: 0.9, pointerEvents: "none" }}>
+                          {formatTime(ev.start)} – {formatTime(ev.end)}
+                        </div>
+                      )}
+                      
+                      <div
+                        className="resize-handle resize-handle-right"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'right')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'right')}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        ) : viewMode === "week" ? (
+          <div style={{ 
+            background: "rgba(255,255,255,0.05)",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            padding: "16px"
+          }}>
+            <div style={{ 
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+              gap: 12
+            }}>
+              {weekDays.map((day, index) => {
+                const dayEventsForWeek = filteredEvents.filter(ev => 
+                  ev.start.toDateString() === day.toDateString()
+                );
+                const isDayToday = day.toDateString() === now.toDateString();
+    
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      background: "rgba(255,255,255,0.03)",
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      borderRadius: 12,
+                      padding: "12px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      minHeight: 180
+                    }}
+                    onClick={() => goToDate(day)}
+                  >
+                    <div style={{ 
+                      textAlign: "center", 
+                      marginBottom: 12,
+                      paddingBottom: 12,
+                      borderBottom: "1px solid rgba(255,255,255,0.1)"
+                    }}>
+                      <div style={{ 
+                        fontSize: 10, 
+                        fontWeight: 700, 
+                        color: "rgba(255,255,255,0.5)",
+                        marginBottom: 6,
+                        letterSpacing: "0.5px"
+                      }}>
+                        {day.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}
+                      </div>
+                      <div 
+                        style={{ 
+                          fontSize: 22, 
+                          fontWeight: 700,
+                          color: isDayToday ? "#fff" : "rgba(255,255,255,0.9)",
+                          background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto"
+                        }}
+                      >
+                        {day.getDate()}
+                      </div>
+                    </div>
+  
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                      {dayEventsForWeek.length === 0 ? (
+                        <div style={{ 
+                          textAlign: "center", 
+                          color: "rgba(255,255,255,0.2)", 
+                          fontSize: 11,
+                          padding: "16px 0",
+                          fontWeight: 500
+                        }}>
+                          No events
+                        </div>
+                      ) : (
+                        dayEventsForWeek.slice(0, 3).map(ev => {
+                          const catStyle = CATEGORY_COLORS[ev.category || "Personal"];
+                          return (
+                            <div
+                              key={ev.id}
+                              style={{
+                                background: catStyle.bg,
+                                color: "#fff",
+                                padding: "6px 8px",
+                                borderRadius: 6,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditEvent(ev);
+                              }}
+                            >
+                              {ev.title}
+                            </div>
+                          );
+                        })
+                      )}
+                      {dayEventsForWeek.length > 3 && (
+                        <div style={{ 
+                          fontSize: 9, 
+                          color: "rgba(255,255,255,0.4)", 
+                          textAlign: "center",
+                          fontWeight: 600
+                        }}>
+                          +{dayEventsForWeek.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : viewMode === "month" ? (
+          <div style={{ 
+            background: "rgba(255,255,255,0.05)",
+            borderRadius: 16,
+            padding: "20px",
+            boxShadow: "0 20px 60px rgba(0,0,0,0.3)",
+            border: "1px solid rgba(255,255,255,0.1)",
+            maxWidth: 600,
+            margin: "0 auto"
+          }}>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6,
+              marginBottom: 12
+            }}>
+              {weekDayHeaders.map((day, i) => (
+                <div key={i} style={{
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: 11,
+                  color: "rgba(255,255,255,0.5)",
+                  padding: "4px 0"
+                }}>
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6
+            }}>
+              {monthDays.map((day, index) => {
+                const isCurrentDay = day && day.toDateString() === now.toDateString();
+                
+                return (
+                  <div
+                    key={index}
+                    onClick={() => day && goToDate(day)}
+                    style={{
+                      aspectRatio: "1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      background: day ? (isCurrentDay ? "linear-gradient(135deg, #667eea, #764ba2)" : "rgba(255,255,255,0.03)") : "transparent",
+                      color: day ? (isCurrentDay ? "#fff" : "rgba(255,255,255,0.9)") : "transparent",
+                      fontWeight: isCurrentDay ? 700 : 500,
+                      fontSize: 13,
+                      cursor: day ? "pointer" : "default",
+                      transition: "all 0.15s ease",
+                      border: day ? "1px solid rgba(255,255,255,0.1)" : "none",
+                      minHeight: 40
+                    }}
+                    onMouseEnter={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.1)";
+                        e.currentTarget.style.fontWeight = "600";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "rgba(255,255,255,0.03)";
+                        e.currentTarget.style.fontWeight = "500";
+                      }
+                    }}
+                  >
+                    {day ? day.getDate() : ""}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : (
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+            gap: 16
+          }}>
+            {yearMonths.map((month, idx) => {
+              const monthDaysArray = getDaysInMonth(month);
+              
+              return (
+                <div
+                  key={idx}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    borderRadius: 12,
+                    padding: "16px",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onClick={() => {
+                    setCurrentDate(month);
+                    setViewMode("month");
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <h4 style={{
+                    margin: "0 0 12px 0",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    color: "#fff",
+                    textAlign: "center"
+                  }}>
+                    {month.toLocaleDateString(undefined, { month: "long" })}
+                  </h4>
+
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 4,
+                    marginBottom: 8
+                  }}>
+                    {weekDayHeaders.map((day, i) => (
+                      <div key={i} style={{
+                        textAlign: "center",
+                        fontSize: 9,
+                        color: "rgba(255,255,255,0.4)",
+                        fontWeight: 600
+                      }}>
+                        {day}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 4
+                  }}>
+                    {monthDaysArray.map((day, i) => {
+                      const isCurrentDay = day && day.toDateString() === now.toDateString();
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            aspectRatio: "1",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontSize: 10,
+                            borderRadius: 4,
+                            background: day ? (isCurrentDay ? "linear-gradient(135deg, #667eea, #764ba2)" : "rgba(255,255,255,0.05)") : "transparent",
+                            color: day ? (isCurrentDay ? "#fff" : "rgba(255,255,255,0.7)") : "transparent",
+                            fontWeight: isCurrentDay ? 700 : 500
+                          }}
+                        >
+                          {day ? day.getDate() : ""}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {showDeletedOverlay && (
+        <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
+          {deletedEvents.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "rgba(255,255,255,0.5)" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
+              <div>No deleted events</div>
+            </div>
+          ) : (
+            deletedEvents.map(ev => (
+              <div key={ev.id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid rgba(255,255,255,0.05)",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "#fff" }}>
+                  {ev.title}
+                </div>
+                {ev.deletedAt && (
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.5)" }}>
+                    Deleted {ev.deletedAt.toDate().toLocaleString(undefined, {
+                      weekday: "short", month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit"
+                    })}
+                  </div>
+                )}
+                <button
+                  onClick={() => restoreEvent(ev)}
+                  style={{
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    border: "none",
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "10px 18px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    alignSelf: "flex-start",
+                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
+                  }}
+                >
+                  Restore
+                </button>
+              </div>
+            ))
+          )}
+        </Overlay>
+      )}
+
+      {showSettings && (
+        <Overlay title="Settings" onClose={() => setShowSettings(false)}>
+          <div style={{ padding: "16px 0" }}>
+            <div style={{
+              padding: "16px 0",
+              borderBottom: "1px solid rgba(255,255,255,0.05)"
+            }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8
+              }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#fff", marginBottom: 4 }}>
+                    Week Starts On
+                  </div>
+                  <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)" }}>
+                    Choose whether your week starts on Sunday or Monday
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button
+                  onClick={() => setWeekStartsOnMonday(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid rgba(255,255,255,0.1)" : "2px solid #667eea",
+                    background: weekStartsOnMonday ? "rgba(255,255,255,0.05)" : "rgba(102, 126, 234, 0.2)",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Sunday
+                </button>
+                
+                <button
+                  onClick={() => setWeekStartsOnMonday(true)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid rgba(255,255,255,0.1)",
+                    background: weekStartsOnMonday ? "rgba(102, 126, 234, 0.2)" : "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Monday
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              padding: "20px 0",
+              textAlign: "center",
+              color: "rgba(255,255,255,0.3)",
+              fontSize: 13
+            }}>
+              More customization options coming soon...
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {showInviteModal && (
+        <Overlay title="Family Space Invite" onClose={() => setShowInviteModal(false)}>
+          <div style={{ padding: "16px 0" }}>
+            <div style={{ marginBottom: 20, textAlign: "center" }}>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
+                Share this code with family members:
+              </div>
+              <div style={{
+                background: "rgba(102, 126, 234, 0.2)",
+                padding: "16px",
+                borderRadius: 12,
+                fontSize: 28,
+                fontWeight: 700,
+                color: "#fff",
+                letterSpacing: "4px",
+                fontFamily: "monospace",
+                border: "2px dashed rgba(102, 126, 234, 0.4)"
+              }}>
+                {inviteCode}
+              </div>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteCode);
+                  alert("Code copied to clipboard!");
+                }}
+                style={{
+                  marginTop: 12,
+                  background: "rgba(255,255,255,0.1)",
+                  border: "1px solid rgba(255,255,255,0.2)",
+                  borderRadius: 8,
+                  padding: "8px 16px",
+                  color: "#fff",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                📋 Copy Code
+              </button>
+            </div>
+
+            <div style={{ 
+              borderTop: "1px solid rgba(255,255,255,0.05)",
+              paddingTop: 20
+            }}>
+              <div style={{ fontSize: 14, color: "rgba(255,255,255,0.7)", marginBottom: 12 }}>
+                Or enter a code to join:
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  type="text"
+                  placeholder="Enter code..."
+                  onChange={e => setInviteCode(e.target.value.toUpperCase())}
+                  style={{
+                    flex: 1,
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    fontSize: 15,
+                    fontFamily: "monospace",
+                    letterSpacing: "2px",
+                    outline: "none"
+                  }}
+                />
+                <button
+                  onClick={() => joinFamilySpace(inviteCode)}
+                  style={{
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    border: "none",
+                    borderRadius: 10,
+                    padding: "12px 24px",
+                    color: "#fff",
+                    fontSize: 15,
+                    fontWeight: 600,
+                    cursor: "pointer"
+                  }}
+                >
+                  Join
+                </button>
+              </div>
+            </div>
+          </div>
+        </Overlay>
+      )}
 
       {showModal && (
         <div style={{
           position: "fixed",
           inset: 0,
           background: "rgba(0, 0, 0, 0.8)",
+          backdropFilter: "blur(8px)",
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -977,152 +2287,271 @@ export default function App() {
             borderRadius: 20,
             width: "100%",
             maxWidth: 480,
-            padding: 24,
+            boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+            overflow: "hidden",
+            maxHeight: "90vh",
+            overflowY: "auto",
             border: "1px solid rgba(255,255,255,0.1)"
           }}>
-            <h3 style={{ margin: "0 0 20px 0", color: "#fff" }}>{editingEvent ? "Edit Event" : "New Event"}</h3>
-            
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Title</label>
-              <input
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                placeholder="Event title"
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontSize: 16,
-                  outline: "none",
-                  boxSizing: "border-box"
-                }}
-              />
+            <div style={{ padding: "24px", borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
+              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#fff" }}>
+                {editingEvent ? "Edit Event" : "New Event"}
+              </h3>
             </div>
 
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Category</label>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {CATEGORIES.map(cat => (
-                  <button
-                    key={cat}
-                    onClick={() => setEventCategory(cat)}
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 24 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+                  Event Title
+                </label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="What's happening?"
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    fontSize: 16,
+                    fontFamily: "inherit",
+                    outline: "none",
+                    background: "rgba(255,255,255,0.05)",
+                    color: "#fff",
+                    transition: "border 0.2s ease",
+                    boxSizing: "border-box"
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
+                  onBlur={e => e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+                  Category
+                </label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {CATEGORIES.map(cat => {
+                    const catStyle = CATEGORY_COLORS[cat];
+                    return (
+                      <button
+                        key={cat}
+                        onClick={() => setEventCategory(cat)}
+                        style={{
+                          padding: "8px 16px",
+                          borderRadius: 8,
+                          border: eventCategory === cat ? `2px solid ${catStyle.text}` : "2px solid rgba(255,255,255,0.1)",
+                          background: eventCategory === cat ? catStyle.light : "rgba(255,255,255,0.05)",
+                          color: eventCategory === cat ? catStyle.text : "#fff",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease"
+                        }}
+                      >
+                        {cat}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+                    Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
                     style={{
-                      padding: "8px 16px",
-                      borderRadius: 8,
-                      border: eventCategory === cat ? "2px solid #667eea" : "2px solid rgba(255,255,255,0.1)",
-                      background: eventCategory === cat ? "rgba(102, 126, 234, 0.2)" : "rgba(255,255,255,0.05)",
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      background: "rgba(255,255,255,0.05)",
                       color: "#fff",
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 600
+                      boxSizing: "border-box"
                     }}
-                  >
-                    {cat}
-                  </button>
-                ))}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.7)", marginBottom: 10 }}>
+                    End
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: 12,
+                      border: "1px solid rgba(255,255,255,0.1)",
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      background: "rgba(255,255,255,0.05)",
+                      color: "#fff",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ 
+                display: "flex", 
+                gap: 12, 
+                marginTop: 8,
+                flexWrap: "wrap"
+              }}>
+                <button
+                  onClick={saveEvent}
+                  disabled={loading}
+                  style={{
+                    background: loading ? "rgba(255,255,255,0.1)" : "linear-gradient(135deg, #667eea, #764ba2)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    fontSize: 16,
+                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </button>
+
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    background: "rgba(255,255,255,0.05)",
+                    border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#fff",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  Cancel
+                </button>
+
+                {editingEvent && (
+                  <>
+                    <button
+                      onClick={() => {
+                        duplicateEvent(editingEvent);
+                        setShowModal(false);
+                      }}
+                      style={{
+                        background: "rgba(59, 130, 246, 0.1)",
+                        border: "1px solid rgba(59, 130, 246, 0.2)",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#60a5fa",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      📋 Duplicate
+                    </button>
+                    
+                    <button
+                      onClick={deleteEvent}
+                      style={{
+                        background: "rgba(239, 68, 68, 0.1)",
+                        border: "1px solid rgba(239, 68, 68, 0.2)",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#fca5a5",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </>
+                )}
               </div>
             </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>Start</label>
-              <input
-                type="datetime-local"
-                value={startTime}
-                onChange={e => setStartTime(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontSize: 15,
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", color: "rgba(255,255,255,0.7)", marginBottom: 8, fontSize: 14 }}>End</label>
-              <input
-                type="datetime-local"
-                value={endTime}
-                onChange={e => setEndTime(e.target.value)}
-                style={{
-                  width: "100%",
-                  padding: "12px",
-                  borderRadius: 8,
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  background: "rgba(255,255,255,0.05)",
-                  color: "#fff",
-                  fontSize: 15,
-                  boxSizing: "border-box"
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: 12 }}>
-              <button
-                onClick={saveEvent}
-                disabled={loading}
-                style={{
-                  flex: 1,
-                  background: "linear-gradient(135deg, #667eea, #764ba2)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 12,
-                  padding: "14px",
-                  fontWeight: 600,
-                  cursor: loading ? "not-allowed" : "pointer",
-                  fontSize: 16
-                }}
-              >
-                {loading ? "Saving..." : "Save"}
-              </button>
-
-              <button
-                onClick={() => setShowModal(false)}
-                style={{
-                  flex: 1,
-                  background: "rgba(255,255,255,0.05)",
-                  border: "1px solid rgba(255,255,255,0.1)",
-                  borderRadius: 12,
-                  padding: "14px",
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  color: "#fff",
-                  fontSize: 16
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-
-            {editingEvent && (
-              <button
-                onClick={deleteEvent}
-                style={{
-                  width: "100%",
-                  marginTop: 12,
-                  background: "rgba(239, 68, 68, 0.1)",
-                  border: "1px solid rgba(239, 68, 68, 0.2)",
-                  borderRadius: 12,
-                  padding: "14px",
-                  cursor: "pointer",
-                  color: "#fca5a5",
-                  fontWeight: 600,
-                  fontSize: 16
-                }}
-              >
-                Delete Event
-              </button>
-            )}
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function Overlay({ title, onClose, children }) {
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0, 0, 0, 0.8)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 100,
+      padding: 20
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "rgba(15, 12, 41, 0.98)",
+        width: "100%",
+        maxWidth: 440,
+        maxHeight: "85vh",
+        borderRadius: 20,
+        overflow: "hidden",
+        boxShadow: "0 25px 50px rgba(0,0,0,0.5)",
+        border: "1px solid rgba(255,255,255,0.1)"
+      }}>
+        <div style={{
+          padding: "20px 24px",
+          borderBottom: "1px solid rgba(255,255,255,0.05)",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#fff" }}>
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "rgba(255,255,255,0.1)",
+              fontSize: 18,
+              cursor: "pointer",
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              transition: "all 0.2s ease"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ padding: "4px 24px 24px", overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
+          {children}
+        </div>
+      </div>
     </div>
   );
 }
