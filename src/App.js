@@ -11,6 +11,7 @@ import {
   doc,
   serverTimestamp,
   Timestamp,
+  orderBy,
 } from "firebase/firestore";
 import { db } from "./firebase";
 
@@ -21,75 +22,49 @@ const DAY_WIDTH = 1440 * PIXELS_PER_MINUTE;
 const SNAP_MINUTES = 15;
 const MIN_EVENT_DURATION = 15;
 
-const CATEGORY_COLORS = {
-  Work: { bg: "linear-gradient(135deg, #667eea, #764ba2)", dot: "#667eea", light: "#eef2ff", text: "#4338ca" },
-  Personal: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", dot: "#43e97b", light: "#ecfdf5", text: "#065f46" },
-  Meeting: { bg: "linear-gradient(135deg, #fa709a, #fee140)", dot: "#fa709a", light: "#fef3c7", text: "#92400e" },
-  Event: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", dot: "#4facfe", light: "#dbeafe", text: "#075985" },
-  Other: { bg: "linear-gradient(135deg, #a8edea, #fed6e3)", dot: "#a8edea", light: "#fce7f3", text: "#9f1239" },
+const EVENT_COLORS = {
+  purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea" },
+  blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe" },
+  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b" },
+  orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a" },
+  red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb" },
 };
 
-const CATEGORIES = Object.keys(CATEGORY_COLORS);
-
-const SVGIcon = ({ type }) => {
-  const icons = {
-    plus: <path d="M12 5v14m-7-7h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>,
-    calendar: <><rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="2"/></>,
-    settings: <><circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-1.8 1.8l-4.2 4.2m13.2-5.2l-6 0m-6 0l-6 0m13.2 5.2l-4.2-4.2m-1.8-1.8l-4.2-4.2" stroke="currentColor" strokeWidth="2"/></>,
-    trash: <><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" strokeWidth="2" fill="none"/></>,
-    close: <path d="M18 6L6 18M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>,
-    note: <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8zM14 2v6h6M16 13H8m8 4H8m2-8H8" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>,
-    search: <><circle cx="11" cy="11" r="8" stroke="currentColor" strokeWidth="2" fill="none"/><path d="M21 21l-4.35-4.35" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>,
-    chevronLeft: <path d="M15 18l-6-6 6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
-    chevronRight: <path d="M9 18l6-6-6-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
-    users: <><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 108 0 4 4 0 00-8 0M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>,
-    analytics: <><path d="M18 20V10M12 20V4M6 20v-6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></>,
-  };
-  
-  return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" style={{ display: 'block' }}>
-      {icons[type]}
-    </svg>
-  );
-};
+const CATEGORIES = ["Work", "Personal", "Meeting", "Event", "Other"];
 
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
-  
+
   const [user, setUser] = useState(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [now, setNow] = useState(() => new Date());
   const [spaceId, setSpaceId] = useState(PERSONAL_SPACE_ID);
   const [familySpaceId, setFamilySpaceId] = useState(null);
-  const [inviteCode, setInviteCode] = useState("");
+
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
-  const [todos, setTodos] = useState([]);
+  const [activityLogs, setActivityLogs] = useState([]);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
+
+  const [showActivityOverlay, setShowActivityOverlay] = useState(false);
   const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [showTodoPanel, setShowTodoPanel] = useState(false);
+
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [eventColor, setEventColor] = useState("purple");
   const [eventCategory, setEventCategory] = useState("Personal");
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [filterCategory, setFilterCategory] = useState("All");
+
   const [viewMode, setViewMode] = useState("day");
-  
-  const [darkMode, setDarkMode] = useState(() => {
-    const saved = localStorage.getItem('darkMode');
-    return saved ? JSON.parse(saved) : false;
-  });
-  
-  const [use24Hour, setUse24Hour] = useState(() => {
-    const saved = localStorage.getItem('use24Hour');
-    return saved ? JSON.parse(saved) : false;
-  });
 
   const [weekStartsOnMonday, setWeekStartsOnMonday] = useState(() => {
     const saved = localStorage.getItem('weekStartsOnMonday');
@@ -102,8 +77,6 @@ export default function App() {
   const [dragOffset, setDragOffset] = useState(0);
   const [dragStartX, setDragStartX] = useState(0);
   const [previewTimes, setPreviewTimes] = useState(null);
-  const [todoInput, setTodoInput] = useState("");
-  
   const timelineRef = useRef(null);
   const isSavingRef = useRef(false);
   const previewTimesRef = useRef(null);
@@ -111,83 +84,190 @@ export default function App() {
   const currentEndMinutesRef = useRef(null);
 
   useEffect(() => {
-    setPersistence(auth, browserLocalPersistence).catch(err => console.error("Auth error:", err));
+    setPersistence(auth, browserLocalPersistence).catch(err => {
+      console.error("Auth persistence error:", err);
+    });
+
     const unsubscribe = auth.onAuthStateChanged(setUser);
     return () => unsubscribe();
   }, []);
-  
+
   useEffect(() => {
-    const interval = setInterval(() => setNow(new Date()), 60000);
-    return () => clearInterval(interval);
+    const nowInterval = setInterval(() => {
+      setNow(new Date());
+    }, 60000);
+
+    const scheduleMidnightUpdate = () => {
+      const currentTime = new Date();
+      const nextMidnight = new Date(
+        currentTime.getFullYear(),
+        currentTime.getMonth(),
+        currentTime.getDate() + 1,
+        0, 0, 1, 0
+      );
+
+      const msUntilMidnight = nextMidnight.getTime() - currentTime.getTime();
+
+      return setTimeout(() => {
+        const newDate = new Date();
+        setCurrentDate(newDate);
+        setNow(newDate);
+        scheduleMidnightUpdate();
+      }, msUntilMidnight);
+    };
+
+    const midnightTimer = scheduleMidnightUpdate();
+
+    return () => {
+      clearInterval(nowInterval);
+      clearTimeout(midnightTimer);
+    };
   }, []);
 
-  useEffect(() => {
-    const savedTodos = localStorage.getItem('todos');
-    if (savedTodos) setTodos(JSON.parse(savedTodos));
-  }, []);
+  const scrollToCurrentTime = () => {
+    if (viewMode === "day") {
+      setTimeout(() => {
+        const timeline = timelineRef.current;
+        if (timeline) {
+          const startOfDay = new Date(currentDate);
+          startOfDay.setHours(0, 0, 0, 0);
+          const nowPosition = ((now - startOfDay) / 60000) * PIXELS_PER_MINUTE;
+          timeline.scrollTo({
+            left: nowPosition - (window.innerWidth / 2),
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
+    }
+  };
 
   useEffect(() => {
-    localStorage.setItem('todos', JSON.stringify(todos));
-  }, [todos]);
-
-  useEffect(() => {
-    localStorage.setItem('darkMode', JSON.stringify(darkMode));
-  }, [darkMode]);
-
-  useEffect(() => {
-    localStorage.setItem('use24Hour', JSON.stringify(use24Hour));
-  }, [use24Hour]);
-
-  useEffect(() => {
-    localStorage.setItem('weekStartsOnMonday', JSON.stringify(weekStartsOnMonday));
-  }, [weekStartsOnMonday]);
+    const isToday = currentDate.toDateString() === now.toDateString();
+    if (isToday && viewMode === "day" && !isSavingRef.current) {
+      scrollToCurrentTime();
+    }
+  }, [currentDate, viewMode]);
 
   const loadEvents = async () => {
     if (!user || !spaceId) return;
+
     try {
       setLoading(true);
-      const activeQ = query(collection(db, "events"), where("spaceId", "==", spaceId), where("deleted", "==", false));
-      const deletedQ = query(collection(db, "events"), where("spaceId", "==", spaceId), where("deleted", "==", true));
-      const [activeSnap, deletedSnap] = await Promise.all([getDocs(activeQ), getDocs(deletedQ)]);
-      setEvents(activeSnap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() })));
-      setDeletedEvents(deletedSnap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime?.toDate(), end: d.data().endTime?.toDate() })));
+      setError(null);
+
+      const activeQ = query(
+        collection(db, "events"),
+        where("spaceId", "==", spaceId),
+        where("deleted", "==", false)
+      );
+
+      const deletedQ = query(
+        collection(db, "events"),
+        where("spaceId", "==", spaceId),
+        where("deleted", "==", true)
+      );
+
+      const [activeSnap, deletedSnap] = await Promise.all([
+        getDocs(activeQ),
+        getDocs(deletedQ),
+      ]);
+
+      setEvents(
+        activeSnap.docs.map(d => ({
+          id: d.id,
+          ...d.data(),
+          start: d.data().startTime.toDate(),
+          end: d.data().endTime.toDate(),
+        }))
+      );
+
+      setDeletedEvents(
+        deletedSnap.docs.map(d => ({ 
+          id: d.id, 
+          ...d.data(),
+          start: d.data().startTime?.toDate(),
+          end: d.data().endTime?.toDate(),
+        }))
+      );
     } catch (err) {
-      setError("Failed to load events");
+      console.error("Error loading events:", err);
+      setError("Failed to load events. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
+  const loadActivity = async () => {
+    if (!user || !spaceId) return;
+
+    try {
+      const q = query(
+        collection(db, "activityLogs"),
+        where("spaceId", "==", spaceId),
+        orderBy("createdAt", "desc")
+      );
+
+      const snap = await getDocs(q);
+      setActivityLogs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+    } catch (err) {
+      console.error("Error loading activity:", err);
+    }
+  };
+
   useEffect(() => {
     loadEvents();
+    loadActivity();
   }, [user, spaceId]);
+
+  useEffect(() => {
+    localStorage.setItem('weekStartsOnMonday', JSON.stringify(weekStartsOnMonday));
+  }, [weekStartsOnMonday]);
+
+  const logActivity = async (action, eventId) => {
+    try {
+      await addDoc(collection(db, "activityLogs"), {
+        action,
+        eventId,
+        spaceId,
+        userEmail: user.email,
+        createdAt: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Error logging activity:", err);
+    }
+  };
 
   const createFamilySpace = async () => {
     try {
-      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       const ref = await addDoc(collection(db, "spaces"), {
         name: "Family",
         ownerId: user.uid,
         members: [user.uid],
         type: "shared",
-        inviteCode: code,
         createdAt: serverTimestamp(),
       });
       setFamilySpaceId(ref.id);
       setSpaceId(ref.id);
-      setInviteCode(code);
-      setShowInviteModal(true);
     } catch (err) {
-      setError("Failed to create family space");
+      console.error("Error creating family space:", err);
+      setError("Failed to create family space.");
     }
   };
 
-  const formatTime = d => use24Hour ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: true });
-
+  const openNewEvent = () => {
   const openNewEvent = (presetStart = null, presetEnd = null) => {
     setEditingEvent(null);
     setTitle("");
+    setEventColor("purple");
     setEventCategory("Personal");
+
+    const start = new Date(currentDate);
+    start.setHours(now.getHours(), 0, 0, 0);
+    const end = new Date(start);
+    end.setHours(start.getHours() + 1);
+    
+    setStartTime(start.toISOString().slice(0, 16));
+    setEndTime(end.toISOString().slice(0, 16));
     if (presetStart && presetEnd) {
       setStartTime(presetStart.toISOString().slice(0, 16));
       setEndTime(presetEnd.toISOString().slice(0, 16));
@@ -196,6 +276,7 @@ export default function App() {
       start.setHours(now.getHours(), 0, 0, 0);
       const end = new Date(start);
       end.setHours(start.getHours() + 1);
+      
       setStartTime(start.toISOString().slice(0, 16));
       setEndTime(end.toISOString().slice(0, 16));
     }
@@ -205,75 +286,510 @@ export default function App() {
   const openEditEvent = ev => {
     setEditingEvent(ev);
     setTitle(ev.title);
-    setEventCategory(ev.category || "Personal");
     setStartTime(ev.start.toISOString().slice(0, 16));
     setEndTime(ev.end.toISOString().slice(0, 16));
+    setEventColor(ev.color || "purple");
+    setEventCategory(ev.category || "Personal");
     setShowModal(true);
   };
 
+  const duplicateEvent = async (ev) => {
+    try {
+      const newStart = new Date(ev.start);
+      newStart.setDate(newStart.getDate() + 1);
+      const newEnd = new Date(ev.end);
+      newEnd.setDate(newEnd.getDate() + 1);
+
+      const ref = await addDoc(collection(db, "events"), {
+        spaceId,
+        title: ev.title + " (Copy)",
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+        color: ev.color || "purple",
+        category: ev.category || "Personal",
+        deleted: false,
+        createdAt: serverTimestamp(),
+      });
+      await logActivity("created", ref.id);
+      await loadEvents();
+      await loadActivity();
+    } catch (err) {
+      console.error("Error duplicating event:", err);
+      setError("Failed to duplicate event.");
+    }
+  };
+
   const saveEvent = async () => {
-    if (!title || !startTime || !endTime) return setError("Fill all fields");
+    if (!title || !startTime || !endTime) {
+      setError("Please fill in all fields.");
+      return;
+    }
+
     const startDate = new Date(startTime);
     const endDate = new Date(endTime);
-    if (endDate <= startDate) return setError("End must be after start");
+
+    if (endDate <= startDate) {
+      setError("End time must be after start time.");
+      return;
+    }
+
     try {
       setLoading(true);
+      setError(null);
+
       if (editingEvent) {
-        await updateDoc(doc(db, "events", editingEvent.id), { title, startTime: Timestamp.fromDate(startDate), endTime: Timestamp.fromDate(endDate), category: eventCategory });
+        await updateDoc(doc(db, "events", editingEvent.id), {
+          title,
+          startTime: Timestamp.fromDate(startDate),
+          endTime: Timestamp.fromDate(endDate),
+          color: eventColor,
+          category: eventCategory,
+        });
+        await logActivity("updated", editingEvent.id);
       } else {
-        await addDoc(collection(db, "events"), { spaceId, title, startTime: Timestamp.fromDate(startDate), endTime: Timestamp.fromDate(endDate), category: eventCategory, deleted: false, createdAt: serverTimestamp() });
+        const ref = await addDoc(collection(db, "events"), {
+          spaceId,
+          title,
+          startTime: Timestamp.fromDate(startDate),
+          endTime: Timestamp.fromDate(endDate),
+          color: eventColor,
+          category: eventCategory,
+          deleted: false,
+          createdAt: serverTimestamp(),
+        });
+        await logActivity("created", ref.id);
       }
+
       setShowModal(false);
       await loadEvents();
+      await loadActivity();
     } catch (err) {
-      setError("Failed to save");
+      console.error("Error saving event:", err);
+      setError("Failed to save event. Please try again.");
     } finally {
       setLoading(false);
     }
   };
 
   const deleteEvent = async () => {
-    if (!editingEvent || !window.confirm("Delete?")) return;
+    if (!editingEvent) return;
+    if (!window.confirm("Are you sure you want to delete this event?")) return;
+
     try {
-      await updateDoc(doc(db, "events", editingEvent.id), { deleted: true, deletedAt: serverTimestamp() });
+      await updateDoc(doc(db, "events", editingEvent.id), {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+      });
+
+      await logActivity("deleted", editingEvent.id);
       setShowModal(false);
       await loadEvents();
+      await loadActivity();
     } catch (err) {
-      setError("Failed to delete");
+      console.error("Error deleting event:", err);
+      setError("Failed to delete event.");
     }
   };
 
   const restoreEvent = async ev => {
     try {
       await updateDoc(doc(db, "events", ev.id), { deleted: false });
+      await logActivity("restored", ev.id);
       await loadEvents();
+      await loadActivity();
     } catch (err) {
-      setError("Failed to restore");
+      console.error("Error restoring event:", err);
+      setError("Failed to restore event.");
     }
   };
 
-  const addTodo = () => {
-    if (!todoInput.trim()) return;
-    setTodos([...todos, { id: Date.now(), text: todoInput, done: false }]);
-    setTodoInput("");
-  };
-
-  const toggleTodo = id => setTodos(todos.map(t => t.id === id ? { ...t, done: !t.done } : t));
-  const deleteTodo = id => setTodos(todos.filter(t => t.id !== id));
-
-  const goToToday = () => setCurrentDate(new Date());
-  const goToPreviousDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() - 1); setCurrentDate(d); };
-  const goToNextDay = () => { const d = new Date(currentDate); d.setDate(d.getDate() + 1); setCurrentDate(d); };
-  
-  const getEventsForDate = date => date ? events.filter(ev => ev.start.toDateString() === date.toDateString()) : [];
+  const formatTime = d => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 
   const today = currentDate;
   const startOfDay = new Date(today);
   startOfDay.setHours(0, 0, 0, 0);
   const toLeft = d => ((d - startOfDay) / 60000) * PIXELS_PER_MINUTE;
+
+  const handleTimelineClick = (e) => {
+    if (draggingEvent || resizingEvent) return;
+    
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+    
+    const rect = timeline.getBoundingClientRect();
+    const scrollLeft = timeline.scrollLeft;
+    const clickX = e.clientX - rect.left + scrollLeft;
+    
+    const minutes = Math.round((clickX / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
+    const clampedMinutes = Math.max(0, Math.min(minutes, 1440 - 60));
+    
+    const startDate = new Date(startOfDay.getTime() + clampedMinutes * 60000);
+    const endDate = new Date(startDate.getTime() + 60 * 60000);
+    
+    openNewEvent(startDate, endDate);
+  };
+
+  const handleResizeStart = (e, ev, handle) => {
+    e.stopPropagation();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+
+    setResizingEvent(ev);
+    setResizeHandle(handle);
+    setDragStartX(clientX);
+
+    const startMinutes = ((ev.start - startOfDay) / 60000);
+    const endMinutes = ((ev.end - startOfDay) / 60000);
+    currentStartMinutesRef.current = startMinutes;
+    currentEndMinutesRef.current = endMinutes;
+
+    const times = { start: ev.start, end: ev.end };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleResizeMove = (e) => {
+    if (!resizingEvent) return;
+
+    e.preventDefault();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+
+    const mouseX = clientX - rect.left + scrollLeft;
+    const minutes = mouseX / PIXELS_PER_MINUTE;
+    const snappedMinutes = Math.round(minutes / SNAP_MINUTES) * SNAP_MINUTES;
+
+    let newStartMinutes, newEndMinutes;
+
+    if (resizeHandle === 'left') {
+      const maxStartMinutes = currentEndMinutesRef.current - MIN_EVENT_DURATION;
+      newStartMinutes = Math.max(0, Math.min(snappedMinutes, maxStartMinutes));
+      newEndMinutes = currentEndMinutesRef.current;
+    } else {
+      const minEndMinutes = currentStartMinutesRef.current + MIN_EVENT_DURATION;
+      newStartMinutes = currentStartMinutesRef.current;
+      newEndMinutes = Math.max(minEndMinutes, Math.min(snappedMinutes, 1440));
+    }
+
+    currentStartMinutesRef.current = newStartMinutes;
+    currentEndMinutesRef.current = newEndMinutes;
+
+    const newLeft = newStartMinutes * PIXELS_PER_MINUTE;
+    const newWidth = (newEndMinutes - newStartMinutes) * PIXELS_PER_MINUTE;
+
+    const eventElement = document.querySelector(`[data-event-id="${resizingEvent.id}"]`);
+    if (eventElement) {
+      eventElement.style.left = `${newLeft}px`;
+      eventElement.style.width = `${newWidth}px`;
+      eventElement.style.opacity = '0.7';
+    }
+
+    const newStart = new Date(startOfDay.getTime() + newStartMinutes * 60000);
+    const newEnd = new Date(startOfDay.getTime() + newEndMinutes * 60000);
+    const times = { start: newStart, end: newEnd };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleResizeEnd = async (e) => {
+    if (!resizingEvent || !previewTimesRef.current) {
+      return;
+    }
+
+    const currentScrollPosition = timelineRef.current?.scrollLeft;
+    isSavingRef.current = true;
+
+    const newStart = previewTimesRef.current.start;
+    const newEnd = previewTimesRef.current.end;
+
+    console.log("=== RESIZE END ===");
+    console.log("Event:", resizingEvent.title);
+    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
+    
+    try {
+      await updateDoc(doc(db, "events", resizingEvent.id), {
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+      });
+
+      await logActivity("updated", resizingEvent.id);
+      await loadEvents();
+      await loadActivity();
+
+      setTimeout(() => {
+        if (timelineRef.current && currentScrollPosition !== null) {
+          timelineRef.current.scrollLeft = currentScrollPosition;
+        }
+        isSavingRef.current = false;
+      }, 50);
+
+    } catch (err) {
+      console.error("Error updating event:", err);
+      setError("Failed to resize event: " + err.message);
+      await loadEvents();
+      isSavingRef.current = false;
+    }
+
+    setResizingEvent(null);
+    setResizeHandle(null);
+    setDragStartX(0);
+    setPreviewTimes(null);
+    previewTimesRef.current = null;
+    currentStartMinutesRef.current = null;
+    currentEndMinutesRef.current = null;
+  };
+
+  const handleDragStart = (e, ev) => {
+    e.stopPropagation();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+
+    setDraggingEvent(ev);
+    setDragStartX(clientX);
+
+    const eventLeft = toLeft(ev.start);
+    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
+    setDragOffset(mousePositionInTimeline - eventLeft);
+
+    const startMinutes = ((ev.start - startOfDay) / 60000);
+    const endMinutes = ((ev.end - startOfDay) / 60000);
+    currentStartMinutesRef.current = startMinutes;
+    currentEndMinutesRef.current = endMinutes;
+
+    const times = { start: ev.start, end: ev.end };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleDragMove = (e) => {
+    if (!draggingEvent) return;
+
+    e.preventDefault();
+    const timeline = timelineRef.current;
+    if (!timeline) return;
+
+    const rect = timeline.getBoundingClientRect();
+    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
+    const scrollLeft = timeline.scrollLeft;
+
+    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
+    let newLeft = mousePositionInTimeline - dragOffset;
+
+    const durationMinutes = currentEndMinutesRef.current - currentStartMinutesRef.current;
+
+    const newStartMinutes = Math.round((newLeft / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
+
+    const clampedStartMinutes = Math.max(0, Math.min(newStartMinutes, 1440 - durationMinutes));
+    const clampedEndMinutes = clampedStartMinutes + durationMinutes;
+
+    currentStartMinutesRef.current = clampedStartMinutes;
+    currentEndMinutesRef.current = clampedEndMinutes;
+
+    const snappedLeft = clampedStartMinutes * PIXELS_PER_MINUTE;
+    const width = durationMinutes * PIXELS_PER_MINUTE;
+
+    const eventElement = document.querySelector(`[data-event-id="${draggingEvent.id}"]`);
+    if (eventElement) {
+      eventElement.style.left = `${snappedLeft}px`;
+      eventElement.style.width = `${width}px`;
+      eventElement.style.opacity = '0.7';
+      eventElement.style.cursor = 'grabbing';
+    }
+
+    const newStart = new Date(startOfDay.getTime() + clampedStartMinutes * 60000);
+    const newEnd = new Date(startOfDay.getTime() + clampedEndMinutes * 60000);
+    const times = { start: newStart, end: newEnd };
+    setPreviewTimes(times);
+    previewTimesRef.current = times;
+  };
+
+  const handleDragEnd = async (e) => {
+    if (!draggingEvent || !previewTimesRef.current) {
+      return;
+    }
+
+    const currentScrollPosition = timelineRef.current?.scrollLeft;
+    isSavingRef.current = true;
+
+    const newStart = previewTimesRef.current.start;
+    const newEnd = previewTimesRef.current.end;
+
+    console.log("=== DRAG END ===");
+    console.log("Event:", draggingEvent.title);
+    console.log("New times:", formatTime(newStart), "–", formatTime(newEnd));
+    
+    try {
+      await updateDoc(doc(db, "events", draggingEvent.id), {
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+      });
+
+      await logActivity("updated", draggingEvent.id);
+      await loadEvents();
+      await loadActivity();
+
+      setTimeout(() => {
+        if (timelineRef.current && currentScrollPosition !== null) {
+          timelineRef.current.scrollLeft = currentScrollPosition;
+        }
+        isSavingRef.current = false;
+      }, 50);
+
+    } catch (err) {
+      console.error("Error updating event:", err);
+      setError("Failed to reschedule event: " + err.message);
+      await loadEvents();
+      isSavingRef.current = false;
+    }
+
+    setDraggingEvent(null);
+    setDragOffset(0);
+    setDragStartX(0);
+    setPreviewTimes(null);
+    previewTimesRef.current = null;
+    currentStartMinutesRef.current = null;
+    currentEndMinutesRef.current = null;
+  };
+
+  useEffect(() => {
+    if (draggingEvent || resizingEvent) {
+      const handleMove = (e) => {
+        if (draggingEvent) handleDragMove(e);
+        if (resizingEvent) handleResizeMove(e);
+      };
+      const handleEnd = (e) => {
+        if (draggingEvent) handleDragEnd(e);
+        if (resizingEvent) handleResizeEnd(e);
+      };
+
+      document.addEventListener('mousemove', handleMove);
+      document.addEventListener('mouseup', handleEnd);
+      document.addEventListener('touchmove', handleMove, { passive: false });
+      document.addEventListener('touchend', handleEnd);
+
+      return () => {
+        document.removeEventListener('mousemove', handleMove);
+        document.removeEventListener('mouseup', handleEnd);
+        document.removeEventListener('touchmove', handleMove);
+        document.removeEventListener('touchend', handleEnd);
+      };
+    }
+  }, [draggingEvent, resizingEvent, dragOffset]);
+
+  const goToPreviousDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 1);
+    setCurrentDate(newDate);
+  };
+
+  const goToNextDay = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 1);
+    setCurrentDate(newDate);
+  };
+
+  const goToPreviousWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() - 7);
+    setCurrentDate(newDate);
+  };
+
+  const goToNextWeek = () => {
+    const newDate = new Date(currentDate);
+    newDate.setDate(newDate.getDate() + 7);
+    setCurrentDate(newDate);
+  };
+
+  const goToPreviousMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setCurrentDate(newDate);
+  };
+
+  const goToNextMonth = () => {
+    const newDate = new Date(currentDate);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setCurrentDate(newDate);
+  };
+
+  const goToToday = () => {
+    setCurrentDate(new Date());
+    setTimeout(() => scrollToCurrentTime(), 100);
+  };
+
+  const goToDate = (date) => {
+    setCurrentDate(date);
+    setViewMode("day");
+  };
+
+  const getWeekDays = (date) => {
+    const days = [];
+    const current = new Date(date);
+    let dayOfWeek = current.getDay();
+
+    if (weekStartsOnMonday) {
+      dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    }
+
+    const startOfWeek = new Date(current);
+    startOfWeek.setDate(current.getDate() - dayOfWeek);
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startOfWeek);
+      day.setDate(startOfWeek.getDate() + i);
+      days.push(day);
+    }
+
+    return days;
+  };
+
+  const weekday = today.toLocaleDateString(undefined, { weekday: "long" });
+  const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
+
   const nowLeft = toLeft(now);
   const isToday = today.toDateString() === now.toDateString();
 
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    let startingDayOfWeek = firstDay.getDay();
+
+    if (weekStartsOnMonday) {
+      startingDayOfWeek = startingDayOfWeek === 0 ? 6 : startingDayOfWeek - 1;
+    }
+
+    const days = [];
+
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      days.push(new Date(year, month, day));
+    }
+
+    return days;
+  };
+
+  const weekDayHeaders = weekStartsOnMonday 
+    ? ["M", "T", "W", "T", "F", "S", "S"]
+    : ["S", "M", "T", "W", "T", "F", "S"];
+
+  const monthDays = getDaysInMonth(currentDate);
+  const weekDays = getWeekDays(currentDate);
+  const dayEvents = events.filter(ev => ev.start.toDateString() === today.toDateString());
+  
   const filteredEvents = events.filter(ev => {
     const matchesSearch = ev.title.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = filterCategory === "All" || ev.category === filterCategory;
@@ -281,6 +797,7 @@ export default function App() {
   });
   
   const dayEvents = filteredEvents.filter(ev => ev.start.toDateString() === today.toDateString());
+
   const stacked = [];
   dayEvents.forEach(ev => {
     let row = 0;
@@ -288,239 +805,680 @@ export default function App() {
     stacked.push({ ...ev, row });
   });
 
-  const handleTimelineClick = e => {
-    if (draggingEvent || resizingEvent) return;
-    const timeline = timelineRef.current;
-    if (!timeline) return;
-    const rect = timeline.getBoundingClientRect();
-    const scrollLeft = timeline.scrollLeft;
-    const clickX = e.clientX - rect.left + scrollLeft;
-    const minutes = Math.round((clickX / PIXELS_PER_MINUTE) / SNAP_MINUTES) * SNAP_MINUTES;
-    const clampedMinutes = Math.max(0, Math.min(minutes, 1440 - 60));
-    const startDate = new Date(startOfDay.getTime() + clampedMinutes * 60000);
-    const endDate = new Date(startDate.getTime() + 60 * 60000);
-    openNewEvent(startDate, endDate);
-  };
-
-  const handleResizeStart = (e, ev, handle) => {
-    e.stopPropagation();
-    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    setResizingEvent(ev);
-    setResizeHandle(handle);
-    setDragStartX(clientX);
-    const startMinutes = ((ev.start - startOfDay) / 60000);
-    const endMinutes = ((ev.end - startOfDay) / 60000);
-    currentStartMinutesRef.current = startMinutes;
-    currentEndMinutesRef.current = endMinutes;
-    const times = { start: ev.start, end: ev.end };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
-  };
-
-  const handleDragStart = (e, ev) => {
-    e.stopPropagation();
-    const timeline = timelineRef.current;
-    if (!timeline) return;
-    const rect = timeline.getBoundingClientRect();
-    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-    const scrollLeft = timeline.scrollLeft;
-    setDraggingEvent(ev);
-    setDragStartX(clientX);
-    const eventLeft = toLeft(ev.start);
-    const mousePositionInTimeline = clientX - rect.left + scrollLeft;
-    setDragOffset(mousePositionInTimeline - eventLeft);
-    const startMinutes = ((ev.start - startOfDay) / 60000);
-    const endMinutes = ((ev.end - startOfDay) / 60000);
-    currentStartMinutesRef.current = startMinutes;
-    currentEndMinutesRef.current = endMinutes;
-    const times = { start: ev.start, end: ev.end };
-    setPreviewTimes(times);
-    previewTimesRef.current = times;
-  };
-
-  useEffect(() => {
-    if (draggingEvent || resizingEvent) {
-      const handleMove = () => {};
-      const handleEnd = async () => {
-        if (!previewTimesRef.current) return;
-        isSavingRef.current = true;
-        const newStart = previewTimesRef.current.start;
-        const newEnd = previewTimesRef.current.end;
-        try {
-          await updateDoc(doc(db, "events", (draggingEvent || resizingEvent).id), {
-            startTime: Timestamp.fromDate(newStart),
-            endTime: Timestamp.fromDate(newEnd),
-          });
-          await loadEvents();
-        } catch (err) {
-          setError("Failed to update");
-        }
-        isSavingRef.current = false;
-        setDraggingEvent(null);
-        setResizingEvent(null);
-        setPreviewTimes(null);
-        previewTimesRef.current = null;
-      };
-      document.addEventListener('mouseup', handleEnd);
-      document.addEventListener('touchend', handleEnd);
-      return () => {
-        document.removeEventListener('mouseup', handleEnd);
-        document.removeEventListener('touchend', handleEnd);
-      };
-    }
-  }, [draggingEvent, resizingEvent]);
-
-  const monthYear = today.toLocaleDateString(undefined, { month: "long", year: "numeric" });
-  const dayName = today.toLocaleDateString(undefined, { weekday: "long" });
-  const dayDate = today.toLocaleDateString(undefined, { day: "2-digit", month: "short" });
+  const actionEmoji = action => ({
+    created: "🟢", updated: "🟡", deleted: "🔴", restored: "🟣"
+  }[action] || "⚪");
 
   if (!user) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: darkMode ? "linear-gradient(135deg, #0f0c29, #302b63, #24243e)" : "#f8f9fa", fontFamily: "system-ui, sans-serif", padding: 20 }}>
-        <div style={{ textAlign: "center", background: "#fff", padding: "48px 32px", borderRadius: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.15)", maxWidth: 400 }}>
-          <h1 style={{ margin: "0 0 8px 0", fontSize: 32, fontWeight: 700, background: "linear-gradient(135deg, #667eea, #764ba2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Timeline Calendar</h1>
-          <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 16 }}>Linear calendar for the future</p>
-          <button onClick={() => signInWithPopup(auth, provider)} style={{ background: "linear-gradient(135deg, #667eea, #764ba2)", color: "#fff", border: "none", borderRadius: 12, padding: "14px 28px", fontSize: 16, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)" }}>Sign in with Google</button>
+      <div style={{ 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+        padding: 20
+      }}>
+        <div style={{ textAlign: "center", background: "rgba(255,255,255,0.98)", padding: "48px 32px", borderRadius: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxWidth: 400 }}>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+          <h1 style={{ margin: "0 0 8px 0", fontSize: 32, fontWeight: 700, background: "linear-gradient(135deg, #667eea, #764ba2)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Timeline</h1>
+          <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 16 }}>Your life, beautifully organized</p>
+          <button 
+            onClick={() => signInWithPopup(auth, provider)}
+            style={{
+              background: "linear-gradient(135deg, #667eea, #764ba2)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              padding: "14px 28px",
+              fontSize: 16,
+              fontWeight: 600,
+              cursor: "pointer",
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.4)",
+              transition: "all 0.3s ease"
+            }}
+            onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+            onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+          >
+            Sign in with Google
+          </button>
         </div>
       </div>
     );
   }
 
-  const bgColor = darkMode ? "linear-gradient(135deg, #0f0c29, #302b63, #24243e)" : "#f8f9fa";
-  const cardBg = darkMode ? "rgba(255,255,255,0.05)" : "#fff";
-  const textColor = darkMode ? "#fff" : "#1f2937";
-  const borderColor = darkMode ? "rgba(255,255,255,0.1)" : "#e5e7eb";
-  const inputBg = darkMode ? "rgba(255,255,255,0.05)" : "#fff";
-  const mutedText = darkMode ? "rgba(255,255,255,0.6)" : "#6b7280";
-
   return (
-    <div style={{ minHeight: "100vh", background: bgColor, fontFamily: "system-ui, sans-serif", color: textColor }}>
-      <style>{`
-        * { -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.15); } }
-        .today-pulse { animation: pulse 2s ease-in-out infinite; }
-        .timeline-scroll { -webkit-overflow-scrolling: touch; overflow-x: auto; }
-        .timeline-scroll::-webkit-scrollbar { display: none; }
-        .timeline-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-        .resize-handle { position: absolute; top: 0; bottom: 0; width: 12px; cursor: ew-resize; z-index: 10; }
-        .resize-handle-left { left: 0; }
-        .resize-handle-right { right: 0; }
-      `}</style>
+    <div style={{ 
+      minHeight: "100vh",
+      background: "#f8fafc",
+      fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+      paddingBottom: "24px"
+    }}>
+      <style>
+{`
+@keyframes pulse {
+  0%, 100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% { 
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+}
 
-      {/* HEADER */}
-      <div style={{ background: cardBg, borderBottom: `1px solid ${borderColor}`, padding: "24px 32px" }}>
+@keyframes glow {
+  0%, 100% {
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.2);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.4);
+  }
+}
+
+@keyframes dayPulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+  50% {
+    transform: scale(1.05);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+  }
+}
+
+.timeline-scroll {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+}
+
+.timeline-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.timeline-scroll::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 10px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  borderRadius: 10px;
+}
+
+.timeline-scroll::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
+input, button {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.event-card {
+  touch-action: none;
+}
+
+.resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: background 0.2s ease;
+}
+
+.resize-handle:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.resize-handle-left {
+  left: 0;
+  border-radius: 12px 0 0 12px;
+}
+
+.resize-handle-right {
+  right: 0;
+  border-radius: 0 12px 12px 0;
+}
+
+.current-day-pulse {
+  animation: dayPulse 2s ease-in-out infinite;
+}
+
+div::-webkit-scrollbar {
+  display: none;
+}
+`}
+</style>
+
+      {previewTimes && (draggingEvent || resizingEvent) && (
+{previewTimes && (draggingEvent || resizingEvent) && (
+        <div style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          background: "linear-gradient(135deg, #667eea, #764ba2)",
+          color: "#fff",
+          padding: "16px 24px",
+          borderRadius: 16,
+          boxShadow: "0 20px 60px rgba(0,0,0,0.4)",
+          zIndex: 1000,
+          pointerEvents: "none",
+          fontWeight: 600,
+          fontSize: 18,
+          textAlign: "center",
+          backdropFilter: "blur(10px)",
+          border: "2px solid rgba(255,255,255,0.2)"
+        }}>
+          <div style={{ fontSize: 14, opacity: 0.9, marginBottom: 8 }}>
+            {resizingEvent ? "Resizing" : "Moving"}
+          </div>
+          <div style={{ fontSize: 20, fontWeight: 700 }}>
+            {formatTime(previewTimes.start)} – {formatTime(previewTimes.end)}
+          </div>
+          <div style={{ fontSize: 13, opacity: 0.85, marginTop: 6 }}>
+            {Math.round((previewTimes.end - previewTimes.start) / 60000)} minutes
+          </div>
+        </div>
+      )}
+
+      <div style={{
+        background: "rgba(255, 255, 255, 0.95)",
+        backdropFilter: "blur(20px)",
+        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        padding: "16px 20px",
+        position: "sticky",
+        top: 0,
+        zIndex: 50,
+        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+      }}>
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
-              <h1 style={{ margin: "0 0 4px 0", fontSize: 24, fontWeight: 700 }}>Welcome, {user.displayName || user.email?.split('@')[0] || 'User'}</h1>
-              <p style={{ margin: 0, color: mutedText, fontSize: 14 }}>{monthYear}</p>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+                Welcome, {user.displayName}
+              </h2>
+              <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+                {monthYear}
+              </p>
             </div>
-            <button onClick={() => signOut(auth)} style={{ background: "transparent", border: "1px solid" + borderColor, borderRadius: 8, padding: "8px 16px", cursor: "pointer", color: mutedText, fontSize: 14, fontWeight: 500 }}>
+            <button
+              onClick={() => signOut(auth)}
+              style={{
+                background: "transparent",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "8px 14px",
+                cursor: "pointer",
+                fontSize: 14,
+                color: "#64748b",
+                fontWeight: 500,
+                transition: "all 0.2s ease"
+              }}
+            >
               Sign out
             </button>
           </div>
 
-          {/* Search */}
-          <div style={{ position: "relative", marginBottom: 16 }}>
-            <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: mutedText }}>
-              <SVGIcon type="search" />
+          {error && (
+            <div style={{
+              padding: "12px 16px",
+              background: "#fef2f2",
+              border: "1px solid #fecaca",
+              borderRadius: 10,
+              color: "#991b1b",
+              marginBottom: 16,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              fontSize: 14
+            }}>
+              <span>{error}</span>
+              <button 
+                onClick={() => setError(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 18,
+                  color: "#991b1b",
+                  padding: 4
+                }}
+              >
+                ✕
+              </button>
             </div>
+          )}
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto" }}>
+          <div style={{ marginBottom: 16 }}>
             <input
               type="text"
-              placeholder="Search events..."
+              placeholder="🔍 Search events..."
               value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{ width: "100%", padding: "12px 12px 12px 44px", borderRadius: 10, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 15, outline: "none", transition: "border 0.2s" }}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "12px 16px",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                fontSize: 15,
+                fontFamily: "inherit",
+                outline: "none",
+                transition: "border 0.2s ease",
+                boxSizing: "border-box"
+              }}
               onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
-              onBlur={e => e.currentTarget.style.borderColor = borderColor}
+              onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
             />
           </div>
 
-          {/* Space & Category Filters */}
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-            <button onClick={() => setSpaceId(PERSONAL_SPACE_ID)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: spaceId === PERSONAL_SPACE_ID ? "linear-gradient(135deg, #667eea, #764ba2)" : inputBg, color: spaceId === PERSONAL_SPACE_ID ? "#fff" : textColor, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: spaceId === PERSONAL_SPACE_ID ? "0 2px 8px rgba(102, 126, 234, 0.3)" : "none" }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, overflowX: "auto", flexWrap: "wrap" }}>
+            <button
+              onClick={() => setSpaceId(PERSONAL_SPACE_ID)}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: spaceId === PERSONAL_SPACE_ID 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: spaceId === PERSONAL_SPACE_ID ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: spaceId === PERSONAL_SPACE_ID ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
               Personal
             </button>
-            <button onClick={() => familySpaceId ? setSpaceId(familySpaceId) : createFamilySpace()} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${borderColor}`, background: spaceId === familySpaceId ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent", color: spaceId === familySpaceId ? "#fff" : textColor, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-              + Create Family
+
+            <button
+              onClick={() => familySpaceId ? setSpaceId(familySpaceId) : createFamilySpace()}
+              style={{
+                padding: "10px 18px",
+                borderRadius: 10,
+                border: "none",
+                background: spaceId === familySpaceId 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: spaceId === familySpaceId ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: spaceId === familySpaceId ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              {familySpaceId ? "Family" : "+ Create Family"}
             </button>
-            <button onClick={() => setFilterCategory("All")} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: filterCategory === "All" ? "#e0e7ff" : "transparent", color: filterCategory === "All" ? "#4338ca" : textColor, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-              All
-            </button>
-            {CATEGORIES.map(cat => (
-              <button key={cat} onClick={() => setFilterCategory(cat)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: filterCategory === cat ? CATEGORY_COLORS[cat].light : "transparent", color: filterCategory === cat ? CATEGORY_COLORS[cat].text : textColor, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
+
+            {["All", ...CATEGORIES].map(cat => (
+              <button
+                key={cat}
+                onClick={() => setFilterCategory(cat)}
+                style={{
+                  padding: "10px 16px",
+                  borderRadius: 10,
+                  border: "1px solid #e2e8f0",
+                  background: filterCategory === cat ? "#eef2ff" : "#fff",
+                  color: filterCategory === cat ? "#4338ca" : "#64748b",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s ease"
+                }}
+              >
                 {cat}
               </button>
             ))}
           </div>
 
-          {/* View Mode */}
           <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            {["Day", "Week", "Month"].map(mode => (
-              <button key={mode} onClick={() => setViewMode(mode.toLowerCase())} style={{ padding: "8px 20px", borderRadius: 8, border: "none", background: viewMode === mode.toLowerCase() ? "linear-gradient(135deg, #667eea, #764ba2)" : inputBg, color: viewMode === mode.toLowerCase() ? "#fff" : textColor, fontSize: 14, fontWeight: 600, cursor: "pointer", boxShadow: viewMode === mode.toLowerCase() ? "0 2px 8px rgba(102, 126, 234, 0.3)" : "none" }}>
-                {mode}
-              </button>
-            ))}
+            <button
+              onClick={() => setViewMode("day")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "day" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "day" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "day" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Day
+            </button>
+
+            <button
+              onClick={() => setViewMode("week")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "week" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "week" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "week" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Week
+            </button>
+
+            <button
+              onClick={() => setViewMode("month")}
+              style={{
+                padding: "10px 20px",
+                borderRadius: 10,
+                border: "none",
+                background: viewMode === "month" 
+                  ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                  : "#f8fafc",
+                color: viewMode === "month" ? "#fff" : "#475569",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.2s ease",
+                boxShadow: viewMode === "month" ? "0 4px 12px rgba(102, 126, 234, 0.3)" : "none"
+              }}
+            >
+              Month
+            </button>
           </div>
 
-          {/* Navigation */}
-          <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-            <button onClick={goToPreviousDay} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <SVGIcon type="chevronLeft" />
+          <div style={{ 
+            display: "flex", 
+            alignItems: "center", 
+            justifyContent: "space-between",
+            gap: 12,
+            background: "#f8fafc",
+            padding: "12px 16px",
+            borderRadius: 12
+          }}>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button 
+                onClick={viewMode === "week" ? goToPreviousWeek : goToPreviousDay} 
+                onClick={viewMode === "month" ? goToPreviousMonth : viewMode === "week" ? goToPreviousWeek : goToPreviousDay} 
+                style={{ 
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#475569",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                ←
+              </button>
+
+              <button onClick={goToToday} disabled={isToday && viewMode === "day"} style={{ 
+                background: (isToday && viewMode === "day") ? "#e2e8f0" : "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 8,
+                padding: "8px 14px",
+                cursor: (isToday && viewMode === "day") ? "not-allowed" : "pointer",
+                fontSize: 14,
+                fontWeight: 600,
+                color: (isToday && viewMode === "day") ? "#94a3b8" : "#475569",
+                transition: "all 0.2s ease"
+              }}>
+                Today
+              </button>
+
+              <button 
+                onClick={viewMode === "week" ? goToNextWeek : goToNextDay} 
+                onClick={viewMode === "month" ? goToNextMonth : viewMode === "week" ? goToNextWeek : goToNextDay} 
+                style={{ 
+                  background: "#fff",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  padding: "8px 12px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  color: "#475569",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                →
+              </button>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div>
+                <div style={{ fontSize: 18, fontWeight: 700, color: "#0f172a", textAlign: "right" }}>
+                  {viewMode === "week" 
+                    ? `${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekDays[6].toLocaleDateString(undefined, { month: "short", day: "numeric" })}`
+                    : viewMode === "month"
+                    ? currentDate.toLocaleDateString(undefined, { month: "long", year: "numeric" })
+                    : weekday
+                  }
+                </div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
+                  {viewMode === "week" ? "Week View" : dayDate}
+                  {viewMode === "week" ? "Week View" : viewMode === "month" ? "Month View" : dayDate}
+                </div>
+              </div>
+              {isToday && viewMode !== "week" && (
+              {isToday && viewMode === "day" && (
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "linear-gradient(135deg, #667eea, #764ba2)",
+                  animation: "pulse 2s ease-in-out infinite"
+                }} />
+              )}
+            </div>
+          </div>
+
+          <div style={{ display: "flex", gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <button
+              onClick={openNewEvent}
+              onClick={() => openNewEvent()}
+              style={{
+                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                color: "#fff",
+                border: "none",
+                borderRadius: 10,
+                padding: "10px 20px",
+                fontSize: 15,
+                fontWeight: 600,
+                cursor: "pointer",
+                boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                transition: "all 0.2s ease",
+                flex: 1,
+                minWidth: 140
+              }}
+            >
+              + Add Event
             </button>
-            <button onClick={goToToday} style={{ padding: "8px 16px", borderRadius: 8, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 14, fontWeight: 500, cursor: "pointer" }}>
-              Today
+
+            <button
+              onClick={() => setShowDeletedOverlay(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              🗑️ {deletedEvents.length > 0 && `(${deletedEvents.length})`}
             </button>
-            <button onClick={goToNextDay} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <SVGIcon type="chevronRight" />
+
+            <button
+              onClick={() => setShowActivityOverlay(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              📊
+            </button>
+
+            <button
+              onClick={() => setShowSettings(true)}
+              style={{
+                background: "#fff",
+                border: "1px solid #e2e8f0",
+                borderRadius: 10,
+                padding: "10px 16px",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                color: "#64748b",
+                transition: "all 0.2s ease"
+              }}
+            >
+              ⚙️
             </button>
           </div>
         </div>
       </div>
 
-      {/* ADD EVENT BUTTON */}
-      <div style={{ padding: "0 32px", maxWidth: 1600, margin: "20px auto" }}>
-        <button onClick={() => openNewEvent()} style={{ width: "100%", padding: "16px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #667eea, #764ba2)", color: "#fff", fontSize: 16, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <SVGIcon type="plus" />
-          Add Event
-        </button>
-      </div>
-
-      {/* DAY VIEW TIMELINE */}
-      {viewMode === "day" && (
-        <div style={{ padding: "0 32px 32px", maxWidth: 1600, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-            <div style={{ fontSize: 14, color: mutedText }}>
-              Click timeline or "+ Add Event" to create
-            </div>
-            <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>{dayName}</div>
-              <div style={{ fontSize: 14, color: mutedText }}>{dayDate}</div>
-            </div>
+      <div style={{ padding: "20px", maxWidth: 1600, margin: "0 auto" }}>
+        {loading ? (
+          <div style={{
+            padding: 60,
+            textAlign: "center",
+            color: "#64748b",
+            fontSize: 15
+          }}>
+            Loading your timeline...
           </div>
+        ) : viewMode === "day" ? (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }}>
+            <div ref={timelineRef} className="timeline-scroll" style={{ overflowX: "auto" }} onClick={handleTimelineClick}>
+              <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 400, padding: "20px 0" }}>
 
-          <div style={{ background: cardBg, borderRadius: 16, overflow: "hidden", border: `1px solid ${borderColor}`, boxShadow: darkMode ? "0 4px 12px rgba(0,0,0,0.3)" : "0 2px 8px rgba(0,0,0,0.05)" }}>
-            <div ref={timelineRef} className="timeline-scroll" onClick={handleTimelineClick}>
-              <div style={{ position: "relative", width: DAY_WIDTH, minHeight: 500, padding: "20px 0" }}>
+                {/* 15-minute interval gridlines */}
+                {[...Array(96)].map((_, i) => {
+                  const isHour = i % 4 === 0;
+                  return (
+                    <div
+                      key={i}
+                      style={{
+                        position: "absolute",
+                        left: i * 15 * PIXELS_PER_MINUTE,
+                        top: 0,
+                        bottom: 0,
+                        width: isHour ? 2 : 1,
+                        background: isHour ? "#cbd5e1" : "#f1f5f9",
+                        zIndex: 1
+                      }}
+                    />
+                  );
+                })}
+
+                {/* Hour labels */}
                 {[...Array(24)].map((_, h) => (
-                  <div key={h} style={{ position: "absolute", left: h * 60 * PIXELS_PER_MINUTE, top: 0, bottom: 0, borderLeft: `1px solid ${darkMode ? "rgba(255,255,255,0.05)" : "#f3f4f6"}`, paddingLeft: 12, paddingTop: 12 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, color: mutedText }}>
-                      {String(h).padStart(2, "0")}:00
-                    </div>
+                  <div
+                    key={h}
+                    style={{
+                      position: "absolute",
+                      left: h * 60 * PIXELS_PER_MINUTE + 8,
+                      top: 12,
+                      fontSize: 13,
+                      color: "#475569",
+                      fontWeight: 700,
+                      background: "#fff",
+                      padding: "4px 8px",
+                      borderRadius: 6,
+                      pointerEvents: "none",
+                      zIndex: 2,
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.05)"
+                    }}
+                  >
+                    {String(h).padStart(2, "0")}:00
                   </div>
                 ))}
 
                 {isToday && (
                   <>
-                    <div style={{ position: "absolute", left: nowLeft, top: 0, bottom: 0, width: 2, background: "linear-gradient(180deg, #667eea, #764ba2)", zIndex: 10 }} />
-                    <div className="today-pulse" style={{ position: "absolute", left: nowLeft - 5, top: 8, width: 12, height: 12, borderRadius: "50%", background: "linear-gradient(135deg, #667eea, #764ba2)", zIndex: 11 }} />
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft,
+                      top: 0,
+                      bottom: 0,
+                      width: 3,
+                      background: "linear-gradient(180deg, #667eea, #764ba2)",
+                      zIndex: 10,
+                      boxShadow: "0 0 10px rgba(102, 126, 234, 0.5)",
+                      borderRadius: 2,
+                      pointerEvents: "none"
+                    }} />
+                    <div style={{
+                      position: "absolute",
+                      left: nowLeft - 6,
+                      top: 8,
+                      width: 14,
+                      height: 14,
+                      borderRadius: "50%",
+                      background: "linear-gradient(135deg, #667eea, #764ba2)",
+                      zIndex: 11,
+                      pointerEvents: "none",
+                      animation: "glow 2s ease-in-out infinite"
+                    }} />
                   </>
                 )}
 
                 {stacked.length === 0 && (
-                  <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%, -50%)", textAlign: "center", color: mutedText }}>
+                  <div style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    textAlign: "center",
+                    color: "#94a3b8",
+                    fontSize: 15,
+                    pointerEvents: "none"
+                  }}>
                     <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
-                    <div style={{ fontWeight: 600, fontSize: 15 }}>No events today</div>
+                    <div style={{ fontWeight: 600 }}>No events today</div>
+                    <div style={{ fontSize: 13, marginTop: 4 }}>Tap "+ Add Event" to get started</div>
                     <div style={{ fontSize: 13, marginTop: 4 }}>Click timeline or "+ Add Event" to create</div>
                   </div>
                 )}
@@ -530,180 +1488,845 @@ export default function App() {
                   const isSmall = width < 180;
                   const isDragging = draggingEvent?.id === ev.id;
                   const isResizing = resizingEvent?.id === ev.id;
+                  const colorStyle = EVENT_COLORS[ev.color || "purple"];
+
                   return (
-                    <div key={ev.id} data-event-id={ev.id} onMouseDown={e => {if (!e.target.classList.contains('resize-handle')) handleDragStart(e, ev);}} onClick={e => {if (Math.abs(e.clientX - dragStartX) < 5) openEditEvent(ev);}} style={{ position: "absolute", left: toLeft(ev.start), top: 70 + ev.row * (EVENT_HEIGHT + ROW_GAP), width, height: EVENT_HEIGHT, background: CATEGORY_COLORS[ev.category || "Personal"].bg, color: "#fff", borderRadius: 12, padding: "12px 14px", cursor: "grab", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease", overflow: "hidden", zIndex: 5 }}>
-                      <div className="resize-handle resize-handle-left" onMouseDown={e => handleResizeStart(e, ev, 'left')} />
-                      <div style={{ fontWeight: 600, fontSize: isSmall ? 13 : 15, marginBottom: 4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", pointerEvents: "none" }}>{ev.title}</div>
-                      {!isSmall && <div style={{ fontSize: 12, opacity: 0.95, pointerEvents: "none" }}>{formatTime(ev.start)} – {formatTime(ev.end)}</div>}
-                      <div className="resize-handle resize-handle-right" onMouseDown={e => handleResizeStart(e, ev, 'right')} />
+                    <div
+                      key={ev.id}
+                      data-event-id={ev.id}
+                      className="event-card"
+                      onMouseDown={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onTouchStart={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        handleDragStart(e, ev);
+                      }}
+                      onClick={(e) => {
+                        if (e.target.classList.contains('resize-handle')) return;
+                        e.stopPropagation();
+                        if (Math.abs(e.clientX - dragStartX) < 5) {
+                          openEditEvent(ev);
+                        }
+                      }}
+                      style={{
+                        position: "absolute",
+                        left: toLeft(ev.start),
+                        top: 70 + ev.row * (EVENT_HEIGHT + ROW_GAP),
+                        width,
+                        height: EVENT_HEIGHT,
+                        background: (isDragging || isResizing)
+                          ? "linear-gradient(135deg, #818cf8, #9333ea)" 
+                          : "linear-gradient(135deg, #667eea, #764ba2)",
+                          : colorStyle.bg,
+                        color: "#fff",
+                        borderRadius: 12,
+                        padding: "12px 14px",
+                        cursor: isDragging ? "grabbing" : "grab",
+                        boxShadow: (isDragging || isResizing)
+                          ? "0 12px 35px rgba(102, 126, 234, 0.5)" 
+                          : "0 4px 15px rgba(102, 126, 234, 0.3)",
+                        transition: (isDragging || isResizing) ? "none" : "all 0.2s ease",
+                        overflow: "hidden",
+                        border: "none",
+                        opacity: (isDragging || isResizing) ? 0.7 : 1,
+                        zIndex: (isDragging || isResizing) ? 100 : 5,
+                        boxSizing: "border-box"
+                      }}
+                      onMouseEnter={e => {
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(-3px) scale(1.02)";
+                          e.currentTarget.style.boxShadow = "0 8px 25px rgba(102, 126, 234, 0.4)";
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isDragging && !isResizing) {
+                          e.currentTarget.style.transform = "translateY(0) scale(1)";
+                          e.currentTarget.style.boxShadow = "0 4px 15px rgba(102, 126, 234, 0.3)";
+                        }
+                      }}
+                    >
+                      <div
+                        className="resize-handle resize-handle-left"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'left')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'left')}
+                      />
+
+                      <div style={{ 
+                        fontWeight: 600, 
+                        fontSize: isSmall ? 13 : 15,
+                        marginBottom: 4,
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        pointerEvents: "none"
+                      }}>
+                        {ev.title}
+                      </div>
+                      {!isSmall && (
+                        <div style={{ fontSize: 12, opacity: 0.9, pointerEvents: "none" }}>
+                          {formatTime(ev.start)} – {formatTime(ev.end)}
+                        </div>
+                      )}
+
+                      <div
+                        className="resize-handle resize-handle-right"
+                        onMouseDown={(e) => handleResizeStart(e, ev, 'right')}
+                        onTouchStart={(e) => handleResizeStart(e, ev, 'right')}
+                      />
                     </div>
                   );
                 })}
               </div>
             </div>
           </div>
-
-          {/* Floating Action Buttons */}
-          <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 12, zIndex: 50 }}>
-            <button onClick={() => setShowTodoPanel(!showTodoPanel)} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: showTodoPanel ? "linear-gradient(135deg, #667eea, #764ba2)" : cardBg, color: showTodoPanel ? "#fff" : textColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-              <SVGIcon type="note" />
-            </button>
-            <button onClick={() => setShowSettings(true)} style={{ width: 56, height: 56, borderRadius: "50%", border: "none", background: cardBg, color: textColor, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(0,0,0,0.15)" }}>
-              <SVGIcon type="settings" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TODO PANEL */}
-      {showTodoPanel && (
-        <div style={{ position: "fixed", top: 24, right: 24, width: 320, maxHeight: "calc(100vh - 48px)", background: cardBg, borderRadius: 16, padding: 20, zIndex: 100, border: `1px solid ${borderColor}`, boxShadow: "0 8px 24px rgba(0,0,0,0.15)", overflowY: "auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 16 }}>
-            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700 }}>Quick Notes</h3>
-            <button onClick={() => setShowTodoPanel(false)} style={{ background: "none", border: "none", color: textColor, cursor: "pointer", padding: 4 }}><SVGIcon type="close" /></button>
-          </div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-            <input value={todoInput} onChange={e => setTodoInput(e.target.value)} onKeyPress={e => e.key === "Enter" && addTodo()} placeholder="Add a note..." style={{ flex: 1, padding: "10px 14px", borderRadius: 8, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 14, outline: "none" }} />
-            <button onClick={addTodo} style={{ background: "linear-gradient(135deg, #667eea, #764ba2)", border: "none", borderRadius: 8, padding: "10px 16px", color: "#fff", cursor: "pointer", fontWeight: 600 }}>+</button>
-          </div>
-          {todos.map(todo => (
-            <div key={todo.id} style={{ display: "flex", gap: 10, padding: 10, background: darkMode ? "rgba(255,255,255,0.03)" : "#f9fafb", borderRadius: 8, marginBottom: 8, alignItems: "center" }}>
-              <input type="checkbox" checked={todo.done} onChange={() => toggleTodo(todo.id)} style={{ cursor: "pointer", width: 18, height: 18 }} />
-              <span style={{ flex: 1, textDecoration: todo.done ? "line-through" : "none", opacity: todo.done ? 0.5 : 1, fontSize: 14 }}>{todo.text}</span>
-              <button onClick={() => deleteTodo(todo.id)} style={{ background: "none", border: "none", color: "#ef4444", cursor: "pointer", padding: 4 }}>✕</button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* SETTINGS MODAL */}
-      {showSettings && (
-        <div onClick={() => setShowSettings(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: cardBg, width: "100%", maxWidth: 480, borderRadius: 20, padding: 28, border: `1px solid ${borderColor}`, boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <h3 style={{ margin: "0 0 24px 0", fontSize: 22, fontWeight: 700 }}>Settings</h3>
-            
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "12px 0" }}>
-                <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} style={{ cursor: "pointer", width: 20, height: 20 }} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>Dark Mode</div>
-                  <div style={{ fontSize: 13, color: mutedText, marginTop: 2 }}>Toggle dark/light theme</div>
-                </div>
-              </label>
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "12px 0" }}>
-                <input type="checkbox" checked={use24Hour} onChange={e => setUse24Hour(e.target.checked)} style={{ cursor: "pointer", width: 20, height: 20 }} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>24-Hour Time</div>
-                  <div style={{ fontSize: 13, color: mutedText, marginTop: 2 }}>Use 24-hour time format</div>
-                </div>
-              </label>
-            </div>
-
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 12, cursor: "pointer", padding: "12px 0" }}>
-                <input type="checkbox" checked={weekStartsOnMonday} onChange={e => setWeekStartsOnMonday(e.target.checked)} style={{ cursor: "pointer", width: 20, height: 20 }} />
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>Week Starts Monday</div>
-                  <div style={{ fontSize: 13, color: mutedText, marginTop: 2 }}>Start week on Monday instead of Sunday</div>
-                </div>
-              </label>
-            </div>
-
-            <button onClick={() => setShowDeletedOverlay(true)} style={{ width: "100%", marginBottom: 12, background: darkMode ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: `1px solid ${borderColor}`, borderRadius: 12, padding: 14, cursor: "pointer", color: textColor, fontWeight: 600, fontSize: 15 }}>
-              View Deleted Events
-            </button>
-
-            <button onClick={() => setShowSettings(false)} style={{ width: "100%", background: "linear-gradient(135deg, #667eea, #764ba2)", border: "none", borderRadius: 12, padding: 14, cursor: "pointer", color: "#fff", fontWeight: 600, fontSize: 15 }}>
-              Done
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* EVENT MODAL */}
-      {showModal && (
-        <div onClick={() => setShowModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: cardBg, borderRadius: 20, width: "100%", maxWidth: 520, padding: 28, border: `1px solid ${borderColor}`, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
-            <h3 style={{ margin: "0 0 24px 0", fontSize: 24, fontWeight: 700 }}>{editingEvent ? "Edit Event" : "New Event"}</h3>
-            
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: mutedText }}>Event Title</label>
-              <input value={title} onChange={e => setTitle(e.target.value)} placeholder="What's happening?" style={{ width: "100%", padding: "14px 16px", borderRadius: 10, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 16, boxSizing: "border-box", outline: "none", transition: "border 0.2s" }} onFocus={e => e.currentTarget.style.borderColor = "#667eea"} onBlur={e => e.currentTarget.style.borderColor = borderColor} />
-            </div>
-
-            <div style={{ marginBottom: 20 }}>
-              <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: mutedText }}>Category</label>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {CATEGORIES.map(cat => {
-                  const catStyle = CATEGORY_COLORS[cat];
+        ) : viewMode === "week" ? (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            overflow: "hidden",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0"
+          }}>
+            <div style={{ 
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              scrollbarWidth: "none",
+              msOverflowStyle: "none"
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: 8,
+              padding: "12px"
+            }}>
+              <div style={{ 
+                display: "flex",
+                gap: 8,
+                padding: "12px",
+                minWidth: "min-content"
+              }}>
+                {weekDays.map((day, index) => {
+                  const dayEventsForWeek = events.filter(ev => 
+                    ev.start.toDateString() === day.toDateString()
+                  );
+                  const isDayToday = day.toDateString() === now.toDateString();
+        
                   return (
-                    <button key={cat} onClick={() => setEventCategory(cat)} style={{ padding: "10px 18px", borderRadius: 8, border: "none", background: eventCategory === cat ? catStyle.light : (darkMode ? "rgba(255,255,255,0.05)" : "#f3f4f6"), color: eventCategory === cat ? catStyle.text : textColor, fontSize: 14, fontWeight: 600, cursor: "pointer", transition: "all 0.2s" }}>
-                      {cat}
-                    </button>
+                    <div
+                      key={index}
+                      style={{
+                        background: "#fff",
+                        minWidth: "260px",
+                        width: "260px",
+                        flexShrink: 0,
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 12,
+                        padding: "16px",
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                      onClick={() => {
+                        setCurrentDate(day);
+                        setViewMode("day");
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.transform = "translateY(-4px)";
+                        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+              {weekDays.map((day, index) => {
+                const dayEventsForWeek = filteredEvents.filter(ev => 
+                  ev.start.toDateString() === day.toDateString()
+                );
+                const isDayToday = day.toDateString() === now.toDateString();
+      
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      background: "#fff",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: "16px",
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      minHeight: 200
+                    }}
+                    onClick={() => goToDate(day)}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = "translateY(-4px)";
+                      e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.1)";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                    }}
+                  >
+                    <div style={{ 
+                      textAlign: "center", 
+                      marginBottom: 16,
+                      paddingBottom: 16,
+                      borderBottom: "2px solid #f1f5f9"
+                    }}>
+                      <div style={{ 
+                        textAlign: "center", 
+                        marginBottom: 16,
+                        paddingBottom: 16,
+                        borderBottom: "2px solid #f1f5f9"
+                        fontSize: 12, 
+                        fontWeight: 700, 
+                        color: "#94a3b8",
+                        marginBottom: 8,
+                        letterSpacing: "0.5px"
+                      }}>
+                        {day.toLocaleDateString(undefined, { weekday: "short" }).toUpperCase()}
+                      </div>
+                      <div 
+                        className={isDayToday ? "current-day-pulse" : ""}
+                        style={{ 
+                          fontSize: 28, 
+                          fontWeight: 700,
+                          color: isDayToday ? "#fff" : "#0f172a",
+                          background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
+                          width: 48,
+                          height: 48,
+                          borderRadius: "50%",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          margin: "0 auto"
+                        }}
+                      >
+                        {day.getDate()}
+                      </div>
+                    </div>
+      
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {dayEventsForWeek.length === 0 ? (
+                        <div style={{ 
+                          fontSize: 13, 
+                          fontWeight: 700, 
+                          color: "#94a3b8",
+                          marginBottom: 8,
+                          letterSpacing: "0.5px"
+                        }}>
+                          {day.toLocaleDateString(undefined, { weekday: "long" }).toUpperCase()}
+                        </div>
+                        <div 
+                          className={isDayToday ? "current-day-pulse" : ""}
+                          style={{ 
+                            fontSize: 32, 
+                            fontWeight: 700,
+                            color: isDayToday ? "#fff" : "#0f172a",
+                            background: isDayToday ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent",
+                            width: 56,
+                            height: 56,
+                            borderRadius: "50%",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            margin: "0 auto"
+                          }}
+                        >
+                          {day.getDate()}
+                        </div>
+                        <div style={{
+                          textAlign: "center", 
+                          color: "#cbd5e1", 
+                          fontSize: 12,
+                          color: "#64748b",
+                          marginTop: 8,
+                          padding: "20px 0",
+                          fontWeight: 500
+                        }}>
+                          {day.toLocaleDateString(undefined, { month: "short", year: "numeric" })}
+                          No events
+                        </div>
+                      </div>
+        
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {dayEventsForWeek.length === 0 ? (
+                          <div style={{ 
+                            textAlign: "center", 
+                            color: "#cbd5e1", 
+                            fontSize: 13,
+                            padding: "32px 0",
+                            fontWeight: 500
+                          }}>
+                            No events
+                          </div>
+                        ) : (
+                          dayEventsForWeek.map(ev => (
+                      ) : (
+                        dayEventsForWeek.slice(0, 3).map(ev => {
+                          const colorStyle = EVENT_COLORS[ev.color || "purple"];
+                          return (
+                            <div
+                              key={ev.id}
+                              style={{
+                                background: "linear-gradient(135deg, #667eea, #764ba2)",
+                                background: colorStyle.bg,
+                                color: "#fff",
+                                padding: "12px 14px",
+                                borderRadius: 10,
+                                fontSize: 13,
+                                padding: "8px 10px",
+                                borderRadius: 8,
+                                fontSize: 11,
+                                fontWeight: 600,
+                                boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease"
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap"
+                              }}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openEditEvent(ev);
+                              }}
+                              onMouseEnter={e => {
+                                e.currentTarget.style.transform = "translateX(4px)";
+                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.4)";
+                              }}
+                              onMouseLeave={e => {
+                                e.currentTarget.style.transform = "translateX(0)";
+                                e.currentTarget.style.boxShadow = "0 2px 8px rgba(102, 126, 234, 0.3)";
+                              }}
+                            >
+                              <div style={{ 
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                                whiteSpace: "nowrap",
+                                marginBottom: 4
+                              }}>
+                                {ev.title}
+                              </div>
+                              <div style={{ fontSize: 11, opacity: 0.9 }}>
+                                {formatTime(ev.start)} – {formatTime(ev.end)}
+                              </div>
+                              {ev.title}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                          );
+                        })
+                      )}
+                      {dayEventsForWeek.length > 3 && (
+                        <div style={{ 
+                          fontSize: 10, 
+                          color: "#64748b", 
+                          textAlign: "center",
+                          fontWeight: 600
+                        }}>
+                          +{dayEventsForWeek.length - 3} more
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
+                  </div>
+                );
+              })}
             </div>
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 24 }}>
-              <div>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: mutedText }}>Start</label>
-                <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} style={{ width: "100%", padding: "14px 12px", borderRadius: 10, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 14, boxSizing: "border-box", outline: "none" }} />
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: mutedText }}>End</label>
-                <input type="datetime-local" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ width: "100%", padding: "14px 12px", borderRadius: 10, border: `1px solid ${borderColor}`, background: inputBg, color: textColor, fontSize: 14, boxSizing: "border-box", outline: "none" }} />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={saveEvent} disabled={loading} style={{ flex: 1, background: "linear-gradient(135deg, #667eea, #764ba2)", color: "#fff", border: "none", borderRadius: 12, padding: 16, fontWeight: 600, cursor: loading ? "not-allowed" : "pointer", fontSize: 16, boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)" }}>
-                {loading ? "Saving..." : "Save Event"}
-              </button>
-              <button onClick={() => setShowModal(false)} style={{ flex: 1, background: darkMode ? "rgba(255,255,255,0.05)" : "#f3f4f6", border: "none", borderRadius: 12, padding: 16, fontWeight: 600, cursor: "pointer", color: textColor, fontSize: 16 }}>
-                Cancel
-              </button>
-            </div>
-
-            {editingEvent && (
-              <button onClick={deleteEvent} style={{ width: "100%", marginTop: 12, background: "rgba(239, 68, 68, 0.1)", border: "1px solid rgba(239, 68, 68, 0.2)", borderRadius: 12, padding: 14, cursor: "pointer", color: "#ef4444", fontWeight: 600, fontSize: 15 }}>
-                Delete Event
-              </button>
-            )}
           </div>
-        </div>
+        ) : (
+          <div style={{ 
+            background: "#fff",
+            borderRadius: 16,
+            padding: "20px",
+            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
+            border: "1px solid #e2e8f0",
+            maxWidth: 600,
+            margin: "0 auto"
+          }}>
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6,
+              marginBottom: 12
+            }}>
+              {weekDayHeaders.map((day, i) => (
+                <div key={i} style={{
+                  textAlign: "center",
+                  fontWeight: 700,
+                  fontSize: 12,
+                  color: "#94a3b8",
+                  padding: "4px 0"
+                }}>
+                  {day}
+                </div>
+              ))}
+            </div>
+
+            <div style={{ 
+              display: "grid", 
+              gridTemplateColumns: "repeat(7, 1fr)", 
+              gap: 6
+            }}>
+              {monthDays.map((day, index) => {
+                const isCurrentDay = day && day.toDateString() === now.toDateString();
+
+                return (
+                  <div
+                    key={index}
+                    className={isCurrentDay ? "current-day-pulse" : ""}
+                    onClick={() => day && goToDate(day)}
+                    style={{
+                      aspectRatio: "1",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: 8,
+                      background: day ? (isCurrentDay ? "linear-gradient(135deg, #667eea, #764ba2)" : "transparent") : "transparent",
+                      color: day ? (isCurrentDay ? "#fff" : "#0f172a") : "transparent",
+                      fontWeight: isCurrentDay ? 700 : 500,
+                      fontSize: 14,
+                      cursor: day ? "pointer" : "default",
+                      transition: "all 0.15s ease",
+                      border: "none",
+                      minHeight: 40
+                    }}
+                    onMouseEnter={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "#f1f5f9";
+                        e.currentTarget.style.fontWeight = "600";
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (day && !isCurrentDay) {
+                        e.currentTarget.style.background = "transparent";
+                        e.currentTarget.style.fontWeight = "500";
+                      }
+                    }}
+                  >
+                    {day ? day.getDate() : ""}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+
+{/* I'll continue with the modals and overlays in the next message due to length */}
+
+{showActivityOverlay && (
+      {showActivityOverlay && (
+        <Overlay title="Activity Log" onClose={() => setShowActivityOverlay(false)}>
+          {activityLogs.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>📊</div>
+              <div>No activity yet</div>
+            </div>
+          ) : (
+            activityLogs.map(log => (
+              <div key={log.id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+              }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontSize: 20 }}>{actionEmoji(log.action)}</span>
+                  <strong style={{ textTransform: "capitalize", fontSize: 15, color: "#0f172a" }}>
+                    {log.action}
+                  </strong>
+                </div>
+                <div style={{ fontSize: 13, color: "#64748b", paddingLeft: 30 }}>
+                  {log.userEmail}
+                </div>
+                <div style={{ fontSize: 12, color: "#94a3b8", paddingLeft: 30 }}>
+                  {log.createdAt?.toDate?.().toLocaleString(undefined, {
+                    weekday: "short", year: "numeric", month: "short",
+                    day: "numeric", hour: "2-digit", minute: "2-digit",
+                  })}
+                </div>
+              </div>
+            ))
+          )}
+        </Overlay>
       )}
 
-      {/* DELETED EVENTS */}
       {showDeletedOverlay && (
-        <div onClick={() => setShowDeletedOverlay(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: cardBg, width: "100%", maxWidth: 480, maxHeight: "85vh", borderRadius: 20, overflow: "hidden", boxShadow: "0 20px 60px rgba(0,0,0,0.3)", border: `1px solid ${borderColor}` }}>
-            <div style={{ padding: 24, borderBottom: `1px solid ${borderColor}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700 }}>Deleted Events</h3>
-              <button onClick={() => setShowDeletedOverlay(false)} style={{ border: "none", background: darkMode ? "rgba(255,255,255,0.1)" : "#f3f4f6", width: 36, height: 36, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
-                <SVGIcon type="close" />
-              </button>
+        <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
+          {deletedEvents.length === 0 ? (
+            <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
+              <div>No deleted events</div>
             </div>
-            <div style={{ padding: 24, overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
-              {deletedEvents.length === 0 ? (
-                <div style={{ textAlign: "center", color: mutedText, padding: 40 }}>
-                  <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
-                  <div>No deleted events</div>
+          ) : (
+            deletedEvents.map(ev => (
+              <div key={ev.id} style={{
+                padding: "16px 0",
+                borderBottom: "1px solid #f1f5f9",
+                display: "flex",
+                flexDirection: "column",
+                gap: 8,
+              }}>
+                <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a" }}>
+                  {ev.title}
                 </div>
-              ) : (
-                deletedEvents.map(ev => (
-                  <div key={ev.id} style={{ padding: "16px 0", borderBottom: `1px solid ${borderColor}` }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{ev.title}</div>
-                    {ev.deletedAt && <div style={{ fontSize: 13, color: mutedText, marginBottom: 12 }}>Deleted {ev.deletedAt.toDate().toLocaleString()}</div>}
-                    <button onClick={() => restoreEvent(ev)} style={{ background: "linear-gradient(135deg, #667eea, #764ba2)", border: "none", borderRadius: 8, padding: "8px 16px", color: "#fff", fontWeight: 600, cursor: "pointer", fontSize: 14 }}>
-                      Restore
-                    </button>
+                {ev.deletedAt && (
+                  <div style={{ fontSize: 12, color: "#94a3b8" }}>
+                    Deleted {ev.deletedAt.toDate().toLocaleString(undefined, {
+                      weekday: "short", month: "short", day: "numeric",
+                      hour: "2-digit", minute: "2-digit"
+                    })}
                   </div>
-                ))
-              )}
+                )}
+                <button
+                  onClick={() => restoreEvent(ev)}
+                  style={{
+                    background: "linear-gradient(135deg, #667eea, #764ba2)",
+                    border: "none",
+                    color: "#fff",
+                    borderRadius: 8,
+                    padding: "10px 18px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    alignSelf: "flex-start",
+                    boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)"
+                  }}
+                >
+                  Restore
+                </button>
+              </div>
+            ))
+          )}
+        </Overlay>
+      )}
+
+      {showSettings && (
+        <Overlay title="Settings" onClose={() => setShowSettings(false)}>
+          <div style={{ padding: "16px 0" }}>
+            <div style={{
+              padding: "16px 0",
+              borderBottom: "1px solid #f1f5f9"
+            }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: 8
+              }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 4 }}>
+                    Week Starts On
+                  </div>
+                  <div style={{ fontSize: 13, color: "#64748b" }}>
+                    Choose whether your week starts on Sunday or Monday
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+                <button
+                  onClick={() => setWeekStartsOnMonday(false)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid #e2e8f0" : "2px solid #667eea",
+                    background: weekStartsOnMonday ? "#fff" : "#eef2ff",
+                    color: weekStartsOnMonday ? "#64748b" : "#1e3a8a",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Sunday
+                </button>
+
+                <button
+                  onClick={() => setWeekStartsOnMonday(true)}
+                  style={{
+                    flex: 1,
+                    padding: "10px 16px",
+                    borderRadius: 10,
+                    border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid #e2e8f0",
+                    background: weekStartsOnMonday ? "#eef2ff" : "#fff",
+                    color: weekStartsOnMonday ? "#1e3a8a" : "#64748b",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s ease"
+                  }}
+                >
+                  Monday
+                </button>
+              </div>
+            </div>
+
+            <div style={{
+              padding: "20px 0",
+              textAlign: "center",
+              color: "#94a3b8",
+              fontSize: 13
+            }}>
+              More customization options coming soon...
+            </div>
+          </div>
+        </Overlay>
+      )}
+
+      {showModal && (
+        <div style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(15, 23, 42, 0.6)",
+          backdropFilter: "blur(8px)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 200,
+          padding: 20
+        }} onClick={() => setShowModal(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: "#fff",
+            borderRadius: 20,
+            width: "100%",
+            maxWidth: 480,
+            boxShadow: "0 25px 50px rgba(0,0,0,0.3)",
+            overflow: "hidden"
+            overflow: "hidden",
+            maxHeight: "90vh",
+            overflowY: "auto"
+          }}>
+            <div style={{ padding: "24px", borderBottom: "1px solid #f1f5f9" }}>
+              <h3 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: "#0f172a" }}>
+                {editingEvent ? "Edit Event" : "New Event"}
+              </h3>
+            </div>
+
+            <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: 24 }}>
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Event Title
+                </label>
+                <input
+                  value={title}
+                  onChange={e => setTitle(e.target.value)}
+                  placeholder="What's happening?"
+                  style={{
+                    width: "100%",
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    border: "2px solid #e2e8f0",
+                    fontSize: 16,
+                    fontFamily: "inherit",
+                    outline: "none",
+                    transition: "border 0.2s ease",
+                    boxSizing: "border-box"
+                  }}
+                  onFocus={e => e.currentTarget.style.borderColor = "#667eea"}
+                  onBlur={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                />
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Category
+                </label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      onClick={() => setEventCategory(cat)}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 8,
+                        border: eventCategory === cat ? "2px solid #667eea" : "2px solid #e2e8f0",
+                        background: eventCategory === cat ? "#eef2ff" : "#fff",
+                        color: eventCategory === cat ? "#4338ca" : "#64748b",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease"
+                      }}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                  Color
+                </label>
+                <div style={{ display: "flex", gap: 12 }}>
+                  {Object.entries(EVENT_COLORS).map(([colorName, colorStyle]) => (
+                    <button
+                      key={colorName}
+                      onClick={() => setEventColor(colorName)}
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: "50%",
+                        border: eventColor === colorName ? "3px solid #0f172a" : "3px solid transparent",
+                        background: colorStyle.bg,
+                        cursor: "pointer",
+                        transition: "all 0.2s ease",
+                        boxShadow: eventColor === colorName ? "0 4px 12px rgba(0,0,0,0.2)" : "0 2px 8px rgba(0,0,0,0.1)"
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                    Start
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={startTime}
+                    onChange={e => setStartTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: 12,
+                      border: "2px solid #e2e8f0",
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 14, fontWeight: 600, color: "#64748b", marginBottom: 10 }}>
+                    End
+                  </label>
+                  <input
+                    type="datetime-local"
+                    value={endTime}
+                    onChange={e => setEndTime(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "14px 16px",
+                      borderRadius: 12,
+                      border: "2px solid #e2e8f0",
+                      fontSize: 15,
+                      fontFamily: "inherit",
+                      boxSizing: "border-box"
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div style={{ 
+                display: "flex", 
+                gap: 12, 
+                marginTop: 8,
+                flexWrap: "wrap"
+              }}>
+                <button
+                  onClick={saveEvent}
+                  disabled={loading}
+                  style={{
+                    background: loading ? "#94a3b8" : "linear-gradient(135deg, #667eea, #764ba2)",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    fontWeight: 600,
+                    cursor: loading ? "not-allowed" : "pointer",
+                    fontSize: 16,
+                    boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  {loading ? "Saving..." : "Save"}
+                </button>
+
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    background: "#f8fafc",
+                    border: "2px solid #e2e8f0",
+                    borderRadius: 12,
+                    padding: "14px 32px",
+                    cursor: "pointer",
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: "#64748b",
+                    flex: 1,
+                    minWidth: 120
+                  }}
+                >
+                  Cancel
+                </button>
+
+                {editingEvent && (
+                  <button
+                    onClick={deleteEvent}
+                    style={{
+                      background: "#fef2f2",
+                      border: "2px solid #fecaca",
+                      borderRadius: 12,
+                      padding: "14px 32px",
+                      cursor: "pointer",
+                      color: "#dc2626",
+                      fontWeight: 600,
+                      fontSize: 16,
+                      width: "100%"
+                    }}
+                  >
+                    Delete
+                  </button>
+                  <>
+                    <button
+                      onClick={() => {
+                        duplicateEvent(editingEvent);
+                        setShowModal(false);
+                      }}
+                      style={{
+                        background: "#f0f9ff",
+                        border: "2px solid #bae6fd",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#0369a1",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      📋 Duplicate
+                    </button>
+                    
+                    <button
+                      onClick={deleteEvent}
+                      style={{
+                        background: "#fef2f2",
+                        border: "2px solid #fecaca",
+                        borderRadius: 12,
+                        padding: "14px 32px",
+                        cursor: "pointer",
+                        color: "#dc2626",
+                        fontWeight: 600,
+                        fontSize: 16,
+                        width: "100%"
+                      }}
+                    >
+                      🗑️ Delete
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -711,3 +2334,62 @@ export default function App() {
     </div>
   );
 }
+
+function Overlay({ title, onClose, children }) {
+  return (
+    <div style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(15, 23, 42, 0.6)",
+      backdropFilter: "blur(8px)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 100,
+      padding: 20
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#fff",
+        width: "100%",
+        maxWidth: 440,
+        maxHeight: "85vh",
+        borderRadius: 20,
+        overflow: "hidden",
+        boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+      }}>
+        <div style={{
+          padding: "20px 24px",
+          borderBottom: "1px solid #f1f5f9",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center"
+        }}>
+          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0f172a" }}>
+            {title}
+          </h3>
+          <button
+            onClick={onClose}
+            style={{
+              border: "none",
+              background: "#f8fafc",
+              fontSize: 18,
+              cursor: "pointer",
+              width: 36,
+              height: 36,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#64748b",
+              transition: "all 0.2s ease"
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div style={{ padding: "4px 24px 24px", overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
