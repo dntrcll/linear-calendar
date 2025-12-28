@@ -25,6 +25,7 @@ const MIN_EVENT_DURATION = 15;
 const EVENT_COLORS = {
   blue: { bg: "linear-gradient(135deg, #4facfe, #00f2fe)", border: "#4facfe", dot: "#4facfe" },
   teal: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
+  green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
   purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea", dot: "#667eea" },
   orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a", dot: "#fa709a" },
   red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb", dot: "#f093fb" },
@@ -1107,7 +1108,7 @@ div::-webkit-scrollbar {
                   width: 8,
                   height: 8,
                   borderRadius: "50%",
-                  background: EVENT_COLORS[cat.color].dot,
+                  background: (EVENT_COLORS[cat.color] || EVENT_COLORS.blue).dot,
                   flexShrink: 0
                 }} />
                 {cat.name}
@@ -2183,7 +2184,7 @@ div::-webkit-scrollbar {
                         width: 8,
                         height: 8,
                         borderRadius: "50%",
-                        background: EVENT_COLORS[cat.color].dot
+                        background: (EVENT_COLORS[cat.color] || EVENT_COLORS.blue).dot
                       }} />
                       {cat.name}
                     </button>
