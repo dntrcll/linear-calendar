@@ -89,6 +89,7 @@ export default function App() {
   });
 
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
+  const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
   const [resizeHandle, setResizeHandle] = useState(null);
   const [dragStartX, setDragStartX] = useState(0);
