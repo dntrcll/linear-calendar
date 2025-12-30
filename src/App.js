@@ -1726,7 +1726,9 @@ div::-webkit-scrollbar {
             borderRadius: 16,
             padding: "20px",
             boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-            border: "1px solid #e2e8f0"
+            border: "1px solid #e2e8f0",
+            maxHeight: "calc(100vh - 200px)",
+            overflowY: "auto"
           }}>
             {/* Year Selector - Clean with arrows only */}
             <div style={{
@@ -1736,7 +1738,11 @@ div::-webkit-scrollbar {
               gap: 24,
               marginBottom: 24,
               paddingBottom: 16,
-              borderBottom: "2px solid #f1f5f9"
+              borderBottom: "2px solid #f1f5f9",
+              position: "sticky",
+              top: 0,
+              background: "#fff",
+              zIndex: 10
             }}>
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
@@ -1807,157 +1813,329 @@ div::-webkit-scrollbar {
               </button>
             </div>
 
-            {/* 12 Month Rows - Cleaner and more aligned */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-              {[...Array(12)].map((_, monthIndex) => {
-                const monthDate = new Date(selectedYear, monthIndex, 1);
-                const monthName = monthDate.toLocaleDateString(undefined, { month: "long" });
-                
-                // Get all days in this month
-                const year = selectedYear;
-                const month = monthIndex;
-                const lastDay = new Date(year, month + 1, 0);
-                const daysInMonth = lastDay.getDate();
-                
-                // Build array of all dates in month
-                const monthDays = [];
-                for (let day = 1; day <= daysInMonth; day++) {
-                  monthDays.push(new Date(year, month, day));
-                }
-                
-                return (
-                  <div key={monthIndex} style={{ 
-                    background: "#fafbfc",
-                    borderRadius: 12,
-                    padding: "16px 20px",
-                    border: "1px solid #e2e8f0"
-                  }}>
-                    {/* Month Label */}
-                    <div style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "#667eea",
-                      marginBottom: 12,
-                      textTransform: "uppercase",
-                      letterSpacing: "1px"
+            {/* Grid View - Traditional Calendar Grid */}
+            {yearViewLayout === 'grid' ? (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+                {[...Array(12)].map((_, monthIndex) => {
+                  const monthDate = new Date(selectedYear, monthIndex, 1);
+                  const monthName = monthDate.toLocaleDateString(undefined, { month: "short" });
+                  
+                  // Get first day of month and total days
+                  const firstDayOfWeek = monthDate.getDay();
+                  const lastDay = new Date(selectedYear, monthIndex + 1, 0);
+                  const daysInMonth = lastDay.getDate();
+                  
+                  // Adjust for week starting on Monday if needed
+                  const startOffset = weekStartsOnMonday 
+                    ? (firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1)
+                    : firstDayOfWeek;
+                  
+                  // Build calendar grid
+                  const calendarDays = [];
+                  
+                  // Empty cells before month starts
+                  for (let i = 0; i < startOffset; i++) {
+                    calendarDays.push(null);
+                  }
+                  
+                  // Days of the month
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    calendarDays.push(new Date(selectedYear, monthIndex, day));
+                  }
+                  
+                  return (
+                    <div key={monthIndex} style={{
+                      background: "#fafbfc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 8,
+                      padding: 12,
+                      minWidth: 0
                     }}>
-                      {monthName}
-                    </div>
-                    
-                    {/* Horizontal Row of ALL Days with day names */}
-                    <div style={{
-                      display: "flex",
-                      gap: 4,
-                      overflowX: "auto",
-                      paddingBottom: 4,
-                      scrollbarWidth: "none",
-                      msOverflowStyle: "none"
-                    }}>
-                      {monthDays.map((day, dayIndex) => {
-                        const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                        const isToday = day.toDateString() === now.toDateString();
-                        const dayEvents = filteredEvents.filter(ev => 
-                          ev.start.toDateString() === day.toDateString()
-                        );
-                        const dayName = ["S", "M", "T", "W", "T", "F", "S"][day.getDay()];
-                        
-                        return (
-                          <div
-                            key={dayIndex}
-                            onClick={() => goToDate(day)}
-                            style={{
-                              minWidth: 40,
-                              width: 40,
-                              background: isToday
-                                ? "linear-gradient(135deg, #667eea, #764ba2)"
-                                : isWeekend
-                                ? "#f1f5f9"
-                                : "#fff",
-                              border: isToday 
-                                ? "2px solid #667eea"
-                                : "1px solid #e2e8f0",
-                              borderRadius: 8,
-                              display: "flex",
-                              flexDirection: "column",
-                              alignItems: "center",
-                              padding: "8px 4px",
-                              cursor: "pointer",
-                              transition: "all 0.2s ease",
-                              flexShrink: 0
-                            }}
-                            onMouseEnter={e => {
-                              if (!isToday) {
-                                e.currentTarget.style.transform = "translateY(-3px)";
-                                e.currentTarget.style.boxShadow = "0 6px 16px rgba(102, 126, 234, 0.2)";
-                                e.currentTarget.style.borderColor = "#667eea";
-                              }
-                            }}
-                            onMouseLeave={e => {
-                              if (!isToday) {
-                                e.currentTarget.style.transform = "translateY(0)";
-                                e.currentTarget.style.boxShadow = "none";
-                                e.currentTarget.style.borderColor = "#e2e8f0";
-                              }
-                            }}
-                          >
-                            {/* Day Name */}
-                            <div style={{
-                              fontSize: 9,
-                              fontWeight: 600,
-                              color: isToday ? "#fff" : "#94a3b8",
-                              marginBottom: 4,
-                              textTransform: "uppercase"
-                            }}>
-                              {dayName}
-                            </div>
-                            
-                            {/* Day Number */}
-                            <div style={{
-                              fontSize: 14,
-                              fontWeight: 700,
-                              color: isToday ? "#fff" : "#0f172a",
-                              marginBottom: 6
-                            }}>
-                              {day.getDate()}
-                            </div>
-                            
-                            {/* Event Indicators */}
-                            {dayEvents.length > 0 && (
-                              <div style={{
-                                display: "flex",
-                                gap: 2,
-                                alignItems: "center"
-                              }}>
-                                {dayEvents.slice(0, 3).map((ev, i) => (
-                                  <div
-                                    key={i}
-                                    style={{
-                                      width: 4,
-                                      height: 4,
-                                      borderRadius: "50%",
-                                      background: isToday ? "#fff" : EVENT_COLORS[ev.color || "blue"].dot
-                                    }}
-                                  />
-                                ))}
-                                {dayEvents.length > 3 && (
-                                  <div style={{
-                                    fontSize: 6,
-                                    fontWeight: 700,
-                                    color: isToday ? "#fff" : "#667eea"
-                                  }}>
-                                    +{dayEvents.length - 3}
-                                  </div>
-                                )}
-                              </div>
-                            )}
+                      {/* Month Name */}
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 700,
+                        color: "#667eea",
+                        marginBottom: 8,
+                        textAlign: "center",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px"
+                      }}>
+                        {monthName}
+                      </div>
+                      
+                      {/* Day Headers */}
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(7, 1fr)",
+                        gap: 2,
+                        marginBottom: 4
+                      }}>
+                        {(weekStartsOnMonday 
+                          ? ["M", "T", "W", "T", "F", "S", "S"]
+                          : ["S", "M", "T", "W", "T", "F", "S"]
+                        ).map((day, i) => (
+                          <div key={i} style={{
+                            fontSize: 9,
+                            fontWeight: 600,
+                            color: "#94a3b8",
+                            textAlign: "center",
+                            padding: "2px 0"
+                          }}>
+                            {day}
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
+                      
+                      {/* Calendar Grid */}
+                      <div style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(7, 1fr)",
+                        gap: 2
+                      }}>
+                        {calendarDays.map((day, idx) => {
+                          if (!day) {
+                            return <div key={`empty-${idx}`} style={{ aspectRatio: "1" }} />;
+                          }
+                          
+                          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                          const isToday = day.toDateString() === now.toDateString();
+                          const dayEvents = filteredEvents.filter(ev => 
+                            ev.start.toDateString() === day.toDateString()
+                          );
+                          
+                          return (
+                            <div
+                              key={idx}
+                              onClick={() => goToDate(day)}
+                              style={{
+                                aspectRatio: "1",
+                                background: isToday
+                                  ? "linear-gradient(135deg, #667eea, #764ba2)"
+                                  : isWeekend
+                                  ? "#f1f5f9"
+                                  : "#fff",
+                                border: isToday 
+                                  ? "1.5px solid #667eea"
+                                  : "1px solid #e2e8f0",
+                                borderRadius: 4,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                                position: "relative"
+                              }}
+                              onMouseEnter={e => {
+                                if (!isToday) {
+                                  e.currentTarget.style.borderColor = "#667eea";
+                                  e.currentTarget.style.transform = "scale(1.05)";
+                                }
+                              }}
+                              onMouseLeave={e => {
+                                if (!isToday) {
+                                  e.currentTarget.style.borderColor = "#e2e8f0";
+                                  e.currentTarget.style.transform = "scale(1)";
+                                }
+                              }}
+                            >
+                              <div style={{
+                                fontSize: 11,
+                                fontWeight: 600,
+                                color: isToday ? "#fff" : "#0f172a"
+                              }}>
+                                {day.getDate()}
+                              </div>
+                              
+                              {dayEvents.length > 0 && (
+                                <div style={{
+                                  position: "absolute",
+                                  bottom: 2,
+                                  display: "flex",
+                                  gap: 1
+                                }}>
+                                  {dayEvents.slice(0, 3).map((ev, i) => (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        width: 3,
+                                        height: 3,
+                                        borderRadius: "50%",
+                                        background: isToday ? "#fff" : EVENT_COLORS[ev.color || "blue"].dot
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* Linear View - Excel-style rows */
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {[...Array(12)].map((_, monthIndex) => {
+                  const monthDate = new Date(selectedYear, monthIndex, 1);
+                  const monthName = monthDate.toLocaleDateString(undefined, { month: "long" });
+                  
+                  // Get all days in this month
+                  const year = selectedYear;
+                  const month = monthIndex;
+                  const lastDay = new Date(year, month + 1, 0);
+                  const daysInMonth = lastDay.getDate();
+                  
+                  // Build array of all dates in month
+                  const monthDays = [];
+                  for (let day = 1; day <= daysInMonth; day++) {
+                    monthDays.push(new Date(year, month, day));
+                  }
+                  
+                  return (
+                    <div key={monthIndex} style={{ 
+                      background: "#fafbfc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 6,
+                      padding: "8px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      transition: "all 0.2s ease"
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "#f8fafc"}
+                    onMouseLeave={e => e.currentTarget.style.background = "#fafbfc"}
+                    >
+                      {/* Month Label - Excel style */}
+                      <div style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#667eea",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.5px",
+                        minWidth: 80,
+                        flexShrink: 0
+                      }}>
+                        {monthName}
+                      </div>
+                      
+                      {/* Horizontal Row of ALL Days */}
+                      <div style={{
+                        display: "flex",
+                        gap: 3,
+                        overflowX: "auto",
+                        flex: 1,
+                        scrollbarWidth: "none",
+                        msOverflowStyle: "none"
+                      }}>
+                        {monthDays.map((day, dayIndex) => {
+                          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+                          const isToday = day.toDateString() === now.toDateString();
+                          const dayEvents = filteredEvents.filter(ev => 
+                            ev.start.toDateString() === day.toDateString()
+                          );
+                          const dayName = ["S", "M", "T", "W", "T", "F", "S"][day.getDay()];
+                          
+                          return (
+                            <div
+                              key={dayIndex}
+                              onClick={() => goToDate(day)}
+                              style={{
+                                minWidth: 36,
+                                width: 36,
+                                background: isToday
+                                  ? "linear-gradient(135deg, #667eea, #764ba2)"
+                                  : isWeekend
+                                  ? "#f1f5f9"
+                                  : "#fff",
+                                border: isToday 
+                                  ? "2px solid #667eea"
+                                  : "1px solid #e2e8f0",
+                                borderRadius: 6,
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                padding: "6px 2px",
+                                cursor: "pointer",
+                                transition: "all 0.2s ease",
+                                flexShrink: 0
+                              }}
+                              onMouseEnter={e => {
+                                if (!isToday) {
+                                  e.currentTarget.style.transform = "translateY(-2px)";
+                                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.2)";
+                                  e.currentTarget.style.borderColor = "#667eea";
+                                }
+                              }}
+                              onMouseLeave={e => {
+                                if (!isToday) {
+                                  e.currentTarget.style.transform = "translateY(0)";
+                                  e.currentTarget.style.boxShadow = "none";
+                                  e.currentTarget.style.borderColor = "#e2e8f0";
+                                }
+                              }}
+                            >
+                              {/* Day Name */}
+                              <div style={{
+                                fontSize: 8,
+                                fontWeight: 600,
+                                color: isToday ? "#fff" : "#94a3b8",
+                                marginBottom: 2
+                              }}>
+                                {dayName}
+                              </div>
+                              
+                              {/* Day Number */}
+                              <div style={{
+                                fontSize: 12,
+                                fontWeight: 700,
+                                color: isToday ? "#fff" : "#0f172a",
+                                marginBottom: 4
+                              }}>
+                                {day.getDate()}
+                              </div>
+                              
+                              {/* Event Indicators */}
+                              {dayEvents.length > 0 && (
+                                <div style={{
+                                  display: "flex",
+                                  gap: 1.5,
+                                  alignItems: "center"
+                                }}>
+                                  {dayEvents.slice(0, 2).map((ev, i) => (
+                                    <div
+                                      key={i}
+                                      style={{
+                                        width: 3,
+                                        height: 3,
+                                        borderRadius: "50%",
+                                        background: isToday ? "#fff" : EVENT_COLORS[ev.color || "blue"].dot
+                                      }}
+                                    />
+                                  ))}
+                                  {dayEvents.length > 2 && (
+                                    <div style={{
+                                      fontSize: 6,
+                                      fontWeight: 700,
+                                      color: isToday ? "#fff" : "#667eea"
+                                    }}>
+                                      +{dayEvents.length - 2}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         ) : viewMode === "month" ? (
           <div style={{ 
