@@ -88,6 +88,11 @@ export default function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
+  const [yearViewLayout, setYearViewLayout] = useState(() => {
+    const saved = localStorage.getItem('yearViewLayout');
+    return saved || 'linear'; // 'linear' or 'grid'
+  });
+
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
@@ -224,6 +229,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('weekStartsOnMonday', JSON.stringify(weekStartsOnMonday));
   }, [weekStartsOnMonday]);
+
+  useEffect(() => {
+    localStorage.setItem('yearViewLayout', yearViewLayout);
+  }, [yearViewLayout]);
 
   const createFamilySpace = async () => {
     try {
@@ -1352,10 +1361,24 @@ div::-webkit-scrollbar {
                 fontWeight: 600,
                 cursor: "pointer",
                 color: "#64748b",
-                transition: "all 0.2s ease"
+                transition: "all 0.2s ease",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = "#667eea";
+                e.currentTarget.style.color = "#667eea";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = "#e2e8f0";
+                e.currentTarget.style.color = "#64748b";
               }}
             >
-              ⚙️
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-6 6l-4.2 4.2m18.4 0l-4.2-4.2m-6-6l-4.2-4.2"></path>
+              </svg>
             </button>
           </div>
         </div>
@@ -1705,81 +1728,87 @@ div::-webkit-scrollbar {
             boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
             border: "1px solid #e2e8f0"
           }}>
-            {/* Year Selector */}
+            {/* Year Selector - Clean with arrows only */}
             <div style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              gap: 12,
+              gap: 24,
               marginBottom: 24,
               paddingBottom: 16,
-              borderBottom: "2px solid #e2e8f0"
+              borderBottom: "2px solid #f1f5f9"
             }}>
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
                 style={{
-                  background: "#fff",
-                  border: "2px solid #e2e8f0",
-                  borderRadius: 8,
-                  padding: "8px 16px",
+                  background: "#f8fafc",
+                  border: "none",
+                  borderRadius: 10,
+                  width: 40,
+                  height: 40,
                   cursor: "pointer",
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: 600,
                   color: "#475569",
-                  transition: "all 0.2s ease"
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
                 }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#667eea"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#667eea";
+                  e.currentTarget.style.color = "#fff";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.color = "#475569";
+                }}
               >
                 ←
               </button>
               
-              <select
-                value={selectedYear}
-                onChange={e => setSelectedYear(parseInt(e.target.value))}
-                style={{
-                  background: "linear-gradient(135deg, #667eea, #764ba2)",
-                  color: "#fff",
-                  border: "none",
-                  borderRadius: 10,
-                  padding: "12px 24px",
-                  fontSize: 18,
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  outline: "none",
-                  boxShadow: "0 4px 12px rgba(102, 126, 234, 0.3)"
-                }}
-              >
-                {[...Array(10)].map((_, i) => {
-                  const year = new Date().getFullYear() - 2 + i;
-                  return (
-                    <option key={year} value={year}>{year}</option>
-                  );
-                })}
-              </select>
+              <div style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: "#0f172a",
+                minWidth: 100,
+                textAlign: "center"
+              }}>
+                {selectedYear}
+              </div>
               
               <button
                 onClick={() => setSelectedYear(selectedYear + 1)}
                 style={{
-                  background: "#fff",
-                  border: "2px solid #e2e8f0",
-                  borderRadius: 8,
-                  padding: "8px 16px",
+                  background: "#f8fafc",
+                  border: "none",
+                  borderRadius: 10,
+                  width: 40,
+                  height: 40,
                   cursor: "pointer",
-                  fontSize: 16,
+                  fontSize: 18,
                   fontWeight: 600,
                   color: "#475569",
-                  transition: "all 0.2s ease"
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
                 }}
-                onMouseEnter={e => e.currentTarget.style.borderColor = "#667eea"}
-                onMouseLeave={e => e.currentTarget.style.borderColor = "#e2e8f0"}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "#667eea";
+                  e.currentTarget.style.color = "#fff";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#f8fafc";
+                  e.currentTarget.style.color = "#475569";
+                }}
               >
                 →
               </button>
             </div>
 
-            {/* 12 Month Rows - Each month in one horizontal row */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* 12 Month Rows - Cleaner and more aligned */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
               {[...Array(12)].map((_, monthIndex) => {
                 const monthDate = new Date(selectedYear, monthIndex, 1);
                 const monthName = monthDate.toLocaleDateString(undefined, { month: "long" });
@@ -1798,28 +1827,31 @@ div::-webkit-scrollbar {
                 
                 return (
                   <div key={monthIndex} style={{ 
-                    background: "#f8f9fa",
+                    background: "#fafbfc",
                     borderRadius: 12,
-                    padding: 12
+                    padding: "16px 20px",
+                    border: "1px solid #e2e8f0"
                   }}>
                     {/* Month Label */}
                     <div style={{
-                      fontSize: 13,
+                      fontSize: 14,
                       fontWeight: 700,
                       color: "#667eea",
-                      marginBottom: 8,
+                      marginBottom: 12,
                       textTransform: "uppercase",
-                      letterSpacing: "0.5px"
+                      letterSpacing: "1px"
                     }}>
                       {monthName}
                     </div>
                     
-                    {/* Horizontal Row of ALL Days in Month */}
+                    {/* Horizontal Row of ALL Days with day names */}
                     <div style={{
                       display: "flex",
-                      gap: 3,
+                      gap: 4,
                       overflowX: "auto",
-                      paddingBottom: 4
+                      paddingBottom: 4,
+                      scrollbarWidth: "none",
+                      msOverflowStyle: "none"
                     }}>
                       {monthDays.map((day, dayIndex) => {
                         const isWeekend = day.getDay() === 0 || day.getDay() === 6;
@@ -1827,51 +1859,64 @@ div::-webkit-scrollbar {
                         const dayEvents = filteredEvents.filter(ev => 
                           ev.start.toDateString() === day.toDateString()
                         );
+                        const dayName = ["S", "M", "T", "W", "T", "F", "S"][day.getDay()];
                         
                         return (
                           <div
                             key={dayIndex}
                             onClick={() => goToDate(day)}
                             style={{
-                              minWidth: 38,
-                              width: 38,
-                              height: 52,
+                              minWidth: 40,
+                              width: 40,
                               background: isToday
                                 ? "linear-gradient(135deg, #667eea, #764ba2)"
                                 : isWeekend
-                                ? "#e2e8f0"
+                                ? "#f1f5f9"
                                 : "#fff",
                               border: isToday 
                                 ? "2px solid #667eea"
-                                : "1px solid #cbd5e1",
-                              borderRadius: 6,
+                                : "1px solid #e2e8f0",
+                              borderRadius: 8,
                               display: "flex",
                               flexDirection: "column",
                               alignItems: "center",
-                              justifyContent: "space-between",
-                              padding: "4px 2px",
+                              padding: "8px 4px",
                               cursor: "pointer",
                               transition: "all 0.2s ease",
                               flexShrink: 0
                             }}
                             onMouseEnter={e => {
                               if (!isToday) {
-                                e.currentTarget.style.transform = "translateY(-2px)";
-                                e.currentTarget.style.boxShadow = "0 4px 12px rgba(0,0,0,0.15)";
+                                e.currentTarget.style.transform = "translateY(-3px)";
+                                e.currentTarget.style.boxShadow = "0 6px 16px rgba(102, 126, 234, 0.2)";
+                                e.currentTarget.style.borderColor = "#667eea";
                               }
                             }}
                             onMouseLeave={e => {
                               if (!isToday) {
                                 e.currentTarget.style.transform = "translateY(0)";
                                 e.currentTarget.style.boxShadow = "none";
+                                e.currentTarget.style.borderColor = "#e2e8f0";
                               }
                             }}
                           >
+                            {/* Day Name */}
+                            <div style={{
+                              fontSize: 9,
+                              fontWeight: 600,
+                              color: isToday ? "#fff" : "#94a3b8",
+                              marginBottom: 4,
+                              textTransform: "uppercase"
+                            }}>
+                              {dayName}
+                            </div>
+                            
                             {/* Day Number */}
                             <div style={{
-                              fontSize: 13,
-                              fontWeight: 600,
-                              color: isToday ? "#fff" : isWeekend ? "#64748b" : "#0f172a"
+                              fontSize: 14,
+                              fontWeight: 700,
+                              color: isToday ? "#fff" : "#0f172a",
+                              marginBottom: 6
                             }}>
                               {day.getDate()}
                             </div>
@@ -1880,7 +1925,6 @@ div::-webkit-scrollbar {
                             {dayEvents.length > 0 && (
                               <div style={{
                                 display: "flex",
-                                flexDirection: "column",
                                 gap: 2,
                                 alignItems: "center"
                               }}>
@@ -1888,18 +1932,18 @@ div::-webkit-scrollbar {
                                   <div
                                     key={i}
                                     style={{
-                                      width: 5,
-                                      height: 5,
+                                      width: 4,
+                                      height: 4,
                                       borderRadius: "50%",
-                                      background: EVENT_COLORS[ev.color || "blue"].dot
+                                      background: isToday ? "#fff" : EVENT_COLORS[ev.color || "blue"].dot
                                     }}
                                   />
                                 ))}
                                 {dayEvents.length > 3 && (
                                   <div style={{
-                                    fontSize: 7,
+                                    fontSize: 6,
                                     fontWeight: 700,
-                                    color: isToday ? "#fff" : "#64748b"
+                                    color: isToday ? "#fff" : "#667eea"
                                   }}>
                                     +{dayEvents.length - 3}
                                   </div>
@@ -2157,50 +2201,180 @@ div::-webkit-scrollbar {
 
       {showSettings && (
         <Overlay title="Settings" onClose={() => setShowSettings(false)}>
-          <div style={{ padding: "16px 0" }}>
-            <div style={{
-              padding: "16px 0"
-            }}>
-              <div style={{ fontWeight: 600, fontSize: 15, color: "#0f172a", marginBottom: 12 }}>
-                Week Starts On
+          <div style={{ padding: "16px 0", display: "flex", flexDirection: "column", gap: 24 }}>
+            
+            {/* Display Options Section */}
+            <div>
+              <div style={{ 
+                fontWeight: 700, 
+                fontSize: 16, 
+                color: "#0f172a", 
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="3" width="7" height="7"></rect>
+                  <rect x="14" y="14" width="7" height="7"></rect>
+                  <rect x="3" y="14" width="7" height="7"></rect>
+                </svg>
+                Display Options
               </div>
               
-              <div style={{ display: "flex", gap: 8 }}>
-                <button
-                  onClick={() => setWeekStartsOnMonday(false)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 16px",
-                    borderRadius: 10,
-                    border: weekStartsOnMonday ? "2px solid #e2e8f0" : "2px solid #667eea",
-                    background: weekStartsOnMonday ? "#fff" : "#eef2ff",
-                    color: weekStartsOnMonday ? "#64748b" : "#1e3a8a",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  Sunday
-                </button>
+              {/* Year View Layout */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  color: "#64748b", 
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  Year View Layout
+                </div>
                 
-                <button
-                  onClick={() => setWeekStartsOnMonday(true)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 16px",
-                    borderRadius: 10,
-                    border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid #e2e8f0",
-                    background: weekStartsOnMonday ? "#eef2ff" : "#fff",
-                    color: weekStartsOnMonday ? "#1e3a8a" : "#64748b",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s ease"
-                  }}
-                >
-                  Monday
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setYearViewLayout('linear')}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: yearViewLayout === 'linear' ? "2px solid #667eea" : "2px solid #e2e8f0",
+                      background: yearViewLayout === 'linear' ? "#eef2ff" : "#fff",
+                      color: yearViewLayout === 'linear' ? "#1e3a8a" : "#64748b",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <line x1="3" y1="6" x2="21" y2="6"></line>
+                      <line x1="3" y1="12" x2="21" y2="12"></line>
+                      <line x1="3" y1="18" x2="21" y2="18"></line>
+                    </svg>
+                    <span>Linear</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setYearViewLayout('grid')}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: yearViewLayout === 'grid' ? "2px solid #667eea" : "2px solid #e2e8f0",
+                      background: yearViewLayout === 'grid' ? "#eef2ff" : "#fff",
+                      color: yearViewLayout === 'grid' ? "#1e3a8a" : "#64748b",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      gap: 6
+                    }}
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="3" width="7" height="7"></rect>
+                      <rect x="14" y="14" width="7" height="7"></rect>
+                      <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>Grid</span>
+                  </button>
+                </div>
+                
+                <div style={{ 
+                  fontSize: 12, 
+                  color: "#94a3b8", 
+                  marginTop: 8,
+                  fontStyle: "italic"
+                }}>
+                  {yearViewLayout === 'linear' 
+                    ? "12 horizontal month rows with all days" 
+                    : "Traditional calendar grid layout"}
+                </div>
+              </div>
+            </div>
+
+            {/* Calendar Settings Section */}
+            <div>
+              <div style={{ 
+                fontWeight: 700, 
+                fontSize: 16, 
+                color: "#0f172a", 
+                marginBottom: 16,
+                display: "flex",
+                alignItems: "center",
+                gap: 8
+              }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+                Calendar Settings
+              </div>
+              
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  color: "#64748b", 
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  Week Starts On
+                </div>
+                
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setWeekStartsOnMonday(false)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: weekStartsOnMonday ? "2px solid #e2e8f0" : "2px solid #667eea",
+                      background: weekStartsOnMonday ? "#fff" : "#eef2ff",
+                      color: weekStartsOnMonday ? "#64748b" : "#1e3a8a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    Sunday
+                  </button>
+                  
+                  <button
+                    onClick={() => setWeekStartsOnMonday(true)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid #e2e8f0",
+                      background: weekStartsOnMonday ? "#eef2ff" : "#fff",
+                      color: weekStartsOnMonday ? "#1e3a8a" : "#64748b",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    Monday
+                  </button>
+                </div>
               </div>
             </div>
           </div>
