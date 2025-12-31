@@ -2008,31 +2008,29 @@ div::-webkit-scrollbar {
                         left: 0,
                         zIndex: 6
                       }}></th>
-                      {[...Array(5)].map((_, weekIdx) => (
-                        <React.Fragment key={weekIdx}>
-                          {(weekStartsOnMonday 
-                            ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
-                            : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
-                          ).map((dayName, i) => {
-                            const isWeekend = weekStartsOnMonday 
-                              ? (i === 5 || i === 6) 
-                              : (i === 0 || i === 6);
-                            return (
-                              <th key={`${weekIdx}-${i}`} style={{
-                                padding: "8px 4px",
-                                textAlign: "center",
-                                borderBottom: "2px solid #e2e8f0",
-                                background: isWeekend ? "#f1f5f9" : "#fafbfc",
-                                fontWeight: 600,
-                                color: "#64748b",
-                                fontSize: 11
-                              }}>
-                                {dayName}
-                              </th>
-                            );
-                          })}
-                        </React.Fragment>
-                      ))}
+                      {[...Array(5)].flatMap((_, weekIdx) => 
+                        (weekStartsOnMonday 
+                          ? ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"]
+                          : ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"]
+                        ).map((dayName, i) => {
+                          const isWeekend = weekStartsOnMonday 
+                            ? (i === 5 || i === 6) 
+                            : (i === 0 || i === 6);
+                          return (
+                            <th key={`${weekIdx}-${i}`} style={{
+                              padding: "8px 4px",
+                              textAlign: "center",
+                              borderBottom: "2px solid #e2e8f0",
+                              background: isWeekend ? "#f1f5f9" : "#fafbfc",
+                              fontWeight: 600,
+                              color: "#64748b",
+                              fontSize: 11
+                            }}>
+                              {dayName}
+                            </th>
+                          );
+                        })
+                      )}
                     </tr>
                   </thead>
                   
