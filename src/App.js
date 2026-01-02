@@ -272,9 +272,9 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('darkMode', JSON.stringify(darkMode));
     if (darkMode) {
-      document.body.style.background = "#0a0a0a";
+      document.body.style.background = "#0F172A";
     } else {
-      document.body.style.background = "#f8f9fa";
+      document.body.style.background = "#f8fafc";
     }
   }, [darkMode]);
 
@@ -912,7 +912,9 @@ export default function App() {
   return (
     <div style={{ 
       minHeight: "100vh",
-      background: darkMode ? "#0a0a0a" : "#f8fafc",
+      background: darkMode 
+        ? "linear-gradient(180deg, #0F172A 0%, #1E293B 100%)" 
+        : "linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
       paddingBottom: "24px",
       transition: "background 0.3s ease"
@@ -1009,14 +1011,21 @@ div::-webkit-scrollbar {
 </style>
 
       <div style={{
-        background: darkMode ? "rgba(10, 10, 10, 0.95)" : "rgba(255, 255, 255, 0.95)",
-        backdropFilter: "blur(20px)",
-        borderBottom: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)",
+        background: darkMode 
+          ? "rgba(15, 23, 42, 0.8)" 
+          : "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(12px)",
+        WebkitBackdropFilter: "blur(12px)",
+        borderBottom: darkMode 
+          ? "1px solid rgba(148, 163, 184, 0.1)" 
+          : "1px solid rgba(0,0,0,0.06)",
         padding: "16px 20px",
         position: "sticky",
         top: 0,
         zIndex: 50,
-        boxShadow: darkMode ? "0 1px 3px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.05)"
+        boxShadow: darkMode 
+          ? "0 4px 24px rgba(0, 0, 0, 0.4)" 
+          : "0 4px 12px rgba(0,0,0,0.05)"
       }}>
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
@@ -1448,7 +1457,7 @@ div::-webkit-scrollbar {
             <button
               onClick={() => setShowSettings(true)}
               style={{
-                background: darkMode ? "#1a1a1a" : "#fff",
+                background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff",
                 border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
                 borderRadius: 10,
                 padding: "10px 16px",
@@ -1466,7 +1475,7 @@ div::-webkit-scrollbar {
                 e.currentTarget.style.color = "#667eea";
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = darkMode ? "#334155" : "#e2e8f0";
+                e.currentTarget.style.borderColor = darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0";
                 e.currentTarget.style.color = darkMode ? "#94a3b8" : "#64748b";
               }}
             >
@@ -1828,12 +1837,19 @@ div::-webkit-scrollbar {
           </div>
         ) : viewMode === "year" ? (
           <div style={{ 
-            background: darkMode ? "#0a0a0a" : "#fff",
+            background: darkMode 
+              ? "rgba(30, 41, 59, 0.4)" 
+              : "#fff",
             borderRadius: 16,
-            boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)",
-            border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+            boxShadow: darkMode 
+              ? "0 8px 32px rgba(0, 0, 0, 0.3)" 
+              : "0 4px 20px rgba(0,0,0,0.08)",
+            border: darkMode 
+              ? "1px solid rgba(148, 163, 184, 0.1)" 
+              : "1px solid #e2e8f0",
             overflow: "hidden",
-            width: "100%"
+            width: "100%",
+            backdropFilter: darkMode ? "blur(10px)" : "none"
           }}>
             {/* Year Selector - Clean with arrows only */}
             <div style={{
@@ -1842,17 +1858,26 @@ div::-webkit-scrollbar {
               justifyContent: "center",
               gap: 24,
               padding: "20px",
-              borderBottom: darkMode ? "2px solid #1f2937" : "2px solid #f1f5f9",
-              background: darkMode ? "#0a0a0a" : "#fff",
+              borderBottom: darkMode 
+                ? "1px solid rgba(148, 163, 184, 0.1)" 
+                : "2px solid #f1f5f9",
+              background: darkMode 
+                ? "rgba(15, 23, 42, 0.6)" 
+                : "#fff",
               position: "sticky",
               top: 0,
-              zIndex: 10
+              zIndex: 10,
+              backdropFilter: "blur(8px)"
             }}>
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
                 style={{
-                  background: darkMode ? "#1a1a1a" : "#f8fafc",
-                  border: "none",
+                  background: darkMode 
+                    ? "rgba(51, 65, 85, 0.6)" 
+                    : "#f8fafc",
+                  border: darkMode 
+                    ? "1px solid rgba(148, 163, 184, 0.2)" 
+                    : "none",
                   borderRadius: 10,
                   width: 40,
                   height: 40,
@@ -1935,21 +1960,30 @@ div::-webkit-scrollbar {
                   <thead style={{
                     position: "sticky",
                     top: 0,
-                    background: darkMode ? "#0a0a0a" : "#fff",
+                    background: darkMode 
+                      ? "rgba(15, 23, 42, 0.95)" 
+                      : "#fff",
                     zIndex: 5,
                     boxShadow: darkMode 
-                      ? "0 2px 8px rgba(0,0,0,0.3)" 
-                      : "0 2px 8px rgba(0,0,0,0.05)"
+                      ? "0 4px 16px rgba(0,0,0,0.2)" 
+                      : "0 2px 8px rgba(0,0,0,0.05)",
+                    backdropFilter: darkMode ? "blur(10px)" : "none"
                   }}>
                     <tr>
                       <th style={{
                         padding: "12px 20px",
                         textAlign: "left",
-                        borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
-                        borderRight: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
-                        background: darkMode ? "#0f0f0f" : "#fafbfc",
+                        borderBottom: darkMode 
+                          ? "1px solid rgba(148, 163, 184, 0.1)" 
+                          : "1px solid #e2e8f0",
+                        borderRight: darkMode 
+                          ? "1px solid rgba(148, 163, 184, 0.1)" 
+                          : "1px solid #e2e8f0",
+                        background: darkMode 
+                          ? "rgba(30, 41, 59, 0.4)" 
+                          : "#fafbfc",
                         fontWeight: 700,
-                        color: darkMode ? "#94a3b8" : "#64748b",
+                        color: darkMode ? "#CBD5E1" : "#64748b",
                         position: "sticky",
                         left: 0,
                         zIndex: 6
@@ -1966,12 +2000,14 @@ div::-webkit-scrollbar {
                             <th key={`${weekIdx}-${i}`} style={{
                               padding: "12px 6px",
                               textAlign: "center",
-                              borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                              borderBottom: darkMode 
+                                ? "1px solid rgba(148, 163, 184, 0.1)" 
+                                : "1px solid #e2e8f0",
                               background: isWeekend 
-                                ? (darkMode ? "#0a0a0a" : "#f8fafc")
-                                : (darkMode ? "#0f0f0f" : "#fafbfc"),
+                                ? (darkMode ? "rgba(30, 41, 59, 0.3)" : "#f8fafc")
+                                : (darkMode ? "rgba(30, 41, 59, 0.5)" : "#fafbfc"),
                               fontWeight: 600,
-                              color: darkMode ? "#94a3b8" : "#64748b",
+                              color: darkMode ? "#94A3B8" : "#64748b",
                               fontSize: 11,
                               letterSpacing: "0.5px"
                             }}>
@@ -2020,9 +2056,15 @@ div::-webkit-scrollbar {
                         <tr key={monthIndex}>
                           <td style={{
                             padding: "8px 16px",
-                            borderBottom: "1px solid #e2e8f0",
-                            borderRight: "2px solid #e2e8f0",
-                            background: darkMode ? "#1a1a1a" : "#fafbfc",
+                            borderBottom: darkMode 
+                              ? "1px solid rgba(148, 163, 184, 0.1)" 
+                              : "1px solid #e2e8f0",
+                            borderRight: darkMode 
+                              ? "1px solid rgba(148, 163, 184, 0.2)" 
+                              : "2px solid #e2e8f0",
+                            background: darkMode 
+                              ? "rgba(30, 41, 59, 0.5)" 
+                              : "#fafbfc",
                             fontWeight: 700,
                             color: "#667eea",
                             fontSize: 12,
@@ -2042,9 +2084,11 @@ div::-webkit-scrollbar {
                               return (
                                 <td key={`empty-${idx}`} style={{
                                   padding: "8px 4px",
-                                  borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                                  borderBottom: darkMode 
+                                    ? "1px solid rgba(148, 163, 184, 0.05)" 
+                                    : "1px solid #e2e8f0",
                                   background: darkMode 
-                                    ? (isWeekend ? "#151515" : "#0a0a0a")
+                                    ? (isWeekend ? "rgba(30, 41, 59, 0.2)" : "rgba(15, 23, 42, 0.1)")
                                     : (isWeekend ? "#f8f9fa" : "#fff"),
                                   minWidth: 32,
                                   textAlign: "center"
@@ -2065,11 +2109,13 @@ div::-webkit-scrollbar {
                                 onClick={() => goToDate(day)}
                                 style={{
                                   padding: "8px 4px",
-                                  borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                                  borderBottom: darkMode 
+                                    ? "1px solid rgba(148, 163, 184, 0.05)" 
+                                    : "1px solid #e2e8f0",
                                   background: isToday
                                     ? "linear-gradient(135deg, #667eea, #764ba2)"
                                     : darkMode
-                                    ? (isWeekend ? "#151515" : "#0a0a0a")
+                                    ? (isWeekend ? "rgba(30, 41, 59, 0.3)" : "rgba(15, 23, 42, 0.2)")
                                     : (isWeekend ? "#f8f9fa" : "#fff"),
                                   cursor: "pointer",
                                   textAlign: "center",
@@ -2085,7 +2131,9 @@ div::-webkit-scrollbar {
                                     setTooltipPosition({ x: e.clientX, y: e.clientY });
                                   }
                                   if (!isToday) {
-                                    e.currentTarget.style.background = darkMode ? "#1e3a8a" : "#eef2ff";
+                                    e.currentTarget.style.background = darkMode 
+                                      ? "rgba(102, 126, 234, 0.3)" 
+                                      : "#eef2ff";
                                     e.currentTarget.style.opacity = 1;
                                     e.currentTarget.style.filter = "none";
                                   }
@@ -2099,7 +2147,7 @@ div::-webkit-scrollbar {
                                   setHoveredDateEvents(null);
                                   if (!isToday) {
                                     e.currentTarget.style.background = darkMode 
-                                      ? (isWeekend ? "#151515" : "#0a0a0a")
+                                      ? (isWeekend ? "rgba(30, 41, 59, 0.3)" : "rgba(15, 23, 42, 0.2)")
                                       : (isWeekend ? "#f8f9fa" : "#fff");
                                     e.currentTarget.style.opacity = (blurPastDates && isPast) ? 0.3 : 1;
                                     e.currentTarget.style.filter = (blurPastDates && isPast) ? "blur(1px)" : "none";
@@ -2354,15 +2402,15 @@ div::-webkit-scrollbar {
           }}>
             {/* Events Preview */}
             <div style={{
-              background: darkMode ? "#0a0a0a" : "#fff",
-              border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
+              border: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #e2e8f0",
               borderRadius: 16,
               overflow: "hidden",
               boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)"
             }}>
               <div style={{
                 padding: "16px 20px",
-                borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9",
+                borderBottom: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #f1f5f9",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center"
@@ -2438,8 +2486,8 @@ div::-webkit-scrollbar {
                           padding: "10px 12px",
                           marginBottom: 8,
                           borderRadius: 10,
-                          background: darkMode ? "#1a1a1a" : "#f8fafc",
-                          border: `1px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                          background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#f8fafc",
+                          border: `1px solid ${darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                           cursor: "pointer",
                           transition: "all 0.2s ease",
                           borderLeft: `3px solid ${colorStyle.dot}`
@@ -2449,7 +2497,7 @@ div::-webkit-scrollbar {
                           e.currentTarget.style.transform = "translateX(4px)";
                         }}
                         onMouseLeave={e => {
-                          e.currentTarget.style.background = darkMode ? "#1a1a1a" : "#f8fafc";
+                          e.currentTarget.style.background = darkMode ? "rgba(30, 41, 59, 0.6)" : "#f8fafc";
                           e.currentTarget.style.transform = "translateX(0)";
                         }}
                       >
@@ -2481,8 +2529,8 @@ div::-webkit-scrollbar {
             
             {/* Notes Section */}
             <div style={{
-              background: darkMode ? "#0a0a0a" : "#fff",
-              border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
+              border: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #e2e8f0",
               borderRadius: 16,
               overflow: "hidden",
               boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)",
@@ -2492,7 +2540,7 @@ div::-webkit-scrollbar {
             }}>
               <div style={{
                 padding: "16px 20px",
-                borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9"
+                borderBottom: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #f1f5f9"
               }}>
                 <h3 style={{
                   margin: 0,
@@ -2515,7 +2563,7 @@ div::-webkit-scrollbar {
                   resize: "none",
                   fontSize: 13,
                   lineHeight: 1.6,
-                  background: darkMode ? "#0a0a0a" : "#fff",
+                  background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
                   color: darkMode ? "#e2e8f0" : "#0f172a",
                   fontFamily: "inherit",
                   minHeight: 200
@@ -2534,7 +2582,7 @@ div::-webkit-scrollbar {
               right: 20,
               top: "50%",
               transform: "translateY(-50%)",
-              background: darkMode ? "#1a1a1a" : "#fff",
+              background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff",
               border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
               borderRadius: "12px 0 0 12px",
               padding: "16px 8px",
@@ -2553,7 +2601,7 @@ div::-webkit-scrollbar {
               e.currentTarget.style.color = "#fff";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = darkMode ? "#1a1a1a" : "#fff";
+              e.currentTarget.style.background = darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff";
               e.currentTarget.style.color = darkMode ? "#94a3b8" : "#64748b";
             }}
             title="Show sidebar"
@@ -2658,7 +2706,7 @@ div::-webkit-scrollbar {
                       padding: "12px 16px",
                       borderRadius: 10,
                       border: darkMode ? "2px solid #334155" : "2px solid #667eea",
-                      background: darkMode ? (darkMode ? "#1a1a1a" : "#fff") : "#eef2ff",
+                      background: darkMode ? (darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff") : "#eef2ff",
                       color: darkMode ? "#94a3b8" : "#1e3a8a",
                       fontSize: 14,
                       fontWeight: 600,
@@ -2719,7 +2767,7 @@ div::-webkit-scrollbar {
                   alignItems: "center",
                   padding: "12px 16px",
                   borderRadius: 10,
-                  background: darkMode ? "#1a1a1a" : "#f8fafc",
+                  background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#f8fafc",
                   border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0"
                 }}>
                   <div>
@@ -2745,7 +2793,7 @@ div::-webkit-scrollbar {
                       height: 28,
                       borderRadius: 14,
                       border: "none",
-                      background: blurPastDates ? "#667eea" : darkMode ? "#334155" : "#cbd5e1",
+                      background: blurPastDates ? "#667eea" : darkMode ? "rgba(148, 163, 184, 0.2)" : "#cbd5e1",
                       cursor: "pointer",
                       position: "relative",
                       transition: "all 0.2s ease"
@@ -2807,10 +2855,10 @@ div::-webkit-scrollbar {
                       padding: "10px 16px",
                       borderRadius: 10,
                       border: weekStartsOnMonday 
-                        ? `2px solid ${darkMode ? "#334155" : "#e2e8f0"}` 
+                        ? `2px solid ${darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}` 
                         : "2px solid #667eea",
                       background: weekStartsOnMonday 
-                        ? (darkMode ? "#1a1a1a" : "#fff") 
+                        ? (darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff") 
                         : (darkMode ? "#1e3a8a" : "#eef2ff"),
                       color: weekStartsOnMonday 
                         ? (darkMode ? "#94a3b8" : "#64748b") 
@@ -2832,10 +2880,10 @@ div::-webkit-scrollbar {
                       borderRadius: 10,
                       border: weekStartsOnMonday 
                         ? "2px solid #667eea" 
-                        : `2px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                        : `2px solid ${darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                       background: weekStartsOnMonday 
                         ? (darkMode ? "#1e3a8a" : "#eef2ff") 
-                        : (darkMode ? "#1a1a1a" : "#fff"),
+                        : (darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff"),
                       color: weekStartsOnMonday 
                         ? (darkMode ? "#fff" : "#1e3a8a") 
                         : (darkMode ? "#94a3b8" : "#64748b"),
@@ -2871,10 +2919,10 @@ div::-webkit-scrollbar {
                       padding: "10px 16px",
                       borderRadius: 10,
                       border: use24HourFormat 
-                        ? `2px solid ${darkMode ? "#334155" : "#e2e8f0"}` 
+                        ? `2px solid ${darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}` 
                         : "2px solid #667eea",
                       background: use24HourFormat 
-                        ? (darkMode ? "#1a1a1a" : "#fff") 
+                        ? (darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff") 
                         : "#eef2ff",
                       color: use24HourFormat 
                         ? (darkMode ? "#94a3b8" : "#64748b") 
@@ -2896,10 +2944,10 @@ div::-webkit-scrollbar {
                       borderRadius: 10,
                       border: use24HourFormat 
                         ? "2px solid #667eea" 
-                        : `2px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                        : `2px solid ${darkMode ? "rgba(148, 163, 184, 0.2)" : "#e2e8f0"}`,
                       background: use24HourFormat 
                         ? "#eef2ff" 
-                        : (darkMode ? "#1a1a1a" : "#fff"),
+                        : (darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff"),
                       color: use24HourFormat 
                         ? "#1e3a8a" 
                         : (darkMode ? "#94a3b8" : "#64748b"),
@@ -3274,7 +3322,7 @@ function EventTooltip({ events, position, darkMode }) {
       position: "fixed",
       left: position.x + 10,
       top: position.y + 10,
-      background: darkMode ? "#1a1a1a" : "#fff",
+      background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff",
       border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
       borderRadius: 12,
       padding: "12px 16px",
@@ -3341,7 +3389,7 @@ function Overlay({ title, onClose, children, darkMode }) {
       padding: 20
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: darkMode ? "#0a0a0a" : "#fff",
+        background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
         width: "100%",
         maxWidth: 440,
         maxHeight: "85vh",
@@ -3350,11 +3398,11 @@ function Overlay({ title, onClose, children, darkMode }) {
         boxShadow: darkMode 
           ? "0 25px 50px rgba(0,0,0,0.8)" 
           : "0 25px 50px rgba(0,0,0,0.3)",
-        border: darkMode ? "1px solid #1f2937" : "none"
+        border: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "none"
       }}>
         <div style={{
           padding: "20px 24px",
-          borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9",
+          borderBottom: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #f1f5f9",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center"
@@ -3371,7 +3419,7 @@ function Overlay({ title, onClose, children, darkMode }) {
             onClick={onClose}
             style={{
               border: "none",
-              background: darkMode ? "#1a1a1a" : "#f8fafc",
+              background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#f8fafc",
               fontSize: 18,
               cursor: "pointer",
               width: 36,
