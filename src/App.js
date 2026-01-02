@@ -27,6 +27,7 @@ const EVENT_COLORS = {
   teal: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
   green: { bg: "linear-gradient(135deg, #43e97b, #38f9d7)", border: "#43e97b", dot: "#43e97b" },
   purple: { bg: "linear-gradient(135deg, #667eea, #764ba2)", border: "#667eea", dot: "#667eea" },
+  amber: { bg: "linear-gradient(135deg, #f59e0b, #d97706)", border: "#f59e0b", dot: "#f59e0b" },
   orange: { bg: "linear-gradient(135deg, #fa709a, #fee140)", border: "#fa709a", dot: "#fa709a" },
   red: { bg: "linear-gradient(135deg, #f093fb, #f5576c)", border: "#f093fb", dot: "#f093fb" },
   cyan: { bg: "linear-gradient(135deg, #30cfd0, #330867)", border: "#30cfd0", dot: "#30cfd0" },
@@ -36,13 +37,40 @@ const DEFAULT_CATEGORIES = [
   { id: "work", name: "Work", color: "blue" },
   { id: "project", name: "Project", color: "teal" },
   { id: "deadline", name: "Deadline", color: "red" },
-  { id: "personal", name: "Personal", color: "purple" },
+  { id: "personal", name: "Personal", color: "amber" },
   { id: "travel", name: "Travel", color: "orange" },
   { id: "health", name: "Health", color: "cyan" },
 ];
 
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
+  
+  const MOTIVATIONAL_QUOTES = [
+    "Every day is a fresh start.",
+    "Small progress is still progress.",
+    "You're doing better than you think.",
+    "Focus on what you can control.",
+    "One step at a time.",
+    "Your future self will thank you.",
+    "Make today count.",
+    "Progress over perfection.",
+    "You've got this.",
+    "Consistency beats intensity.",
+    "Trust the process.",
+    "Your only limit is you.",
+    "Dream big, start small.",
+    "Do it with passion or not at all.",
+    "Success is a journey, not a destination.",
+    "Be the energy you want to attract.",
+    "Believe you can and you're halfway there.",
+    "The best time to start was yesterday. The next best time is now."
+  ];
+  
+  const getMotivationalQuote = () => {
+    const hours = new Date().getHours();
+    const index = Math.floor(hours / 4) % MOTIVATIONAL_QUOTES.length;
+    return MOTIVATIONAL_QUOTES[index];
+  };
   
   const [user, setUser] = useState(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -1028,14 +1056,34 @@ div::-webkit-scrollbar {
           : "0 4px 12px rgba(0,0,0,0.05)"
       }}>
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: darkMode ? "#f1f5f9" : "#0f172a" }}>
-                Welcome, {user.displayName}
-              </h2>
               <div style={{ 
-                margin: "10px 0 0 0", 
-                fontSize: 24, 
+                display: "flex", 
+                alignItems: "baseline", 
+                gap: 12,
+                marginBottom: 8 
+              }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: 28, 
+                  fontWeight: 800, 
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  letterSpacing: "-0.8px"
+                }}>
+                  Welcome back, {user.displayName.split(' ')[0]}!
+                </h2>
+                <span style={{
+                  fontSize: 20,
+                  opacity: 0.5
+                }}>👋</span>
+              </div>
+              <div style={{ 
+                margin: "4px 0 0 0", 
+                fontSize: 26, 
                 fontWeight: 800,
                 background: darkMode 
                   ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
@@ -1043,27 +1091,63 @@ div::-webkit-scrollbar {
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
-                letterSpacing: "-0.5px"
+                letterSpacing: "-0.6px"
               }}>
                 {monthYear}
               </div>
             </div>
-            <button
-              onClick={() => signOut(auth)}
-              style={{
-                background: "transparent",
-                border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
-                borderRadius: 10,
-                padding: "8px 14px",
-                cursor: "pointer",
-                fontSize: 14,
+            
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+              <div style={{
+                fontSize: 13,
+                fontStyle: "italic",
                 color: darkMode ? "#94a3b8" : "#64748b",
-                fontWeight: 500,
-                transition: "all 0.2s ease"
-              }}
-            >
-              Sign out
-            </button>
+                maxWidth: 280,
+                textAlign: "right",
+                lineHeight: 1.5
+              }}>
+                "{getMotivationalQuote()}"
+              </div>
+              <button
+                onClick={() => signOut(auth)}
+                style={{
+                  background: darkMode 
+                    ? "rgba(51, 65, 85, 0.6)" 
+                    : "#f8fafc",
+                  border: darkMode 
+                    ? "1px solid rgba(148, 163, 184, 0.2)" 
+                    : "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "10px 18px",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  color: darkMode ? "#f1f5f9" : "#0f172a",
+                  fontWeight: 600,
+                  transition: "all 0.2s ease",
+                  boxShadow: darkMode 
+                    ? "0 2px 8px rgba(0,0,0,0.2)" 
+                    : "0 2px 4px rgba(0,0,0,0.05)"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "linear-gradient(135deg, #667eea, #764ba2)";
+                  e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.transform = "translateY(-1px)";
+                  e.currentTarget.style.boxShadow = "0 4px 12px rgba(102, 126, 234, 0.3)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = darkMode 
+                    ? "rgba(51, 65, 85, 0.6)" 
+                    : "#f8fafc";
+                  e.currentTarget.style.color = darkMode ? "#f1f5f9" : "#0f172a";
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = darkMode 
+                    ? "0 2px 8px rgba(0,0,0,0.2)" 
+                    : "0 2px 4px rgba(0,0,0,0.05)";
+                }}
+              >
+                Sign out
+              </button>
+            </div>
           </div>
 
           {error && (
@@ -1391,16 +1475,7 @@ div::-webkit-scrollbar {
                     : viewMode === "month" 
                     ? "Month View" 
                     : viewMode === "year" 
-                    ? (
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: darkMode ? "#667eea" : "#667eea" }}>
-                          {selectedYear}
-                        </div>
-                        <div style={{ fontSize: 11, fontWeight: 500, color: darkMode ? "#64748b" : "#94a3b8" }}>
-                          Linear Year View
-                        </div>
-                      </div>
-                    )
+                    ? "Linear Year View"
                     : dayDate}
                 </div>
               </div>
@@ -1489,16 +1564,13 @@ div::-webkit-scrollbar {
       </div>
 
       <div style={{ 
-        display: "flex", 
-        maxWidth: showSidebar ? 1800 : 1600, 
+        maxWidth: 1600, 
         margin: "0 auto",
-        padding: "20px",
-        gap: 20
+        padding: "20px"
       }}>
         {/* Main Content Area */}
         <div style={{ 
-          flex: 1,
-          minWidth: 0
+          width: "100%"
         }}>
         {loading ? (
           <div style={{
@@ -1986,7 +2058,8 @@ div::-webkit-scrollbar {
                   width: "100%",
                   borderCollapse: "separate",
                   borderSpacing: 0,
-                  fontSize: 12
+                  fontSize: 13,
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif"
                 }}>
                   {/* Header Row with repeating day names */}
                   <thead style={{
@@ -2038,10 +2111,11 @@ div::-webkit-scrollbar {
                               background: isWeekend 
                                 ? (darkMode ? "rgba(30, 41, 59, 0.3)" : "#f8fafc")
                                 : (darkMode ? "rgba(30, 41, 59, 0.5)" : "#fafbfc"),
-                              fontWeight: 600,
+                              fontWeight: 700,
                               color: darkMode ? "#94A3B8" : "#64748b",
-                              fontSize: 11,
-                              letterSpacing: "0.5px"
+                              fontSize: 12,
+                              letterSpacing: "0.5px",
+                              textTransform: "uppercase"
                             }}>
                               {dayName}
                             </th>
@@ -2087,7 +2161,7 @@ div::-webkit-scrollbar {
                       return (
                         <tr key={monthIndex}>
                           <td style={{
-                            padding: "8px 16px",
+                            padding: "10px 18px",
                             borderBottom: darkMode 
                               ? "1px solid rgba(148, 163, 184, 0.1)" 
                               : "1px solid #e2e8f0",
@@ -2097,12 +2171,13 @@ div::-webkit-scrollbar {
                             background: darkMode 
                               ? "rgba(30, 41, 59, 0.5)" 
                               : "#fafbfc",
-                            fontWeight: 700,
+                            fontWeight: 800,
                             color: "#667eea",
-                            fontSize: 12,
+                            fontSize: 13,
                             position: "sticky",
                             left: 0,
-                            zIndex: 1
+                            zIndex: 1,
+                            letterSpacing: "0.3px"
                           }}>
                             {monthName}
                           </td>
@@ -2423,14 +2498,31 @@ div::-webkit-scrollbar {
         )}
         </div>
         
-        {/* Sidebar */}
+        {/* Fixed Sidebar */}
         {showSidebar && (
           <div style={{
-            width: 320,
-            flexShrink: 0,
+            position: "fixed",
+            right: 0,
+            top: 80,
+            bottom: 0,
+            width: 380,
             display: "flex",
             flexDirection: "column",
-            gap: 16
+            gap: 16,
+            padding: "20px",
+            background: darkMode 
+              ? "rgba(15, 23, 42, 0.98)" 
+              : "rgba(255, 255, 255, 0.98)",
+            backdropFilter: "blur(12px)",
+            WebkitBackdropFilter: "blur(12px)",
+            borderLeft: darkMode 
+              ? "1px solid rgba(148, 163, 184, 0.1)" 
+              : "1px solid #e2e8f0",
+            boxShadow: darkMode 
+              ? "-4px 0 24px rgba(0, 0, 0, 0.3)" 
+              : "-4px 0 24px rgba(0, 0, 0, 0.1)",
+            overflowY: "auto",
+            zIndex: 40
           }}>
             {/* Events Preview */}
             <div style={{
@@ -2441,30 +2533,58 @@ div::-webkit-scrollbar {
               boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)"
             }}>
               <div style={{
-                padding: "16px 20px",
-                borderBottom: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #f1f5f9",
+                padding: "20px 24px",
+                borderBottom: darkMode 
+                  ? "1px solid rgba(148, 163, 184, 0.1)" 
+                  : "1px solid #f1f5f9",
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center"
+                alignItems: "center",
+                background: darkMode 
+                  ? "rgba(30, 41, 59, 0.3)" 
+                  : "#fafbfc"
               }}>
                 <h3 style={{
                   margin: 0,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: darkMode ? "#f1f5f9" : "#0f172a"
+                  fontSize: 18,
+                  fontWeight: 800,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  letterSpacing: "-0.3px"
                 }}>
-                  Upcoming Events
+                  📅 Upcoming Events
                 </h3>
                 <button
                   onClick={() => setShowSidebar(false)}
                   style={{
-                    background: "transparent",
+                    background: darkMode 
+                      ? "rgba(51, 65, 85, 0.6)" 
+                      : "#f1f5f9",
                     border: "none",
                     cursor: "pointer",
-                    padding: 4,
-                    color: darkMode ? "#64748b" : "#94a3b8",
-                    fontSize: 18,
-                    lineHeight: 1
+                    padding: "6px 8px",
+                    borderRadius: 8,
+                    color: darkMode ? "#f1f5f9" : "#64748b",
+                    fontSize: 16,
+                    lineHeight: 1,
+                    transition: "all 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = "#ef4444";
+                    e.currentTarget.style.color = "#fff";
+                    e.currentTarget.style.transform = "scale(1.1)";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = darkMode 
+                      ? "rgba(51, 65, 85, 0.6)" 
+                      : "#f1f5f9";
+                    e.currentTarget.style.color = darkMode ? "#f1f5f9" : "#64748b";
+                    e.currentTarget.style.transform = "scale(1)";
                   }}
                   title="Hide sidebar"
                 >
@@ -2571,34 +2691,45 @@ div::-webkit-scrollbar {
               flexDirection: "column"
             }}>
               <div style={{
-                padding: "16px 20px",
-                borderBottom: darkMode ? "1px solid rgba(148, 163, 184, 0.1)" : "1px solid #f1f5f9"
+                padding: "20px 24px",
+                borderBottom: darkMode 
+                  ? "1px solid rgba(148, 163, 184, 0.1)" 
+                  : "1px solid #f1f5f9",
+                background: darkMode 
+                  ? "rgba(30, 41, 59, 0.3)" 
+                  : "#fafbfc"
               }}>
                 <h3 style={{
                   margin: 0,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: darkMode ? "#f1f5f9" : "#0f172a"
+                  fontSize: 18,
+                  fontWeight: 800,
+                  background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  backgroundClip: "text",
+                  letterSpacing: "-0.3px"
                 }}>
-                  Quick Notes
+                  📝 Quick Notes
                 </h3>
               </div>
               <textarea
                 value={sidebarNotes}
                 onChange={(e) => setSidebarNotes(e.target.value)}
-                placeholder="Add your notes here..."
+                placeholder="✍️ Jot down your thoughts..."
                 style={{
                   flex: 1,
-                  padding: "16px",
+                  padding: "20px",
                   border: "none",
                   outline: "none",
                   resize: "none",
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
+                  fontSize: 14,
+                  lineHeight: 1.7,
+                  background: darkMode 
+                    ? "rgba(15, 23, 42, 0.6)" 
+                    : "#fff",
                   color: darkMode ? "#e2e8f0" : "#0f172a",
-                  fontFamily: "inherit",
-                  minHeight: 200
+                  fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
+                  minHeight: 250
                 }}
               />
             </div>
@@ -2611,34 +2742,49 @@ div::-webkit-scrollbar {
             onClick={() => setShowSidebar(true)}
             style={{
               position: "fixed",
-              right: 20,
+              right: 0,
               top: "50%",
               transform: "translateY(-50%)",
-              background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff",
-              border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
+              background: darkMode 
+                ? "linear-gradient(135deg, #667eea, #764ba2)" 
+                : "linear-gradient(135deg, #667eea, #764ba2)",
+              border: "none",
               borderRadius: "12px 0 0 12px",
-              padding: "16px 8px",
+              padding: "20px 12px",
               cursor: "pointer",
-              boxShadow: darkMode ? "0 4px 12px rgba(0,0,0,0.4)" : "0 4px 12px rgba(0,0,0,0.1)",
-              transition: "all 0.2s ease",
+              boxShadow: darkMode 
+                ? "0 4px 20px rgba(102, 126, 234, 0.4)" 
+                : "0 4px 20px rgba(102, 126, 234, 0.3)",
+              transition: "all 0.3s ease",
               zIndex: 40,
               display: "flex",
+              flexDirection: "column",
               alignItems: "center",
               justifyContent: "center",
-              color: darkMode ? "#94a3b8" : "#64748b",
-              fontSize: 18
+              gap: 6,
+              color: "#fff",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: "0.5px"
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = "#667eea";
-              e.currentTarget.style.color = "#fff";
+              e.currentTarget.style.transform = "translateY(-50%) translateX(-4px)";
+              e.currentTarget.style.boxShadow = "0 6px 24px rgba(102, 126, 234, 0.5)";
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff";
-              e.currentTarget.style.color = darkMode ? "#94a3b8" : "#64748b";
+              e.currentTarget.style.transform = "translateY(-50%) translateX(0)";
+              e.currentTarget.style.boxShadow = darkMode 
+                ? "0 4px 20px rgba(102, 126, 234, 0.4)" 
+                : "0 4px 20px rgba(102, 126, 234, 0.3)";
             }}
             title="Show sidebar"
           >
-            ☰
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="12" x2="21" y2="12"></line>
+              <line x1="3" y1="6" x2="21" y2="6"></line>
+              <line x1="3" y1="18" x2="21" y2="18"></line>
+            </svg>
+            <span style={{ fontSize: 9, textTransform: "uppercase" }}>Menu</span>
           </button>
         )}
       </div>
