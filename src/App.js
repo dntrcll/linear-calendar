@@ -93,6 +93,16 @@ export default function App() {
     return saved || 'linear'; // 'linear' or 'grid'
   });
 
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const [blurPastDates, setBlurPastDates] = useState(() => {
+    const saved = localStorage.getItem('blurPastDates');
+    return saved ? JSON.parse(saved) : false;
+  });
+
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
@@ -233,6 +243,24 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('yearViewLayout', yearViewLayout);
   }, [yearViewLayout]);
+
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    if (darkMode) {
+      document.body.style.background = "#0a0a0a";
+    } else {
+      document.body.style.background = "#f8f9fa";
+    }
+  }, [darkMode]);
+
+  useEffect(() => {
+    localStorage.setItem('blurPastDates', JSON.stringify(blurPastDates));
+  }, [blurPastDates]);
+
+  useEffect(() => {
+    // Sync selectedYear with currentDate
+    setSelectedYear(currentDate.getFullYear());
+  }, [currentDate]);
 
   const createFamilySpace = async () => {
     try {
@@ -940,22 +968,22 @@ div::-webkit-scrollbar {
 </style>
 
       <div style={{
-        background: "rgba(255, 255, 255, 0.95)",
+        background: darkMode ? "rgba(10, 10, 10, 0.95)" : "rgba(255, 255, 255, 0.95)",
         backdropFilter: "blur(20px)",
-        borderBottom: "1px solid rgba(0,0,0,0.06)",
+        borderBottom: darkMode ? "1px solid rgba(255,255,255,0.1)" : "1px solid rgba(0,0,0,0.06)",
         padding: "16px 20px",
         position: "sticky",
         top: 0,
         zIndex: 50,
-        boxShadow: "0 1px 3px rgba(0,0,0,0.05)"
+        boxShadow: darkMode ? "0 1px 3px rgba(0,0,0,0.3)" : "0 1px 3px rgba(0,0,0,0.05)"
       }}>
         <div style={{ maxWidth: 1600, margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
             <div>
-              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700 }}>
+              <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: darkMode ? "#f1f5f9" : "#0f172a" }}>
                 Welcome, {user.displayName}
               </h2>
-              <p style={{ margin: "2px 0 0 0", fontSize: 13, color: "#64748b", fontWeight: 500 }}>
+              <p style={{ margin: "8px 0 0 0", fontSize: 20, color: darkMode ? "#94a3b8" : "#667eea", fontWeight: 700 }}>
                 {monthYear}
               </p>
             </div>
@@ -963,12 +991,12 @@ div::-webkit-scrollbar {
               onClick={() => signOut(auth)}
               style={{
                 background: "transparent",
-                border: "1px solid #e2e8f0",
+                border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
                 borderRadius: 10,
                 padding: "8px 14px",
                 cursor: "pointer",
                 fontSize: 14,
-                color: "#64748b",
+                color: darkMode ? "#94a3b8" : "#64748b",
                 fontWeight: 500,
                 transition: "all 0.2s ease"
               }}
@@ -1353,14 +1381,14 @@ div::-webkit-scrollbar {
             <button
               onClick={() => setShowSettings(true)}
               style={{
-                background: "#fff",
-                border: "1px solid #e2e8f0",
+                background: darkMode ? "#1a1a1a" : "#fff",
+                border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
                 borderRadius: 10,
                 padding: "10px 16px",
                 fontSize: 14,
                 fontWeight: 600,
                 cursor: "pointer",
-                color: "#64748b",
+                color: darkMode ? "#94a3b8" : "#64748b",
                 transition: "all 0.2s ease",
                 display: "flex",
                 alignItems: "center",
@@ -1371,13 +1399,13 @@ div::-webkit-scrollbar {
                 e.currentTarget.style.color = "#667eea";
               }}
               onMouseLeave={e => {
-                e.currentTarget.style.borderColor = "#e2e8f0";
-                e.currentTarget.style.color = "#64748b";
+                e.currentTarget.style.borderColor = darkMode ? "#334155" : "#e2e8f0";
+                e.currentTarget.style.color = darkMode ? "#94a3b8" : "#64748b";
               }}
             >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path>
                 <circle cx="12" cy="12" r="3"></circle>
-                <path d="M12 1v6m0 6v6m5.2-13.2l-4.2 4.2m-6 6l-4.2 4.2m18.4 0l-4.2-4.2m-6-6l-4.2-4.2"></path>
               </svg>
             </button>
           </div>
@@ -1722,10 +1750,10 @@ div::-webkit-scrollbar {
           </div>
         ) : viewMode === "year" ? (
           <div style={{ 
-            background: "#fff",
+            background: darkMode ? "#0a0a0a" : "#fff",
             borderRadius: 16,
-            boxShadow: "0 4px 20px rgba(0,0,0,0.08)",
-            border: "1px solid #e2e8f0",
+            boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)",
+            border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
             overflow: "hidden",
             width: "100%"
           }}>
@@ -1736,8 +1764,8 @@ div::-webkit-scrollbar {
               justifyContent: "center",
               gap: 24,
               padding: "20px",
-              borderBottom: "2px solid #f1f5f9",
-              background: "#fff",
+              borderBottom: darkMode ? "2px solid #1f2937" : "2px solid #f1f5f9",
+              background: darkMode ? "#0a0a0a" : "#fff",
               position: "sticky",
               top: 0,
               zIndex: 10
@@ -1745,7 +1773,7 @@ div::-webkit-scrollbar {
               <button
                 onClick={() => setSelectedYear(selectedYear - 1)}
                 style={{
-                  background: "#f8fafc",
+                  background: darkMode ? "#1a1a1a" : "#f8fafc",
                   border: "none",
                   borderRadius: 10,
                   width: 40,
@@ -2039,16 +2067,30 @@ div::-webkit-scrollbar {
                       const monthDate = new Date(selectedYear, monthIndex, 1);
                       const monthName = monthDate.toLocaleDateString(undefined, { month: "short" });
                       
-                      // Get all days in this month
+                      // Get first day of week and total days in month
+                      const firstDayOfWeek = monthDate.getDay();
                       const lastDay = new Date(selectedYear, monthIndex + 1, 0);
                       const daysInMonth = lastDay.getDate();
                       
-                      // Build array of all dates, filling to 35 cells (5 weeks)
+                      // Calculate offset for week start preference
+                      const startOffset = weekStartsOnMonday 
+                        ? (firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1)
+                        : firstDayOfWeek;
+                      
+                      // Build array with offset cells at start, then all days, then fill to 35 cells
                       const cells = [];
+                      
+                      // Add empty cells at beginning to align first day
+                      for (let i = 0; i < startOffset; i++) {
+                        cells.push(null);
+                      }
+                      
+                      // Add all days of the month
                       for (let day = 1; day <= daysInMonth; day++) {
                         cells.push(new Date(selectedYear, monthIndex, day));
                       }
-                      // Fill remaining cells with null
+                      
+                      // Fill remaining cells to complete 5 weeks (35 cells)
                       while (cells.length < 35) {
                         cells.push(null);
                       }
@@ -2059,7 +2101,7 @@ div::-webkit-scrollbar {
                             padding: "8px 16px",
                             borderBottom: "1px solid #e2e8f0",
                             borderRight: "2px solid #e2e8f0",
-                            background: "#fafbfc",
+                            background: darkMode ? "#1a1a1a" : "#fafbfc",
                             fontWeight: 700,
                             color: "#667eea",
                             fontSize: 12,
@@ -2079,8 +2121,10 @@ div::-webkit-scrollbar {
                               return (
                                 <td key={`empty-${idx}`} style={{
                                   padding: "8px 4px",
-                                  borderBottom: "1px solid #e2e8f0",
-                                  background: isWeekend ? "#f8f9fa" : "#fff",
+                                  borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                                  background: darkMode 
+                                    ? (isWeekend ? "#151515" : "#0a0a0a")
+                                    : (isWeekend ? "#f8f9fa" : "#fff"),
                                   minWidth: 32,
                                   textAlign: "center"
                                 }}></td>
@@ -2089,6 +2133,7 @@ div::-webkit-scrollbar {
                             
                             const isWeekend = day.getDay() === 0 || day.getDay() === 6;
                             const isToday = day.toDateString() === now.toDateString();
+                            const isPast = day < now && !isToday;
                             const dayEvents = filteredEvents.filter(ev => 
                               ev.start.toDateString() === day.toDateString()
                             );
@@ -2099,32 +2144,40 @@ div::-webkit-scrollbar {
                                 onClick={() => goToDate(day)}
                                 style={{
                                   padding: "8px 4px",
-                                  borderBottom: "1px solid #e2e8f0",
+                                  borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
                                   background: isToday
                                     ? "linear-gradient(135deg, #667eea, #764ba2)"
-                                    : isWeekend
-                                    ? "#f8f9fa"
-                                    : "#fff",
+                                    : darkMode
+                                    ? (isWeekend ? "#151515" : "#0a0a0a")
+                                    : (isWeekend ? "#f8f9fa" : "#fff"),
                                   cursor: "pointer",
                                   textAlign: "center",
                                   minWidth: 32,
                                   transition: "all 0.15s ease",
-                                  position: "relative"
+                                  position: "relative",
+                                  opacity: (blurPastDates && isPast) ? 0.3 : 1,
+                                  filter: (blurPastDates && isPast) ? "blur(1px)" : "none"
                                 }}
                                 onMouseEnter={e => {
                                   if (!isToday) {
-                                    e.currentTarget.style.background = "#eef2ff";
+                                    e.currentTarget.style.background = darkMode ? "#1e3a8a" : "#eef2ff";
+                                    e.currentTarget.style.opacity = 1;
+                                    e.currentTarget.style.filter = "none";
                                   }
                                 }}
                                 onMouseLeave={e => {
                                   if (!isToday) {
-                                    e.currentTarget.style.background = isWeekend ? "#f8f9fa" : "#fff";
+                                    e.currentTarget.style.background = darkMode 
+                                      ? (isWeekend ? "#151515" : "#0a0a0a")
+                                      : (isWeekend ? "#f8f9fa" : "#fff");
+                                    e.currentTarget.style.opacity = (blurPastDates && isPast) ? 0.3 : 1;
+                                    e.currentTarget.style.filter = (blurPastDates && isPast) ? "blur(1px)" : "none";
                                   }
                                 }}
                               >
                                 <div style={{
                                   fontWeight: 600,
-                                  color: isToday ? "#fff" : "#0f172a",
+                                  color: isToday ? "#fff" : darkMode ? "#f1f5f9" : "#0f172a",
                                   marginBottom: dayEvents.length > 0 ? 4 : 0
                                 }}>
                                   {day.getDate()}
@@ -2419,7 +2472,7 @@ div::-webkit-scrollbar {
               <div style={{ 
                 fontWeight: 700, 
                 fontSize: 16, 
-                color: "#0f172a", 
+                color: darkMode ? "#f1f5f9" : "#0f172a", 
                 marginBottom: 16,
                 display: "flex",
                 alignItems: "center",
@@ -2434,12 +2487,141 @@ div::-webkit-scrollbar {
                 Display Options
               </div>
               
+              {/* Dark Mode Toggle */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  color: darkMode ? "#94a3b8" : "#64748b", 
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  Theme
+                </div>
+                
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setDarkMode(false)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: darkMode ? "2px solid #334155" : "2px solid #667eea",
+                      background: darkMode ? (darkMode ? "#1a1a1a" : "#fff") : "#eef2ff",
+                      color: darkMode ? "#94a3b8" : "#1e3a8a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="5"></circle>
+                      <line x1="12" y1="1" x2="12" y2="3"></line>
+                      <line x1="12" y1="21" x2="12" y2="23"></line>
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                      <line x1="1" y1="12" x2="3" y2="12"></line>
+                      <line x1="21" y1="12" x2="23" y2="12"></line>
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <span>Light</span>
+                  </button>
+                  
+                  <button
+                    onClick={() => setDarkMode(true)}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      borderRadius: 10,
+                      border: darkMode ? "2px solid #667eea" : "2px solid #334155",
+                      background: darkMode ? "#1e3a8a" : "#1a1a1a",
+                      color: darkMode ? "#fff" : "#94a3b8",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                    <span>Dark</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Blur Past Dates Toggle */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ 
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  background: darkMode ? "#1a1a1a" : "#f8fafc",
+                  border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0"
+                }}>
+                  <div>
+                    <div style={{ 
+                      fontSize: 14, 
+                      fontWeight: 600, 
+                      color: darkMode ? "#f1f5f9" : "#0f172a",
+                      marginBottom: 4
+                    }}>
+                      Blur Past Dates
+                    </div>
+                    <div style={{ 
+                      fontSize: 12, 
+                      color: darkMode ? "#64748b" : "#94a3b8"
+                    }}>
+                      Fade out dates before today
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setBlurPastDates(!blurPastDates)}
+                    style={{
+                      width: 48,
+                      height: 28,
+                      borderRadius: 14,
+                      border: "none",
+                      background: blurPastDates ? "#667eea" : darkMode ? "#334155" : "#cbd5e1",
+                      cursor: "pointer",
+                      position: "relative",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    <div style={{
+                      width: 20,
+                      height: 20,
+                      borderRadius: "50%",
+                      background: "#fff",
+                      position: "absolute",
+                      top: 4,
+                      left: blurPastDates ? 24 : 4,
+                      transition: "all 0.2s ease",
+                      boxShadow: "0 2px 4px rgba(0,0,0,0.2)"
+                    }} />
+                  </button>
+                </div>
+              </div>
+              
               {/* Year View Layout */}
               <div style={{ marginBottom: 20 }}>
                 <div style={{ 
                   fontSize: 13, 
                   fontWeight: 600, 
-                  color: "#64748b", 
+                  color: darkMode ? "#94a3b8" : "#64748b", 
                   marginBottom: 10,
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
