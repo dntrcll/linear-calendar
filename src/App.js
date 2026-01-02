@@ -1873,41 +1873,53 @@ div::-webkit-scrollbar {
                 onClick={() => setSelectedYear(selectedYear - 1)}
                 style={{
                   background: darkMode 
-                    ? "rgba(51, 65, 85, 0.6)" 
+                    ? "rgba(51, 65, 85, 0.8)" 
                     : "#f8fafc",
                   border: darkMode 
                     ? "1px solid rgba(148, 163, 184, 0.2)" 
-                    : "none",
+                    : "1px solid #e2e8f0",
                   borderRadius: 10,
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   cursor: "pointer",
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: 600,
-                  color: "#475569",
+                  color: darkMode ? "#F1F5F9" : "#475569",
                   transition: "all 0.2s ease",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
+                  boxShadow: darkMode 
+                    ? "0 2px 8px rgba(0,0,0,0.3)" 
+                    : "0 2px 4px rgba(0,0,0,0.05)"
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = "#667eea";
                   e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.borderColor = "#667eea";
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.color = "#475569";
+                  e.currentTarget.style.background = darkMode 
+                    ? "rgba(51, 65, 85, 0.8)" 
+                    : "#f8fafc";
+                  e.currentTarget.style.color = darkMode ? "#F1F5F9" : "#475569";
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.borderColor = darkMode 
+                    ? "rgba(148, 163, 184, 0.2)" 
+                    : "#e2e8f0";
                 }}
               >
                 ←
               </button>
               
               <div style={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: "#0f172a",
-                minWidth: 100,
-                textAlign: "center"
+                fontSize: 28,
+                fontWeight: 800,
+                color: darkMode ? "#F1F5F9" : "#0f172a",
+                minWidth: 120,
+                textAlign: "center",
+                letterSpacing: "-0.5px"
               }}>
                 {selectedYear}
               </div>
@@ -1915,27 +1927,42 @@ div::-webkit-scrollbar {
               <button
                 onClick={() => setSelectedYear(selectedYear + 1)}
                 style={{
-                  background: "#f8fafc",
-                  border: "none",
+                  background: darkMode 
+                    ? "rgba(51, 65, 85, 0.8)" 
+                    : "#f8fafc",
+                  border: darkMode 
+                    ? "1px solid rgba(148, 163, 184, 0.2)" 
+                    : "1px solid #e2e8f0",
                   borderRadius: 10,
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   cursor: "pointer",
-                  fontSize: 18,
+                  fontSize: 20,
                   fontWeight: 600,
-                  color: "#475569",
+                  color: darkMode ? "#F1F5F9" : "#475569",
                   transition: "all 0.2s ease",
                   display: "flex",
                   alignItems: "center",
-                  justifyContent: "center"
+                  justifyContent: "center",
+                  boxShadow: darkMode 
+                    ? "0 2px 8px rgba(0,0,0,0.3)" 
+                    : "0 2px 4px rgba(0,0,0,0.05)"
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.background = "#667eea";
                   e.currentTarget.style.color = "#fff";
+                  e.currentTarget.style.transform = "scale(1.05)";
+                  e.currentTarget.style.borderColor = "#667eea";
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = "#f8fafc";
-                  e.currentTarget.style.color = "#475569";
+                  e.currentTarget.style.background = darkMode 
+                    ? "rgba(51, 65, 85, 0.8)" 
+                    : "#f8fafc";
+                  e.currentTarget.style.color = darkMode ? "#F1F5F9" : "#475569";
+                  e.currentTarget.style.transform = "scale(1)";
+                  e.currentTarget.style.borderColor = darkMode 
+                    ? "rgba(148, 163, 184, 0.2)" 
+                    : "#e2e8f0";
                 }}
               >
                 →
