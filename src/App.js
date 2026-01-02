@@ -103,6 +103,31 @@ export default function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
+  const [quickNotes, setQuickNotes] = useState(() => {
+    const saved = localStorage.getItem('quickNotes');
+    return saved || '';
+  });
+
+  const [hoveredDateEvents, setHoveredDateEvents] = useState(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+
+  const [use24HourFormat, setUse24HourFormat] = useState(() => {
+    const saved = localStorage.getItem('use24HourFormat');
+    return saved ? JSON.parse(saved) : false;
+  });
+
+  const [showSidebar, setShowSidebar] = useState(() => {
+    const saved = localStorage.getItem('showSidebar');
+    return saved ? JSON.parse(saved) : true;
+  });
+
+  const [sidebarNotes, setSidebarNotes] = useState(() => {
+    const saved = localStorage.getItem('sidebarNotes');
+    return saved || '';
+  });
+
+  const [hoverTooltip, setHoverTooltip] = useState(null);
+
   const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
   const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
@@ -258,9 +283,24 @@ export default function App() {
   }, [blurPastDates]);
 
   useEffect(() => {
-    // Sync selectedYear with currentDate
-    setSelectedYear(currentDate.getFullYear());
-  }, [currentDate]);
+    localStorage.setItem('use24HourFormat', JSON.stringify(use24HourFormat));
+  }, [use24HourFormat]);
+
+  useEffect(() => {
+    localStorage.setItem('showSidebar', JSON.stringify(showSidebar));
+  }, [showSidebar]);
+
+  useEffect(() => {
+    localStorage.setItem('sidebarNotes', sidebarNotes);
+  }, [sidebarNotes]);
+
+  useEffect(() => {
+    // Sync selectedYear with currentDate and when changed manually
+    const year = currentDate.getFullYear();
+    if (selectedYear !== year) {
+      setCurrentDate(new Date(selectedYear, currentDate.getMonth(), currentDate.getDate()));
+    }
+  }, [selectedYear]);
 
   const createFamilySpace = async () => {
     try {
@@ -872,9 +912,10 @@ export default function App() {
   return (
     <div style={{ 
       minHeight: "100vh",
-      background: "#f8fafc",
+      background: darkMode ? "#0a0a0a" : "#f8fafc",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'SF Pro Display', sans-serif",
-      paddingBottom: "24px"
+      paddingBottom: "24px",
+      transition: "background 0.3s ease"
     }}>
       <style>
 {`
@@ -983,9 +1024,20 @@ div::-webkit-scrollbar {
               <h2 style={{ margin: 0, fontSize: 22, fontWeight: 700, color: darkMode ? "#f1f5f9" : "#0f172a" }}>
                 Welcome, {user.displayName}
               </h2>
-              <p style={{ margin: "8px 0 0 0", fontSize: 20, color: darkMode ? "#94a3b8" : "#667eea", fontWeight: 700 }}>
+              <div style={{ 
+                margin: "10px 0 0 0", 
+                fontSize: 24, 
+                fontWeight: 800,
+                background: darkMode 
+                  ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                  : "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+                letterSpacing: "-0.5px"
+              }}>
                 {monthYear}
-              </p>
+              </div>
             </div>
             <button
               onClick={() => signOut(auth)}
@@ -1324,8 +1376,23 @@ div::-webkit-scrollbar {
                     : weekday
                   }
                 </div>
-                <div style={{ fontSize: 13, fontWeight: 600, color: "#64748b", textAlign: "right" }}>
-                  {viewMode === "week" ? "Week View" : viewMode === "month" ? "Month View" : viewMode === "year" ? "Linear Year View" : dayDate}
+                <div style={{ fontSize: 13, fontWeight: 600, color: darkMode ? "#94a3b8" : "#64748b", textAlign: "right" }}>
+                  {viewMode === "week" 
+                    ? "Week View" 
+                    : viewMode === "month" 
+                    ? "Month View" 
+                    : viewMode === "year" 
+                    ? (
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2 }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: darkMode ? "#667eea" : "#667eea" }}>
+                          {selectedYear}
+                        </div>
+                        <div style={{ fontSize: 11, fontWeight: 500, color: darkMode ? "#64748b" : "#94a3b8" }}>
+                          Linear Year View
+                        </div>
+                      </div>
+                    )
+                    : dayDate}
                 </div>
               </div>
               {isToday && viewMode === "day" && (
@@ -1412,12 +1479,23 @@ div::-webkit-scrollbar {
         </div>
       </div>
 
-      <div style={{ padding: "20px", maxWidth: 1600, margin: "0 auto" }}>
+      <div style={{ 
+        display: "flex", 
+        maxWidth: showSidebar ? 1800 : 1600, 
+        margin: "0 auto",
+        padding: "20px",
+        gap: 20
+      }}>
+        {/* Main Content Area */}
+        <div style={{ 
+          flex: 1,
+          minWidth: 0
+        }}>
         {loading ? (
           <div style={{
             padding: 60,
             textAlign: "center",
-            color: "#64748b",
+            color: darkMode ? "#94a3b8" : "#64748b",
             fontSize: 15
           }}>
             Loading your timeline...
@@ -1839,199 +1917,39 @@ div::-webkit-scrollbar {
               </button>
             </div>
 
-            {/* Grid View - Traditional Calendar Grid */}
-            {yearViewLayout === 'grid' ? (
-              <div style={{ padding: 20, overflowY: "auto", maxHeight: "calc(100vh - 250px)" }}>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
-                  {[...Array(12)].map((_, monthIndex) => {
-                    const monthDate = new Date(selectedYear, monthIndex, 1);
-                    const monthName = monthDate.toLocaleDateString(undefined, { month: "short" });
-                    
-                    // Get first day of month and total days
-                    const firstDayOfWeek = monthDate.getDay();
-                    const lastDay = new Date(selectedYear, monthIndex + 1, 0);
-                    const daysInMonth = lastDay.getDate();
-                    
-                    // Adjust for week starting on Monday if needed
-                    const startOffset = weekStartsOnMonday 
-                      ? (firstDayOfWeek === 0 ? 6 : firstDayOfWeek - 1)
-                      : firstDayOfWeek;
-                    
-                    // Build calendar grid
-                    const calendarDays = [];
-                    
-                    // Empty cells before month starts
-                    for (let i = 0; i < startOffset; i++) {
-                      calendarDays.push(null);
-                    }
-                    
-                    // Days of the month
-                    for (let day = 1; day <= daysInMonth; day++) {
-                      calendarDays.push(new Date(selectedYear, monthIndex, day));
-                    }
-                    
-                    return (
-                      <div key={monthIndex} style={{
-                        background: "#fafbfc",
-                        border: "1px solid #e2e8f0",
-                        borderRadius: 8,
-                        padding: 12,
-                        minWidth: 0
-                      }}>
-                        {/* Month Name */}
-                        <div style={{
-                          fontSize: 13,
-                          fontWeight: 700,
-                          color: "#667eea",
-                          marginBottom: 8,
-                          textAlign: "center",
-                          textTransform: "uppercase",
-                          letterSpacing: "1px"
-                        }}>
-                          {monthName}
-                        </div>
-                        
-                        {/* Day Headers */}
-                        <div style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(7, 1fr)",
-                          gap: 2,
-                          marginBottom: 4
-                        }}>
-                          {(weekStartsOnMonday 
-                            ? ["M", "T", "W", "T", "F", "S", "S"]
-                            : ["S", "M", "T", "W", "T", "F", "S"]
-                          ).map((day, i) => (
-                            <div key={i} style={{
-                              fontSize: 9,
-                              fontWeight: 600,
-                              color: "#94a3b8",
-                              textAlign: "center",
-                              padding: "2px 0"
-                            }}>
-                              {day}
-                            </div>
-                          ))}
-                        </div>
-                        
-                        {/* Calendar Grid */}
-                        <div style={{
-                          display: "grid",
-                          gridTemplateColumns: "repeat(7, 1fr)",
-                          gap: 2
-                        }}>
-                          {calendarDays.map((day, idx) => {
-                            if (!day) {
-                              return <div key={`empty-${idx}`} style={{ aspectRatio: "1" }} />;
-                            }
-                            
-                            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
-                            const isToday = day.toDateString() === now.toDateString();
-                            const dayEvents = filteredEvents.filter(ev => 
-                              ev.start.toDateString() === day.toDateString()
-                            );
-                            
-                            return (
-                              <div
-                                key={idx}
-                                onClick={() => goToDate(day)}
-                                style={{
-                                  aspectRatio: "1",
-                                  background: isToday
-                                    ? "linear-gradient(135deg, #667eea, #764ba2)"
-                                    : isWeekend
-                                    ? "#f1f5f9"
-                                    : "#fff",
-                                  border: isToday 
-                                    ? "1.5px solid #667eea"
-                                    : "1px solid #e2e8f0",
-                                  borderRadius: 4,
-                                  display: "flex",
-                                  flexDirection: "column",
-                                  alignItems: "center",
-                                  justifyContent: "center",
-                                  cursor: "pointer",
-                                  transition: "all 0.2s ease",
-                                  position: "relative"
-                                }}
-                                onMouseEnter={e => {
-                                  if (!isToday) {
-                                    e.currentTarget.style.borderColor = "#667eea";
-                                    e.currentTarget.style.transform = "scale(1.05)";
-                                  }
-                                }}
-                                onMouseLeave={e => {
-                                  if (!isToday) {
-                                    e.currentTarget.style.borderColor = "#e2e8f0";
-                                    e.currentTarget.style.transform = "scale(1)";
-                                  }
-                                }}
-                              >
-                                <div style={{
-                                  fontSize: 11,
-                                  fontWeight: 600,
-                                  color: isToday ? "#fff" : "#0f172a"
-                                }}>
-                                  {day.getDate()}
-                                </div>
-                                
-                                {dayEvents.length > 0 && (
-                                  <div style={{
-                                    position: "absolute",
-                                    bottom: 2,
-                                    display: "flex",
-                                    gap: 1
-                                  }}>
-                                    {dayEvents.slice(0, 3).map((ev, i) => (
-                                      <div
-                                        key={i}
-                                        style={{
-                                          width: 3,
-                                          height: 3,
-                                          borderRadius: "50%",
-                                          background: isToday ? "#fff" : EVENT_COLORS[ev.color || "blue"].dot
-                                        }}
-                                      />
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ) : (
-              /* Linear View - Full width spreadsheet style like screenshot */
-              <div style={{ 
+            {/* Linear View - Full width spreadsheet style */}
+            <div style={{ 
                 overflowX: "auto",
                 overflowY: "auto",
-                maxHeight: "calc(100vh - 250px)"
+                maxHeight: "calc(100vh - 250px)",
+                scrollbarWidth: "thin",
+                scrollbarColor: darkMode ? "#334155 #0a0a0a" : "#cbd5e1 #f8fafc"
               }}>
                 <table style={{
                   width: "100%",
-                  borderCollapse: "collapse",
+                  borderCollapse: "separate",
+                  borderSpacing: 0,
                   fontSize: 12
                 }}>
                   {/* Header Row with repeating day names */}
                   <thead style={{
                     position: "sticky",
                     top: 0,
-                    background: "#fff",
-                    zIndex: 5
+                    background: darkMode ? "#0a0a0a" : "#fff",
+                    zIndex: 5,
+                    boxShadow: darkMode 
+                      ? "0 2px 8px rgba(0,0,0,0.3)" 
+                      : "0 2px 8px rgba(0,0,0,0.05)"
                   }}>
                     <tr>
                       <th style={{
-                        padding: "8px 16px",
+                        padding: "12px 20px",
                         textAlign: "left",
-                        borderBottom: "2px solid #e2e8f0",
-                        borderRight: "2px solid #e2e8f0",
-                        background: "#fafbfc",
+                        borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                        borderRight: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                        background: darkMode ? "#0f0f0f" : "#fafbfc",
                         fontWeight: 700,
-                        color: "#64748b",
+                        color: darkMode ? "#94a3b8" : "#64748b",
                         position: "sticky",
                         left: 0,
                         zIndex: 6
@@ -2046,13 +1964,16 @@ div::-webkit-scrollbar {
                             : (i === 0 || i === 6);
                           return (
                             <th key={`${weekIdx}-${i}`} style={{
-                              padding: "8px 4px",
+                              padding: "12px 6px",
                               textAlign: "center",
-                              borderBottom: "2px solid #e2e8f0",
-                              background: isWeekend ? "#f1f5f9" : "#fafbfc",
+                              borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+                              background: isWeekend 
+                                ? (darkMode ? "#0a0a0a" : "#f8fafc")
+                                : (darkMode ? "#0f0f0f" : "#fafbfc"),
                               fontWeight: 600,
-                              color: "#64748b",
-                              fontSize: 11
+                              color: darkMode ? "#94a3b8" : "#64748b",
+                              fontSize: 11,
+                              letterSpacing: "0.5px"
                             }}>
                               {dayName}
                             </th>
@@ -2159,13 +2080,23 @@ div::-webkit-scrollbar {
                                   filter: (blurPastDates && isPast) ? "blur(1px)" : "none"
                                 }}
                                 onMouseEnter={e => {
+                                  if (dayEvents.length > 0) {
+                                    setHoveredDateEvents(dayEvents);
+                                    setTooltipPosition({ x: e.clientX, y: e.clientY });
+                                  }
                                   if (!isToday) {
                                     e.currentTarget.style.background = darkMode ? "#1e3a8a" : "#eef2ff";
                                     e.currentTarget.style.opacity = 1;
                                     e.currentTarget.style.filter = "none";
                                   }
                                 }}
+                                onMouseMove={e => {
+                                  if (dayEvents.length > 0) {
+                                    setTooltipPosition({ x: e.clientX, y: e.clientY });
+                                  }
+                                }}
                                 onMouseLeave={e => {
+                                  setHoveredDateEvents(null);
                                   if (!isToday) {
                                     e.currentTarget.style.background = darkMode 
                                       ? (isWeekend ? "#151515" : "#0a0a0a")
@@ -2221,7 +2152,6 @@ div::-webkit-scrollbar {
                   </tbody>
                 </table>
               </div>
-            )}
           </div>
         ) : viewMode === "month" ? (
           <div style={{ 
@@ -2411,10 +2341,230 @@ div::-webkit-scrollbar {
             </div>
           </div>
         )}
+        </div>
+        
+        {/* Sidebar */}
+        {showSidebar && (
+          <div style={{
+            width: 320,
+            flexShrink: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: 16
+          }}>
+            {/* Events Preview */}
+            <div style={{
+              background: darkMode ? "#0a0a0a" : "#fff",
+              border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              borderRadius: 16,
+              overflow: "hidden",
+              boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)"
+            }}>
+              <div style={{
+                padding: "16px 20px",
+                borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: darkMode ? "#f1f5f9" : "#0f172a"
+                }}>
+                  Upcoming Events
+                </h3>
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 4,
+                    color: darkMode ? "#64748b" : "#94a3b8",
+                    fontSize: 18,
+                    lineHeight: 1
+                  }}
+                  title="Hide sidebar"
+                >
+                  ✕
+                </button>
+              </div>
+              
+              <div style={{
+                maxHeight: 400,
+                overflowY: "auto",
+                padding: "12px"
+              }}>
+                {(() => {
+                  // Get next 7 days of events
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const nextWeek = new Date(today);
+                  nextWeek.setDate(nextWeek.getDate() + 7);
+                  
+                  const upcomingEvents = filteredEvents
+                    .filter(ev => ev.start >= today && ev.start < nextWeek)
+                    .sort((a, b) => a.start - b.start)
+                    .slice(0, 20);
+                  
+                  if (upcomingEvents.length === 0) {
+                    return (
+                      <div style={{
+                        padding: "32px 16px",
+                        textAlign: "center",
+                        color: darkMode ? "#64748b" : "#94a3b8",
+                        fontSize: 13
+                      }}>
+                        <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
+                        <div>No upcoming events</div>
+                      </div>
+                    );
+                  }
+                  
+                  return upcomingEvents.map((ev, idx) => {
+                    const colorStyle = EVENT_COLORS[ev.color || "blue"];
+                    const isToday = ev.start.toDateString() === today.toDateString();
+                    const timeStr = use24HourFormat
+                      ? ev.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })
+                      : ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true });
+                    
+                    return (
+                      <div
+                        key={idx}
+                        onClick={() => goToDate(ev.start)}
+                        style={{
+                          padding: "10px 12px",
+                          marginBottom: 8,
+                          borderRadius: 10,
+                          background: darkMode ? "#1a1a1a" : "#f8fafc",
+                          border: `1px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                          cursor: "pointer",
+                          transition: "all 0.2s ease",
+                          borderLeft: `3px solid ${colorStyle.dot}`
+                        }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.background = darkMode ? "#1e3a8a" : "#eef2ff";
+                          e.currentTarget.style.transform = "translateX(4px)";
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.background = darkMode ? "#1a1a1a" : "#f8fafc";
+                          e.currentTarget.style.transform = "translateX(0)";
+                        }}
+                      >
+                        <div style={{
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: darkMode ? "#f1f5f9" : "#0f172a",
+                          marginBottom: 4
+                        }}>
+                          {ev.title}
+                        </div>
+                        <div style={{
+                          fontSize: 11,
+                          color: darkMode ? "#64748b" : "#94a3b8",
+                          display: "flex",
+                          gap: 8,
+                          alignItems: "center"
+                        }}>
+                          <span>{isToday ? "Today" : ev.start.toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                          <span>•</span>
+                          <span>{timeStr}</span>
+                        </div>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+            
+            {/* Notes Section */}
+            <div style={{
+              background: darkMode ? "#0a0a0a" : "#fff",
+              border: darkMode ? "1px solid #1f2937" : "1px solid #e2e8f0",
+              borderRadius: 16,
+              overflow: "hidden",
+              boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.4)" : "0 4px 20px rgba(0,0,0,0.08)",
+              flex: 1,
+              display: "flex",
+              flexDirection: "column"
+            }}>
+              <div style={{
+                padding: "16px 20px",
+                borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9"
+              }}>
+                <h3 style={{
+                  margin: 0,
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: darkMode ? "#f1f5f9" : "#0f172a"
+                }}>
+                  Quick Notes
+                </h3>
+              </div>
+              <textarea
+                value={sidebarNotes}
+                onChange={(e) => setSidebarNotes(e.target.value)}
+                placeholder="Add your notes here..."
+                style={{
+                  flex: 1,
+                  padding: "16px",
+                  border: "none",
+                  outline: "none",
+                  resize: "none",
+                  fontSize: 13,
+                  lineHeight: 1.6,
+                  background: darkMode ? "#0a0a0a" : "#fff",
+                  color: darkMode ? "#e2e8f0" : "#0f172a",
+                  fontFamily: "inherit",
+                  minHeight: 200
+                }}
+              />
+            </div>
+          </div>
+        )}
+        
+        {/* Toggle Sidebar Button (when hidden) */}
+        {!showSidebar && (
+          <button
+            onClick={() => setShowSidebar(true)}
+            style={{
+              position: "fixed",
+              right: 20,
+              top: "50%",
+              transform: "translateY(-50%)",
+              background: darkMode ? "#1a1a1a" : "#fff",
+              border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
+              borderRadius: "12px 0 0 12px",
+              padding: "16px 8px",
+              cursor: "pointer",
+              boxShadow: darkMode ? "0 4px 12px rgba(0,0,0,0.4)" : "0 4px 12px rgba(0,0,0,0.1)",
+              transition: "all 0.2s ease",
+              zIndex: 40,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: darkMode ? "#94a3b8" : "#64748b",
+              fontSize: 18
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "#667eea";
+              e.currentTarget.style.color = "#fff";
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = darkMode ? "#1a1a1a" : "#fff";
+              e.currentTarget.style.color = darkMode ? "#94a3b8" : "#64748b";
+            }}
+            title="Show sidebar"
+          >
+            ☰
+          </button>
+        )}
       </div>
 
       {showDeletedOverlay && (
-        <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)}>
+        <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)} darkMode={darkMode}>
           {deletedEvents.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
               <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
@@ -2464,7 +2614,7 @@ div::-webkit-scrollbar {
       )}
 
       {showSettings && (
-        <Overlay title="Settings" onClose={() => setShowSettings(false)}>
+        <Overlay title="Settings" onClose={() => setShowSettings(false)} darkMode={darkMode}>
           <div style={{ padding: "16px 0", display: "flex", flexDirection: "column", gap: 24 }}>
             
             {/* Display Options Section */}
@@ -2615,88 +2765,6 @@ div::-webkit-scrollbar {
                   </button>
                 </div>
               </div>
-              
-              {/* Year View Layout */}
-              <div style={{ marginBottom: 20 }}>
-                <div style={{ 
-                  fontSize: 13, 
-                  fontWeight: 600, 
-                  color: darkMode ? "#94a3b8" : "#64748b", 
-                  marginBottom: 10,
-                  textTransform: "uppercase",
-                  letterSpacing: "0.5px"
-                }}>
-                  Year View Layout
-                </div>
-                
-                <div style={{ display: "flex", gap: 8 }}>
-                  <button
-                    onClick={() => setYearViewLayout('linear')}
-                    style={{
-                      flex: 1,
-                      padding: "12px 16px",
-                      borderRadius: 10,
-                      border: yearViewLayout === 'linear' ? "2px solid #667eea" : "2px solid #e2e8f0",
-                      background: yearViewLayout === 'linear' ? "#eef2ff" : "#fff",
-                      color: yearViewLayout === 'linear' ? "#1e3a8a" : "#64748b",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 6
-                    }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <line x1="3" y1="6" x2="21" y2="6"></line>
-                      <line x1="3" y1="12" x2="21" y2="12"></line>
-                      <line x1="3" y1="18" x2="21" y2="18"></line>
-                    </svg>
-                    <span>Linear</span>
-                  </button>
-                  
-                  <button
-                    onClick={() => setYearViewLayout('grid')}
-                    style={{
-                      flex: 1,
-                      padding: "12px 16px",
-                      borderRadius: 10,
-                      border: yearViewLayout === 'grid' ? "2px solid #667eea" : "2px solid #e2e8f0",
-                      background: yearViewLayout === 'grid' ? "#eef2ff" : "#fff",
-                      color: yearViewLayout === 'grid' ? "#1e3a8a" : "#64748b",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      transition: "all 0.2s ease",
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      gap: 6
-                    }}
-                  >
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7"></rect>
-                      <rect x="14" y="3" width="7" height="7"></rect>
-                      <rect x="14" y="14" width="7" height="7"></rect>
-                      <rect x="3" y="14" width="7" height="7"></rect>
-                    </svg>
-                    <span>Grid</span>
-                  </button>
-                </div>
-                
-                <div style={{ 
-                  fontSize: 12, 
-                  color: "#94a3b8", 
-                  marginTop: 8,
-                  fontStyle: "italic"
-                }}>
-                  {yearViewLayout === 'linear' 
-                    ? "12 horizontal month rows with all days" 
-                    : "Traditional calendar grid layout"}
-                </div>
-              </div>
             </div>
 
             {/* Calendar Settings Section */}
@@ -2704,7 +2772,7 @@ div::-webkit-scrollbar {
               <div style={{ 
                 fontWeight: 700, 
                 fontSize: 16, 
-                color: "#0f172a", 
+                color: darkMode ? "#f1f5f9" : "#0f172a", 
                 marginBottom: 16,
                 display: "flex",
                 alignItems: "center",
@@ -2723,7 +2791,7 @@ div::-webkit-scrollbar {
                 <div style={{ 
                   fontSize: 13, 
                   fontWeight: 600, 
-                  color: "#64748b", 
+                  color: darkMode ? "#94a3b8" : "#64748b", 
                   marginBottom: 10,
                   textTransform: "uppercase",
                   letterSpacing: "0.5px"
@@ -2738,9 +2806,15 @@ div::-webkit-scrollbar {
                       flex: 1,
                       padding: "10px 16px",
                       borderRadius: 10,
-                      border: weekStartsOnMonday ? "2px solid #e2e8f0" : "2px solid #667eea",
-                      background: weekStartsOnMonday ? "#fff" : "#eef2ff",
-                      color: weekStartsOnMonday ? "#64748b" : "#1e3a8a",
+                      border: weekStartsOnMonday 
+                        ? `2px solid ${darkMode ? "#334155" : "#e2e8f0"}` 
+                        : "2px solid #667eea",
+                      background: weekStartsOnMonday 
+                        ? (darkMode ? "#1a1a1a" : "#fff") 
+                        : (darkMode ? "#1e3a8a" : "#eef2ff"),
+                      color: weekStartsOnMonday 
+                        ? (darkMode ? "#94a3b8" : "#64748b") 
+                        : (darkMode ? "#fff" : "#1e3a8a"),
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -2756,9 +2830,15 @@ div::-webkit-scrollbar {
                       flex: 1,
                       padding: "10px 16px",
                       borderRadius: 10,
-                      border: weekStartsOnMonday ? "2px solid #667eea" : "2px solid #e2e8f0",
-                      background: weekStartsOnMonday ? "#eef2ff" : "#fff",
-                      color: weekStartsOnMonday ? "#1e3a8a" : "#64748b",
+                      border: weekStartsOnMonday 
+                        ? "2px solid #667eea" 
+                        : `2px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                      background: weekStartsOnMonday 
+                        ? (darkMode ? "#1e3a8a" : "#eef2ff") 
+                        : (darkMode ? "#1a1a1a" : "#fff"),
+                      color: weekStartsOnMonday 
+                        ? (darkMode ? "#fff" : "#1e3a8a") 
+                        : (darkMode ? "#94a3b8" : "#64748b"),
                       fontSize: 14,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -2766,6 +2846,70 @@ div::-webkit-scrollbar {
                     }}
                   >
                     Monday
+                  </button>
+                </div>
+              </div>
+              
+              {/* Time Format */}
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ 
+                  fontSize: 13, 
+                  fontWeight: 600, 
+                  color: darkMode ? "#94a3b8" : "#64748b", 
+                  marginBottom: 10,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.5px"
+                }}>
+                  Time Format
+                </div>
+                
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => setUse24HourFormat(false)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: use24HourFormat 
+                        ? `2px solid ${darkMode ? "#334155" : "#e2e8f0"}` 
+                        : "2px solid #667eea",
+                      background: use24HourFormat 
+                        ? (darkMode ? "#1a1a1a" : "#fff") 
+                        : "#eef2ff",
+                      color: use24HourFormat 
+                        ? (darkMode ? "#94a3b8" : "#64748b") 
+                        : "#1e3a8a",
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    12-hour
+                  </button>
+                  
+                  <button
+                    onClick={() => setUse24HourFormat(true)}
+                    style={{
+                      flex: 1,
+                      padding: "10px 16px",
+                      borderRadius: 10,
+                      border: use24HourFormat 
+                        ? "2px solid #667eea" 
+                        : `2px solid ${darkMode ? "#334155" : "#e2e8f0"}`,
+                      background: use24HourFormat 
+                        ? "#eef2ff" 
+                        : (darkMode ? "#1a1a1a" : "#fff"),
+                      color: use24HourFormat 
+                        ? "#1e3a8a" 
+                        : (darkMode ? "#94a3b8" : "#64748b"),
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s ease"
+                    }}
+                  >
+                    24-hour
                   </button>
                 </div>
               </div>
@@ -3109,11 +3253,81 @@ div::-webkit-scrollbar {
           </div>
         </div>
       )}
+      
+      {/* Event Tooltip */}
+      {hoveredDateEvents && (
+        <EventTooltip 
+          events={hoveredDateEvents} 
+          position={tooltipPosition} 
+          darkMode={darkMode}
+        />
+      )}
     </div>
   );
 }
 
-function Overlay({ title, onClose, children }) {
+function EventTooltip({ events, position, darkMode }) {
+  if (!events || events.length === 0) return null;
+  
+  return (
+    <div style={{
+      position: "fixed",
+      left: position.x + 10,
+      top: position.y + 10,
+      background: darkMode ? "#1a1a1a" : "#fff",
+      border: darkMode ? "1px solid #334155" : "1px solid #e2e8f0",
+      borderRadius: 12,
+      padding: "12px 16px",
+      boxShadow: darkMode 
+        ? "0 10px 40px rgba(0,0,0,0.5)" 
+        : "0 10px 40px rgba(0,0,0,0.15)",
+      zIndex: 1000,
+      maxWidth: 280,
+      pointerEvents: "none"
+    }}>
+      <div style={{
+        fontSize: 11,
+        fontWeight: 700,
+        color: darkMode ? "#94a3b8" : "#64748b",
+        marginBottom: 8,
+        textTransform: "uppercase",
+        letterSpacing: "0.5px"
+      }}>
+        {events.length} {events.length === 1 ? "Event" : "Events"}
+      </div>
+      {events.map((event, idx) => (
+        <div key={idx} style={{
+          padding: "6px 0",
+          borderBottom: idx < events.length - 1 
+            ? (darkMode ? "1px solid #334155" : "1px solid #f1f5f9") 
+            : "none"
+        }}>
+          <div style={{
+            fontSize: 13,
+            fontWeight: 600,
+            color: darkMode ? "#f1f5f9" : "#0f172a",
+            marginBottom: 4
+          }}>
+            {event.title}
+          </div>
+          <div style={{
+            fontSize: 11,
+            color: darkMode ? "#64748b" : "#94a3b8"
+          }}>
+            {event.start.toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: !event.use24Hour 
+            })}
+            {event.location && ` • ${event.location}`}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Overlay({ title, onClose, children, darkMode }) {
   return (
     <div style={{
       position: "fixed",
@@ -3127,29 +3341,37 @@ function Overlay({ title, onClose, children }) {
       padding: 20
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: "#fff",
+        background: darkMode ? "#0a0a0a" : "#fff",
         width: "100%",
         maxWidth: 440,
         maxHeight: "85vh",
         borderRadius: 20,
         overflow: "hidden",
-        boxShadow: "0 25px 50px rgba(0,0,0,0.3)"
+        boxShadow: darkMode 
+          ? "0 25px 50px rgba(0,0,0,0.8)" 
+          : "0 25px 50px rgba(0,0,0,0.3)",
+        border: darkMode ? "1px solid #1f2937" : "none"
       }}>
         <div style={{
           padding: "20px 24px",
-          borderBottom: "1px solid #f1f5f9",
+          borderBottom: darkMode ? "1px solid #1f2937" : "1px solid #f1f5f9",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center"
         }}>
-          <h3 style={{ margin: 0, fontSize: 20, fontWeight: 700, color: "#0f172a" }}>
+          <h3 style={{ 
+            margin: 0, 
+            fontSize: 20, 
+            fontWeight: 700, 
+            color: darkMode ? "#f1f5f9" : "#0f172a" 
+          }}>
             {title}
           </h3>
           <button
             onClick={onClose}
             style={{
               border: "none",
-              background: "#f8fafc",
+              background: darkMode ? "#1a1a1a" : "#f8fafc",
               fontSize: 18,
               cursor: "pointer",
               width: 36,
@@ -3158,7 +3380,7 @@ function Overlay({ title, onClose, children }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              color: "#64748b",
+              color: darkMode ? "#94a3b8" : "#64748b",
               transition: "all 0.2s ease"
             }}
           >
