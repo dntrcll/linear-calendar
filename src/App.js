@@ -1,3 +1,4 @@
+
 import { useEffect, useState, useRef } from "react";
 import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, provider } from "./firebase";
@@ -534,7 +535,11 @@ export default function App() {
     }
   };
 
-  const formatTime = d => d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatTime = d => d.toLocaleTimeString([], { 
+    hour: "2-digit", 
+    minute: "2-digit",
+    hour12: !use24HourFormat 
+  });
 
   const today = currentDate;
   const startOfDay = new Date(today);
@@ -909,7 +914,7 @@ export default function App() {
         padding: 20
       }}>
         <div style={{ textAlign: "center", background: "rgba(255,255,255,0.98)", padding: "48px 32px", borderRadius: 24, boxShadow: "0 20px 60px rgba(0,0,0,0.3)", maxWidth: 400 }}>
-          <div style={{ fontSize: 48, marginBottom: 16 }}>\ud83d\udcc5</div>
+          <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
           <h1 style={{ margin: "0 0 8px 0", fontSize: 32, fontWeight: 700, background: "linear-gradient(135deg, #3B82F6, #06B6D4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>Timeline</h1>
           <p style={{ color: "#6b7280", marginBottom: 32, fontSize: 16 }}>Your life, beautifully organized</p>
           <button 
@@ -1056,28 +1061,42 @@ div::-webkit-scrollbar {
           ? "0 4px 24px rgba(0, 0, 0, 0.4)" 
           : "0 4px 12px rgba(0,0,0,0.05)"
       }}>
-        <div style={{ maxWidth: showSidebar ? 1200 : 1600, margin: "0 auto" }}>
+        <div style={{ 
+          maxWidth: showSidebar ? "calc(100% - 400px)" : 1600, 
+          margin: "0 auto",
+          transition: "max-width 0.3s ease"
+        }}>
           
           {/* Row 1: Brand + Month/Year + Actions */}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <h2 style={{ 
-                margin: 0, 
-                fontSize: 22, 
-                fontWeight: 800, 
-                background: "linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.5px"
-              }}>
-                Timeline
-              </h2>
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <h2 style={{ 
+                  margin: 0, 
+                  fontSize: 22, 
+                  fontWeight: 800, 
+                  background: "linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  letterSpacing: "-0.5px"
+                }}>
+                  Welcome back, {user.displayName.split(' ')[0]}! 👋
+                </h2>
+              </div>
               <div style={{ 
                 fontSize: 18, 
                 fontWeight: 700,
                 color: darkMode ? "#94a3b8" : "#64748b"
               }}>
                 {monthYear}
+              </div>
+              <div style={{
+                fontSize: 12,
+                fontStyle: "italic",
+                color: darkMode ? "#64748b" : "#94a3b8",
+                maxWidth: 400
+              }}>
+                "{getMotivationalQuote()}"
               </div>
             </div>
             
@@ -1114,7 +1133,7 @@ div::-webkit-scrollbar {
                   transition: "all 0.2s ease"
                 }}
               >
-                \ud83d\uddd1\ufe0f {deletedEvents.length > 0 && `(${deletedEvents.length})`}
+                🗑️ {deletedEvents.length > 0 && `(${deletedEvents.length})`}
               </button>
 
               <button
@@ -1132,7 +1151,7 @@ div::-webkit-scrollbar {
                   justifyContent: "center"
                 }}
               >
-                \u2699\ufe0f
+                ⚙️
               </button>
               
               <button
@@ -1158,7 +1177,7 @@ div::-webkit-scrollbar {
           <div style={{ display: "flex", gap: 12, marginBottom: 12, alignItems: "center", flexWrap: "wrap" }}>
             <input
               type="text"
-              placeholder="\ud83d\udd0d Search..."
+              placeholder="🔍 Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               style={{
@@ -1276,6 +1295,22 @@ div::-webkit-scrollbar {
                 +{categories.length - 4}
               </button>
             )}
+            
+            <button
+              onClick={() => setShowAddCategoryModal(true)}
+              style={{
+                padding: "10px 14px",
+                borderRadius: 10,
+                border: darkMode ? "1px dashed rgba(148, 163, 184, 0.3)" : "1px dashed #cbd5e1",
+                background: darkMode ? "rgba(30, 41, 59, 0.6)" : "#fff",
+                color: darkMode ? "#94a3b8" : "#64748b",
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer"
+              }}
+            >
+              + Add Tag
+            </button>
           </div>
 
           {/* Row 3: View Mode + Navigation */}
@@ -1368,7 +1403,7 @@ div::-webkit-scrollbar {
                   color: darkMode ? "#f1f5f9" : "#475569"
                 }}
               >
-                \u2190
+                ←
               </button>
               
               <button onClick={goToToday} disabled={isToday && viewMode === "day"} style={{ 
@@ -1401,7 +1436,7 @@ div::-webkit-scrollbar {
                   color: darkMode ? "#f1f5f9" : "#475569"
                 }}
               >
-                \u2192
+                →
               </button>
 
               <div style={{
@@ -1456,7 +1491,7 @@ div::-webkit-scrollbar {
                   padding: 4
                 }}
               >
-                \u2715
+                ✕
               </button>
             </div>
           )}
@@ -1465,10 +1500,11 @@ div::-webkit-scrollbar {
 
       {/* MAIN CONTENT AREA */}
       <div style={{ 
-        maxWidth: showSidebar ? 1200 : 1600,
+        maxWidth: 1600,
         margin: "0 auto",
         padding: "20px",
-        marginRight: showSidebar ? 400 : "auto"
+        paddingRight: showSidebar ? "400px" : "20px",
+        transition: "padding-right 0.3s ease"
       }}>
         {loading ? (
           <div style={{
@@ -1572,7 +1608,7 @@ div::-webkit-scrollbar {
                     fontSize: 15,
                     pointerEvents: "none"
                   }}>
-                    <div style={{ fontSize: 48, marginBottom: 12 }}>\ud83d\udced</div>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>📭</div>
                     <div style={{ fontWeight: 600 }}>No events today</div>
                     <div style={{ fontSize: 13, marginTop: 4 }}>Click timeline to create</div>
                   </div>
@@ -1659,7 +1695,7 @@ div::-webkit-scrollbar {
                       </div>
                       {!isSmall && (
                         <div style={{ fontSize: 12, opacity: 0.9, pointerEvents: "none" }}>
-                          {formatTime(ev.start)} \u2013 {formatTime(ev.end)}
+                          {formatTime(ev.start)} – {formatTime(ev.end)}
                         </div>
                       )}
                       
@@ -1858,7 +1894,7 @@ div::-webkit-scrollbar {
                   justifyContent: "center"
                 }}
               >
-                \u2190
+                ←
               </button>
               
               <div style={{
@@ -1893,7 +1929,7 @@ div::-webkit-scrollbar {
                   justifyContent: "center"
                 }}
               >
-                \u2192
+                →
               </button>
             </div>
 
@@ -2187,13 +2223,13 @@ div::-webkit-scrollbar {
         <div style={{
           position: "fixed",
           right: 0,
-          top: 0,
+          top: "160px",
           bottom: 0,
           width: 380,
           display: "flex",
           flexDirection: "column",
           gap: 16,
-          padding: "80px 20px 20px 20px",
+          padding: "20px",
           background: darkMode 
             ? "rgba(15, 23, 42, 0.98)" 
             : "rgba(255, 255, 255, 0.98)",
@@ -2208,26 +2244,6 @@ div::-webkit-scrollbar {
           overflowY: "auto",
           zIndex: 40
         }}>
-          {/* Close button */}
-          <button
-            onClick={() => setShowSidebar(false)}
-            style={{
-              position: "absolute",
-              top: 20,
-              right: 20,
-              background: darkMode ? "rgba(51, 65, 85, 0.6)" : "#f1f5f9",
-              border: "none",
-              cursor: "pointer",
-              padding: "8px 10px",
-              borderRadius: 8,
-              color: darkMode ? "#f1f5f9" : "#64748b",
-              fontSize: 14,
-              transition: "all 0.2s ease"
-            }}
-          >
-            \u2715
-          </button>
-
           {/* Events Preview */}
           <div style={{
             background: darkMode ? "rgba(15, 23, 42, 0.95)" : "#fff",
@@ -2245,12 +2261,13 @@ div::-webkit-scrollbar {
                 margin: 0,
                 fontSize: 16,
                 fontWeight: 800,
-                background: "linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.3px"
+                color: darkMode ? "#f1f5f9" : "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
               }}>
-                \ud83d\udcc5 Upcoming
+                <span style={{ fontSize: 18 }}>📅</span>
+                Upcoming Events
               </h3>
             </div>
             
@@ -2278,7 +2295,7 @@ div::-webkit-scrollbar {
                       color: darkMode ? "#64748b" : "#94a3b8",
                       fontSize: 13
                     }}>
-                      <div style={{ fontSize: 32, marginBottom: 8 }}>\ud83d\udcc5</div>
+                      <div style={{ fontSize: 32, marginBottom: 8 }}>📅</div>
                       <div>No upcoming events</div>
                     </div>
                   );
@@ -2287,6 +2304,11 @@ div::-webkit-scrollbar {
                 return upcomingEvents.map((ev, idx) => {
                   const colorStyle = EVENT_COLORS[ev.color || "blue"];
                   const isToday = ev.start.toDateString() === today.toDateString();
+                  const timeStr = ev.start.toLocaleTimeString([], { 
+                    hour: 'numeric', 
+                    minute: '2-digit',
+                    hour12: !use24HourFormat 
+                  });
                   
                   return (
                     <div
@@ -2323,7 +2345,7 @@ div::-webkit-scrollbar {
                         fontSize: 11,
                         color: darkMode ? "#64748b" : "#94a3b8"
                       }}>
-                        {isToday ? "Today" : ev.start.toLocaleDateString([], { month: 'short', day: 'numeric' })} \u2022 {ev.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        {isToday ? "Today" : ev.start.toLocaleDateString([], { month: 'short', day: 'numeric' })} • {timeStr}
                       </div>
                     </div>
                   );
@@ -2352,18 +2374,19 @@ div::-webkit-scrollbar {
                 margin: 0,
                 fontSize: 16,
                 fontWeight: 800,
-                background: "linear-gradient(135deg, #3B82F6 0%, #06B6D4 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                letterSpacing: "-0.3px"
+                color: darkMode ? "#f1f5f9" : "#0f172a",
+                display: "flex",
+                alignItems: "center",
+                gap: 8
               }}>
-                \ud83d\udcdd Notes
+                <span style={{ fontSize: 18 }}>📝</span>
+                Quick Notes
               </h3>
             </div>
             <textarea
               value={sidebarNotes}
               onChange={(e) => setSidebarNotes(e.target.value)}
-              placeholder="\u270d\ufe0f Quick notes..."
+              placeholder="✍️ Quick notes..."
               style={{
                 flex: 1,
                 padding: "20px",
@@ -2394,16 +2417,71 @@ div::-webkit-scrollbar {
             background: "linear-gradient(135deg, #3B82F6, #06B6D4)",
             border: "none",
             borderRadius: "12px 0 0 12px",
-            padding: "20px 12px",
+            padding: "16px 10px",
             cursor: "pointer",
             boxShadow: "0 4px 20px rgba(59, 130, 246, 0.4)",
             transition: "all 0.3s ease",
             zIndex: 40,
             color: "#fff",
-            fontSize: 20
+            fontSize: 14,
+            fontWeight: 600,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = "translateY(-50%) translateX(-4px)";
+            e.currentTarget.style.boxShadow = "0 6px 24px rgba(59, 130, 246, 0.6)";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = "translateY(-50%) translateX(0)";
+            e.currentTarget.style.boxShadow = "0 4px 20px rgba(59, 130, 246, 0.4)";
           }}
         >
-          \u2630
+          <span style={{ fontSize: 16 }}>☰</span>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px" }}>Menu</span>
+        </button>
+      )}
+      
+      {/* Hide Sidebar Button (when sidebar is visible) */}
+      {showSidebar && (
+        <button
+          onClick={() => setShowSidebar(false)}
+          style={{
+            position: "fixed",
+            right: "380px",
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: darkMode ? "rgba(51, 65, 85, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            border: darkMode ? "1px solid rgba(148, 163, 184, 0.2)" : "1px solid #e2e8f0",
+            borderRadius: "12px 0 0 12px",
+            padding: "16px 10px",
+            cursor: "pointer",
+            boxShadow: darkMode ? "0 4px 20px rgba(0,0,0,0.3)" : "0 4px 12px rgba(0,0,0,0.1)",
+            transition: "all 0.3s ease",
+            zIndex: 41,
+            color: darkMode ? "#f1f5f9" : "#64748b",
+            fontSize: 14,
+            fontWeight: 600,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: 4
+          }}
+          onMouseEnter={e => {
+            e.currentTarget.style.transform = "translateY(-50%) translateX(-4px)";
+            e.currentTarget.style.background = "#EF4444";
+            e.currentTarget.style.color = "#fff";
+          }}
+          onMouseLeave={e => {
+            e.currentTarget.style.transform = "translateY(-50%) translateX(0)";
+            e.currentTarget.style.background = darkMode ? "rgba(51, 65, 85, 0.8)" : "rgba(255, 255, 255, 0.9)";
+            e.currentTarget.style.color = darkMode ? "#f1f5f9" : "#64748b";
+          }}
+        >
+          <span style={{ fontSize: 16 }}>✕</span>
+          <span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.5px" }}>Hide</span>
         </button>
       )}
 
@@ -2412,7 +2490,7 @@ div::-webkit-scrollbar {
         <Overlay title="Recently Deleted" onClose={() => setShowDeletedOverlay(false)} darkMode={darkMode}>
           {deletedEvents.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: darkMode ? "#64748b" : "#94a3b8" }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>\ud83d\uddd1\ufe0f</div>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🗑️</div>
               <div>No deleted events</div>
             </div>
           ) : (
@@ -2480,7 +2558,7 @@ div::-webkit-scrollbar {
                     cursor: "pointer"
                   }}
                 >
-                  \u2600\ufe0f Light
+                  ☀️ Light
                 </button>
                 
                 <button
@@ -2497,7 +2575,7 @@ div::-webkit-scrollbar {
                     cursor: "pointer"
                   }}
                 >
-                  \ud83c\udf19 Dark
+                  🌙 Dark
                 </button>
               </div>
             </div>
@@ -2931,7 +3009,7 @@ div::-webkit-scrollbar {
                         width: "100%"
                       }}
                     >
-                      \ud83d\udccb Duplicate
+                      📋 Duplicate
                     </button>
                     
                     <button
@@ -2948,7 +3026,7 @@ div::-webkit-scrollbar {
                         width: "100%"
                       }}
                     >
-                      \ud83d\uddd1\ufe0f Delete
+                      🗑️ Delete
                     </button>
                   </>
                 )}
@@ -2963,13 +3041,14 @@ div::-webkit-scrollbar {
           events={hoveredDateEvents} 
           position={tooltipPosition} 
           darkMode={darkMode}
+          use24HourFormat={use24HourFormat}
         />
       )}
     </div>
   );
 }
 
-function EventTooltip({ events, position, darkMode }) {
+function EventTooltip({ events, position, darkMode, use24HourFormat }) {
   if (!events || events.length === 0) return null;
   
   return (
@@ -3011,7 +3090,11 @@ function EventTooltip({ events, position, darkMode }) {
             fontSize: 11,
             color: darkMode ? "#64748b" : "#94a3b8"
           }}>
-            {event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {event.start.toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: !use24HourFormat 
+            })}
           </div>
         </div>
       ))}
@@ -3068,7 +3151,7 @@ function Overlay({ title, onClose, children, darkMode }) {
               color: darkMode ? "#94a3b8" : "#64748b"
             }}
           >
-            \u2715
+            ✕
           </button>
         </div>
         <div style={{ padding: "4px 24px 24px", overflowY: "auto", maxHeight: "calc(85vh - 80px)" }}>
