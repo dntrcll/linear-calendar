@@ -2,15 +2,25 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { signInWithPopup, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { auth, provider, db } from "./firebase";
-// NEW: Import Icons used in AnuCal
-import { ChevronLeft, ChevronRight, Calendar, Settings, Plus, Trash2, LogOut, Grid, AlignJustify } from "lucide-react";
+// Icons used to match the polished AnuCal aesthetic
+import { 
+  ChevronLeft, 
+  ChevronRight, 
+  Settings, 
+  Plus, 
+  LogOut, 
+  Grid, 
+  AlignJustify, 
+  Trash2,
+  Calendar
+} from "lucide-react";
 
 // --- CONFIGURATION ---
 const APP_NAME = "Epoch";
 const PIXELS_PER_MINUTE = 1.8;
 const SNAP_MINUTES = 15;
 
-// --- LUXE COLOR PALETTE (Kept yours, it's good) ---
+// --- LUXE COLOR PALETTE ---
 const THEME = {
   light: {
     bg: "#FDFCF8",
@@ -60,6 +70,7 @@ const GLOBAL_STYLES = `
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, 0.3); border-radius: 3px; }
   
+  /* Animations */
   .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
   
@@ -72,19 +83,34 @@ const GLOBAL_STYLES = `
 
   .btn-hover:hover { transform: translateY(-1px); transition: all 0.2s; }
   input:focus, select:focus { outline: 2px solid #d97706; outline-offset: 1px; }
-  
-  /* NEW: Year Grid Styles from AnuCal logic */
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
-  .calendar-day { aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; font-size: 10px; border-radius: 4px; position: relative; }
-  .has-event::after { content: ''; position: absolute; bottom: 2px; width: 4px; height: 4px; background: #d97706; border-radius: 50%; }
+
+  /* Year View Grid Styles */
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 8px; }
+  .calendar-day { 
+    aspect-ratio: 1/1; 
+    display: flex; 
+    align-items: center; 
+    justify-content: center; 
+    font-size: 10px; 
+    border-radius: 4px; 
+    position: relative;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .calendar-day:hover { background: rgba(0,0,0,0.05); }
+  .has-event::after { 
+    content: ''; position: absolute; bottom: 3px; 
+    width: 3px; height: 3px; background: #d97706; border-radius: 50%; 
+  }
 `;
 
 export default function App() {
+  // --- STATE ---
   const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
-  const [viewMode, setViewMode] = useState("day"); 
+  const [viewMode, setViewMode] = useState("day"); // 'day' or 'year'
   
   // Customization State
   const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('darkMode')) || false);
@@ -95,7 +121,7 @@ export default function App() {
   // UI State
   const [showSettings, setShowSettings] = useState(false);
   const [showEventModal, setShowEventModal] = useState(false);
-  const [notifications, setNotifications] = useState([]);
+  const [notifications, setNotifications] = useState([]); 
   
   // Form State
   const [editingEvent, setEditingEvent] = useState(null);
@@ -110,12 +136,14 @@ export default function App() {
 
   const colors = darkMode ? THEME.dark : THEME.light;
 
+  // --- EFFECTS ---
   useEffect(() => { const s = document.createElement('style'); s.textContent = GLOBAL_STYLES; document.head.appendChild(s); return () => s.remove(); }, []);
   useEffect(() => { setPersistence(auth, browserLocalPersistence); auth.onAuthStateChanged(setUser); }, []);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
   useEffect(() => { localStorage.setItem('darkMode', JSON.stringify(darkMode)); }, [darkMode]);
   useEffect(() => { localStorage.setItem('categories', JSON.stringify(categories)); }, [categories]);
 
+  // Load Data
   const loadEvents = useCallback(async () => {
     if (!user) return;
     try {
@@ -130,28 +158,34 @@ export default function App() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
+  // --- NOTIFICATIONS ---
   const notify = (msg, type = "success") => {
     const id = Date.now();
     setNotifications(p => [...p, { id, msg, type }]);
     setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 3000);
   };
 
+  // --- ACTIONS ---
   const navDate = (amount) => {
     const d = new Date(currentDate);
-    if (viewMode === "day") d.setDate(d.getDate() + amount);
-    if (viewMode === "year") d.setFullYear(d.getFullYear() + amount);
+    if (viewMode === 'day') {
+        d.setDate(d.getDate() + amount);
+    } else if (viewMode === 'year') {
+        d.setFullYear(d.getFullYear() + amount);
+    }
     setCurrentDate(d);
   };
 
   const handleSaveEvent = async () => {
     if (!formTitle || !formStart || !formEnd) return notify("Please fill required fields", "error");
     
+    // Parse times
     const [sh, sm] = formStart.split(":").map(Number);
     const [eh, em] = formEnd.split(":").map(Number);
     const baseDate = editingEvent ? editingEvent.start : currentDate;
     const start = new Date(baseDate); start.setHours(sh, sm, 0, 0);
     const end = new Date(baseDate); end.setHours(eh, em, 0, 0);
-    if (end <= start) end.setDate(end.getDate() + 1);
+    if (end <= start) end.setDate(end.getDate() + 1); // Handle overnight
 
     const payload = {
       uid: user.uid, title: formTitle, category: formCat,
@@ -194,7 +228,7 @@ export default function App() {
         newE.setMinutes(newE.getMinutes() + deltaMins);
       } else {
         newE.setMinutes(newE.getMinutes() + deltaMins);
-        if ((newE - newS) < 15 * 60000) return ev; 
+        if ((newE - newS) < 15 * 60000) return ev; // Min duration
       }
       return { ...ev, start: newS, end: newE };
     }));
@@ -220,6 +254,7 @@ export default function App() {
     }
   }, [dragState, handleMouseMove, handleMouseUp]);
 
+  // --- RENDER HELPERS ---
   const fmtTime = (d) => d.toLocaleTimeString([], { hour: use24Hour ? "2-digit" : "numeric", minute: "2-digit", hour12: !use24Hour });
   const isToday = (d) => d.toDateString() === now.toDateString();
 
@@ -237,21 +272,23 @@ export default function App() {
 
         <button onClick={() => { setEditingEvent(null); setFormTitle(""); setFormStart("09:00"); setFormEnd("10:00"); setShowEventModal(true); }} 
           className="btn-hover"
-          style={{ width: "100%", padding: "12px", borderRadius: 12, background: "#1C1917", color: "#F4F2EB", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
+          style={{ width: "100%", padding: "12px", borderRadius: 12, background: "#1C1917", color: "#F4F2EB", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
           <Plus size={18} /> Create Event
         </button>
 
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
              <h3 style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: colors.muted }}>Categories</h3>
-             <button onClick={() => setShowSettings(true)} style={{ background: "transparent", border: "none", color: colors.muted, cursor: "pointer" }}><Settings size={14}/></button>
+             <button onClick={() => setShowSettings(true)} style={{ background: "transparent", border: "none", color: colors.muted, cursor: "pointer" }}>
+                <Settings size={14}/>
+             </button>
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {categories.map(cat => (
               <div key={cat.id} onClick={() => setActiveTags(p => p.includes(cat.id) ? p.filter(x => x !== cat.id) : [...p, cat.id])}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: activeTags.includes(cat.id) ? (darkMode ? '#292524' : '#fff') : 'transparent', transition: 'all 0.2s' }}>
+                style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: activeTags.includes(cat.id) ? (darkMode ? '#292524' : '#fff') : 'transparent', transition: 'all 0.2s', opacity: activeTags.includes(cat.id) ? 1 : 0.5 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: cat.border, boxShadow: activeTags.includes(cat.id) ? `0 0 8px ${cat.bg}` : 'none' }} />
-                <span style={{ fontSize: 14, fontWeight: 500, opacity: activeTags.includes(cat.id) ? 1 : 0.6 }}>{cat.name}</span>
+                <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
               </div>
             ))}
           </div>
@@ -261,7 +298,7 @@ export default function App() {
           <button onClick={() => auth.signOut()} style={{ padding: "8px", borderRadius: 8, background: "transparent", border: "none", color: colors.muted, cursor: "pointer" }}>
             <LogOut size={18} />
           </button>
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{user.displayName}</div>
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.displayName}</div>
           <div style={{ width: 32, height: 32, borderRadius: "50%", background: colors.text, color: colors.bg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>
             {user.displayName?.[0]}
           </div>
@@ -275,13 +312,21 @@ export default function App() {
         <header style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${colors.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
              <div style={{ display: "flex", gap: 8 }}>
-               <button onClick={() => navDate(-1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronLeft size={16}/></button>
-               <button onClick={() => navDate(1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}><ChevronRight size={16}/></button>
+               <button onClick={() => navDate(-1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                 <ChevronLeft size={16}/>
+               </button>
+               <button onClick={() => navDate(1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                 <ChevronRight size={16}/>
+               </button>
              </div>
              <div>
-               <h2 className="serif" style={{ fontSize: 24, fontWeight: 600, color: colors.text }}>
+               <h2 className="serif" style={{ fontSize: 28, fontWeight: 600, color: colors.text }}>
                  {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                </h2>
+               {viewMode === 'day' && <p style={{ fontSize: 14, color: colors.muted, display:"flex", alignItems:"center", gap:8 }}>
+                  {currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric' })}
+                  {isToday(currentDate) && <span style={{fontSize:10, fontWeight:700, color: colors.line, textTransform:"uppercase", letterSpacing:1}}>Today</span>}
+               </p>}
              </div>
           </div>
 
@@ -356,7 +401,7 @@ export default function App() {
             </div>
           )}
 
-          {/* NEW: YEAR VIEW (Adapted from AnuCal logic) */}
+          {/* NEW: YEAR VIEW (Inspired by AnuCal) */}
           {viewMode === 'year' && (
              <YearView 
                 currentDate={currentDate} 
@@ -420,7 +465,7 @@ export default function App() {
                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, padding: 8, background: colors.bg, borderRadius: 6 }}>
                    <div style={{ width: 16, height: 16, borderRadius: 4, background: c.bg, border: `1px solid ${c.border}` }} />
                    <span style={{ flex: 1 }}>{c.name}</span>
-                   <button onClick={() => setCategories(p => p.filter(x => x.id !== c.id))} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={14}/></button>
+                   <button onClick={() => setCategories(p => p.filter(x => x.id !== c.id))} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16}/></button>
                  </div>
                ))}
             </div>
@@ -446,7 +491,8 @@ export default function App() {
   );
 }
 
-// --- YEAR VIEW COMPONENT (Based on AnuCal logic) ---
+// --- YEAR VIEW COMPONENT ---
+// This handles the Year Grid visualization logic extracted from the reference app
 const YearView = ({ currentDate, events, colors, onDayClick }) => {
   const year = currentDate.getFullYear();
   const months = Array.from({ length: 12 });
@@ -455,10 +501,10 @@ const YearView = ({ currentDate, events, colors, onDayClick }) => {
     <div style={{ padding: 40 }}>
        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 40 }}>
          {months.map((_, m) => {
-           // Logic to properly offset the start of the month
            const date = new Date(year, m, 1);
            const daysInMonth = new Date(year, m + 1, 0).getDate();
-           const startDay = (date.getDay() + 6) % 7; // Adjust to Monday start (0=Mon, 6=Sun) or keep standard
+           // Calculate start day offset (0 = Sunday, etc.)
+           const startOffset = date.getDay(); 
            
            return (
              <div key={m}>
@@ -467,12 +513,12 @@ const YearView = ({ currentDate, events, colors, onDayClick }) => {
                </h4>
                <div className="calendar-grid">
                  {/* Weekday Headers */}
-                 {['M','T','W','T','F','S','S'].map(d => (
+                 {['S','M','T','W','T','F','S'].map(d => (
                     <div key={d} style={{ fontSize: 10, textAlign: "center", color: colors.muted, marginBottom: 4 }}>{d}</div>
                  ))}
                  
                  {/* Empty Cells for Offset */}
-                 {Array.from({ length: startDay }).map((_, i) => <div key={`empty-${i}`} />)}
+                 {Array.from({ length: startOffset }).map((_, i) => <div key={`empty-${i}`} />)}
                  
                  {/* Days */}
                  {Array.from({ length: daysInMonth }).map((_, d) => {
@@ -485,10 +531,10 @@ const YearView = ({ currentDate, events, colors, onDayClick }) => {
                         className={`calendar-day ${hasEvent ? 'has-event' : ''}`}
                         onClick={() => onDayClick(dayDate)}
                         style={{ 
-                          background: isToday ? colors.line : hasEvent ? (colors.bg === '#0C0A09' ? '#292524' : '#E7E5E4') : 'transparent',
+                          background: isToday ? colors.line : (colors.bg === '#0C0A09' ? '#292524' : '#E7E5E4'),
+                          backgroundColor: isToday ? colors.line : 'transparent',
                           color: isToday ? '#fff' : colors.text,
                           fontWeight: isToday ? 700 : 400,
-                          cursor: 'pointer'
                         }}>
                        {d + 1}
                      </div>
