@@ -4,494 +4,419 @@ import { auth, provider } from "./firebase";
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
-// --- CONFIGURATION ---
-const APP_NAME = "Nexus";
-const PIXELS_PER_MINUTE = 2; 
+// Configuration
+const PIXELS_PER_MINUTE = 1.2; // Adjusted for vertical readability
 const SNAP_MINUTES = 15;
+const MIN_EVENT_DURATION = 15;
 
-// --- MIDNIGHT LUXE THEME ---
-const THEME = {
-  light: {
-    bg: "#FAFAFA", 
-    sidebar: "#FFFFFF", 
-    card: "#FFFFFF",
-    text: "#18181B", 
-    muted: "#71717A", 
-    border: "#E4E4E7", 
-    line: "#3B82F6", // Blue accent
-    weekend: "#F4F4F5",
-    activeBtnText: "#FFFFFF",
-    activeBtnBg: "#18181B",
-    primary: "#3B82F6"
-  },
-  dark: {
-    bg: "#0B0E11", // Deep Midnight
-    sidebar: "#151921", // Slightly lighter midnight
-    card: "#1E232E", 
-    text: "#F8FAFC", 
-    muted: "#64748B", // Slate 500
-    border: "#2D3748", 
-    line: "#3B82F6", // Bright Blue
-    weekend: "#11141C",
-    activeBtnText: "#FFFFFF",
-    activeBtnBg: "#3B82F6", // Blue active state like screenshot
-    primary: "#3B82F6"
-  }
+const COLORS = {
+  emerald: { 50: "#ecfdf5", 100: "#d1fae5", 200: "#a7f3d0", 400: "#34d399", 500: "#10b981", 600: "#059669", 900: "#064e3b" },
+  stone: { 50: "#fafaf9", 100: "#f5f5f4", 200: "#e7e5e4", 300: "#d6d3d1", 400: "#a8a29e", 500: "#78716c", 600: "#57534e", 700: "#44403c", 800: "#292524", 900: "#1c1917" },
+  amber: { 500: "#f59e0b" },
+  rose: { 500: "#f43f5e" }, // For current time line
+  bgLight: "#fafaf9", // Flat cleaner background
+  bgDark: "#1c1917",
 };
 
-const TAG_COLORS = [
-  { name: "Blue",    bg: "#EFF6FF", border: "#3B82F6", text: "#1E40AF", dot: "#3B82F6" },
-  { name: "Emerald", bg: "#ECFDF5", border: "#10B981", text: "#064E3B", dot: "#10B981" },
-  { name: "Amber",   bg: "#FFFBEB", border: "#F59E0B", text: "#78350F", dot: "#F59E0B" },
-  { name: "Purple",  bg: "#FAF5FF", border: "#A855F7", text: "#6B21A8", dot: "#A855F7" },
-  { name: "Rose",    bg: "#FFF1F2", border: "#F43F5E", text: "#881337", dot: "#F43F5E" },
+const EVENT_COLORS = {
+  emerald: { bg: "#d1fae5", border: "#10b981", text: "#064e3b", dot: "#10b981" },
+  sage: { bg: "#ecfccb", border: "#84cc16", text: "#365314", dot: "#84cc16" },
+  amber: { bg: "#fef3c7", border: "#f59e0b", text: "#78350f", dot: "#f59e0b" },
+  terracotta: { bg: "#ffedd5", border: "#ea580c", text: "#7c2d12", dot: "#ea580c" },
+  slate: { bg: "#f1f5f9", border: "#64748b", text: "#0f172a", dot: "#64748b" },
+};
+
+const DEFAULT_CATEGORIES = [
+  { id: "work", name: "Work", color: "emerald" },
+  { id: "personal", name: "Personal", color: "sage" },
+  { id: "meeting", name: "Meeting", color: "amber" },
+  { id: "event", name: "Event", color: "terracotta" },
+  { id: "code", name: "Code", color: "slate" },
 ];
 
-const DEFAULT_CATS = [
-  { id: "work", name: "Work", ...TAG_COLORS[0] },
-  { id: "personal", name: "Personal", ...TAG_COLORS[3] },
-  { id: "family", name: "Family", ...TAG_COLORS[1] },
-];
-
-const GLOBAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
-  
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Inter', sans-serif; overflow: hidden; transition: background 0.3s ease, color 0.3s ease; }
-  h1, h2, h3, h4, .brand { font-family: 'Plus Jakarta Sans', sans-serif; }
-  
-  ::-webkit-scrollbar { width: 6px; height: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 3px; }
-  
-  .fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
-  
-  .pulse { animation: pulse 2s infinite; }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(59, 130, 246, 0); } 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0); } }
-
-  .past-blur { opacity: 0.4; filter: grayscale(1); }
-  
-  /* Screenshot matching Year View Grid */
-  .year-grid-cell { 
-    width: 32px; height: 32px; 
-    display: flex; align-items: center; justify-content: center; 
-    font-size: 11px; border-radius: 4px; 
-    cursor: pointer; transition: all 0.2s;
-  }
-  .year-grid-cell:hover { background: rgba(255,255,255,0.1); }
-  .year-grid-header {
-    width: 32px; text-align: center; 
-    font-size: 10px; font-weight: 700; 
-    text-transform: uppercase; margin-bottom: 8px;
-    color: #64748B;
-  }
+const globalStyles = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', -apple-system, sans-serif; overflow: hidden; } /* Prevent body scroll */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.2s ease-out forwards; }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
 `;
 
 export default function App() {
-  // --- STATE ---
-  const [user, setUser] = useState(null);
-  const [events, setEvents] = useState([]);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [now, setNow] = useState(new Date());
-  const [viewMode, setViewMode] = useState("day"); 
-  
-  // Settings
-  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('nexus_dark')) || true); // Default to Dark based on screenshot
-  const [use24Hour, setUse24Hour] = useState(() => JSON.parse(localStorage.getItem('nexus_24h')) || false);
-  const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem('nexus_cats')) || DEFAULT_CATS);
-  const [activeTags, setActiveTags] = useState(categories.map(c => c.id));
-  
-  // UI
-  const [showSettings, setShowSettings] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [notifications, setNotifications] = useState([]);
-  
-  // Form/Drag
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [formTitle, setFormTitle] = useState("");
-  const [formStart, setFormStart] = useState("");
-  const [formEnd, setFormEnd] = useState("");
-  const [formCat, setFormCat] = useState(categories[0].id);
-  const [dragState, setDragState] = useState(null);
-  
-  const containerRef = useRef(null);
-  const colors = darkMode ? THEME.dark : THEME.light;
+  const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT"; // Replace or keep logic
+  const QUOTES = ["Make it happen.", "Focus.", "Day by day.", "Simplicity is key."];
 
-  // --- EFFECTS ---
-  useEffect(() => { const s = document.createElement('style'); s.textContent = GLOBAL_STYLES; document.head.appendChild(s); return () => s.remove(); }, []);
-  useEffect(() => { setPersistence(auth, browserLocalPersistence); auth.onAuthStateChanged(setUser); }, []);
-  useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
-  useEffect(() => { localStorage.setItem('nexus_dark', JSON.stringify(darkMode)); }, [darkMode]);
-  useEffect(() => { localStorage.setItem('nexus_24h', JSON.stringify(use24Hour)); }, [use24Hour]);
-  useEffect(() => { localStorage.setItem('nexus_cats', JSON.stringify(categories)); }, [categories]);
+  const [user, setUser] = useState(null);
+  const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  const [spaceId] = useState(PERSONAL_SPACE_ID);
+  const [events, setEvents] = useState([]);
+  const [deletedEvents, setDeletedEvents] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingEvent, setEditingEvent] = useState(null);
+  const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
+  const [showSidebar, setShowSidebar] = useState(true);
+  const [title, setTitle] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [eventCategory, setEventCategory] = useState("work");
+  const [viewMode, setViewMode] = useState("day"); // day, week, year
+  const [categories] = useState(DEFAULT_CATEGORIES);
+  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('darkMode')) || false);
+  const [use24HourFormat] = useState(false);
 
-  // Load Data
-  const loadEvents = useCallback(async () => {
-    if (!user) return;
-    try {
-      const q = query(collection(db, "events"), where("uid", "==", user.uid), where("deleted", "==", false));
-      const snap = await getDocs(q);
-      const data = snap.docs.map(d => ({ 
-        id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() 
-      }));
-      setEvents(data);
-    } catch (e) { notify("Error loading events", "error"); }
-  }, [user]);
+  const containerRef = useRef(null);
 
-  useEffect(() => { loadEvents(); }, [loadEvents]);
+  // Persistence & styling
+  useEffect(() => { const s = document.createElement('style'); s.textContent = globalStyles; document.head.appendChild(s); return () => s.remove(); }, []);
+  useEffect(() => { setPersistence(auth, browserLocalPersistence).catch(console.error); return auth.onAuthStateChanged(setUser); }, []);
+  useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
+  useEffect(() => { localStorage.setItem('darkMode', JSON.stringify(darkMode)); }, [darkMode]);
 
-  // --- ACTIONS ---
-  const notify = (msg, type = "success") => {
-    const id = Date.now();
-    setNotifications(p => [...p, { id, msg, type }]);
-    setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 3000);
-  };
+  // Scroll to 8 AM on load
+  useEffect(() => {
+    if (viewMode === 'day' && containerRef.current) {
+      containerRef.current.scrollTop = 8 * 60 * PIXELS_PER_MINUTE;
+    }
+  }, [viewMode, loading]);
 
-  const nav = (amt, mode) => {
-    const d = new Date(currentDate);
-    if (mode === 'year') d.setFullYear(d.getFullYear() + amt);
-    else if (mode === 'week') d.setDate(d.getDate() + (amt * 7));
-    else d.setDate(d.getDate() + amt);
-    setCurrentDate(d);
-  };
+  const loadEvents = useCallback(async () => {
+    if (!user || !spaceId) return;
+    setLoading(true);
+    try {
+      const q = query(collection(db, "events"), where("spaceId", "==", spaceId), where("deleted", "==", false));
+      const snap = await getDocs(q);
+      const delQ = query(collection(db, "events"), where("spaceId", "==", spaceId), where("deleted", "==", true));
+      const delSnap = await getDocs(delQ);
+      
+      setEvents(snap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() })));
+      setDeletedEvents(delSnap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime?.toDate(), end: d.data().endTime?.toDate() })));
+    } catch (e) { console.error(e); }
+    setLoading(false);
+  }, [user, spaceId]);
 
-  const saveEvent = async () => {
-    if (!formTitle || !formStart || !formEnd) return notify("Missing fields", "error");
-    const [sh, sm] = formStart.split(":").map(Number);
-    const [eh, em] = formEnd.split(":").map(Number);
-    const base = editingEvent ? editingEvent.start : currentDate;
-    const s = new Date(base); s.setHours(sh, sm, 0, 0);
-    const e = new Date(base); e.setHours(eh, em, 0, 0);
-    if (e <= s) e.setDate(e.getDate() + 1);
+  useEffect(() => { loadEvents(); }, [loadEvents]);
 
-    const payload = {
-      uid: user.uid, title: formTitle, category: formCat,
-      startTime: Timestamp.fromDate(s), endTime: Timestamp.fromDate(e),
-      deleted: false, updatedAt: serverTimestamp()
-    };
+  // Form logic
+  const saveEvent = async () => {
+    if (!title.trim() || !startTime || !endTime) return;
+    const [sh, sm] = startTime.split(":").map(Number);
+    const [eh, em] = endTime.split(":").map(Number);
+    const s = new Date(currentDate); s.setHours(sh, sm, 0, 0);
+    const e = new Date(currentDate); e.setHours(eh, em, 0, 0);
+    
+    const data = { title, startTime: Timestamp.fromDate(s), endTime: Timestamp.fromDate(e), category: eventCategory, spaceId, deleted: false, updatedAt: serverTimestamp() };
+    
+    try {
+      if (editingEvent) await updateDoc(doc(db, "events", editingEvent.id), data);
+      else { data.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), data); }
+      setShowModal(false); loadEvents();
+    } catch (err) { alert("Error saving"); }
+  };
 
-    try {
-      if (editingEvent) await updateDoc(doc(db, "events", editingEvent.id), payload);
-      else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), payload); }
-      setShowModal(false); loadEvents(); notify(editingEvent ? "Updated" : "Created");
-    } catch { notify("Save failed", "error"); }
-  };
+  const deleteEventAction = async (id, permanent = false) => {
+    if (permanent) await deleteDoc(doc(db, "events", id));
+    else await updateDoc(doc(db, "events", id), { deleted: true });
+    loadEvents();
+  };
+  const restoreEvent = async (id) => { await updateDoc(doc(db, "events", id), { deleted: false }); loadEvents(); };
 
-  const deleteEvent = async (id) => {
-    if (!window.confirm("Delete?")) return;
-    await updateDoc(doc(db, "events", id), { deleted: true });
-    setShowModal(false); loadEvents(); notify("Deleted");
-  };
+  const openNew = (dStart) => { 
+    setEditingEvent(null); setTitle(""); 
+    if(dStart) {
+        setStartTime(`${dStart.getHours().toString().padStart(2,'0')}:${dStart.getMinutes().toString().padStart(2,'0')}`);
+        const dEnd = new Date(dStart); dEnd.setMinutes(dEnd.getMinutes() + 60);
+        setEndTime(`${dEnd.getHours().toString().padStart(2,'0')}:${dEnd.getMinutes().toString().padStart(2,'0')}`);
+    } else {
+        setStartTime("09:00"); setEndTime("10:00");
+    }
+    setShowModal(true); 
+  };
+  const openEdit = (ev) => { 
+    setEditingEvent(ev); setTitle(ev.title); setEventCategory(ev.category);
+    setStartTime(`${ev.start.getHours().toString().padStart(2,'0')}:${ev.start.getMinutes().toString().padStart(2,'0')}`);
+    setEndTime(`${ev.end.getHours().toString().padStart(2,'0')}:${ev.end.getMinutes().toString().padStart(2,'0')}`);
+    setShowModal(true); 
+  };
 
-  // --- DRAG HANDLERS ---
-  const handleDragStart = (e, ev, mode) => {
-    if (e.button !== 0) return;
-    e.stopPropagation();
-    setDragState({ id: ev.id, mode, startY: e.clientY, origStart: ev.start, origEnd: ev.end });
-  };
+  // Helpers
+  const fmtTime = (d) => d.toLocaleTimeString([], { hour: use24HourFormat ? "2-digit" : "numeric", minute: "2-digit", hour12: !use24HourFormat });
+  const navDate = (d) => { const n = new Date(currentDate); n.setDate(n.getDate() + d); setCurrentDate(n); };
+  
+  // Day View Layout Logic (Vertical Overlap Handling)
+  const getVerticalLayout = (dayEvents) => {
+    const sorted = [...dayEvents].sort((a,b) => a.start - b.start);
+    const columns = [];
+    let lastEventEnd = null;
 
-  const handleMouseMove = useCallback((e) => {
-    if (!dragState) return;
-    const deltaMins = Math.floor((e.clientY - dragState.startY) / PIXELS_PER_MINUTE / SNAP_MINUTES) * SNAP_MINUTES;
-    if (deltaMins === 0) return;
+    sorted.forEach(ev => {
+        let placed = false;
+        for (let i = 0; i < columns.length; i++) {
+            const col = columns[i];
+            const lastInCol = col[col.length - 1];
+            if (ev.start >= lastInCol.end) {
+                col.push(ev);
+                placed = true;
+                break;
+            }
+        }
+        if (!placed) columns.push([ev]);
+    });
 
-    setEvents(prev => prev.map(ev => {
-      if (ev.id !== dragState.id) return ev;
-      const s = new Date(dragState.origStart);
-      const end = new Date(dragState.origEnd);
-      if (dragState.mode === 'move') { s.setMinutes(s.getMinutes() + deltaMins); end.setMinutes(end.getMinutes() + deltaMins); }
-      else { end.setMinutes(end.getMinutes() + deltaMins); if ((end - s) < 15 * 60000) return ev; }
-      return { ...ev, start: s, end: end };
-    }));
-  }, [dragState]);
+    return columns.map((col, colIndex) => col.map(ev => ({
+        ...ev,
+        left: (colIndex / columns.length) * 100,
+        width: 100 / columns.length
+    }))).flat();
+  };
 
-  const handleMouseUp = useCallback(async () => {
-    if (!dragState) return;
-    const ev = events.find(e => e.id === dragState.id);
-    if (ev) {
-      await updateDoc(doc(db, "events", ev.id), { startTime: Timestamp.fromDate(ev.start), endTime: Timestamp.fromDate(ev.end) });
-      notify("Event moved");
-    }
-    setDragState(null);
-  }, [dragState, events]);
+  const dayEvents = events.filter(e => e.start.toDateString() === currentDate.toDateString());
+  const processedDayEvents = getVerticalLayout(dayEvents);
 
-  useEffect(() => {
-    if (dragState) { window.addEventListener("mousemove", handleMouseMove); window.addEventListener("mouseup", handleMouseUp); }
-    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
-  }, [dragState, handleMouseMove, handleMouseUp]);
+  if (!user) return <div style={{height: "100vh", display: "flex", justifyContent: "center", alignItems: "center", background: COLORS.bgLight}}><button onClick={() => signInWithPopup(auth, provider)} style={{padding: "12px 24px", borderRadius: 8, background: "#000", color: "#fff", cursor: "pointer"}}>Sign In</button></div>;
 
-  // --- HELPERS ---
-  const fmtTime = (d) => d.toLocaleTimeString([], { hour: use24Hour ? "2-digit" : "numeric", minute: "2-digit", hour12: !use24Hour });
-  const isToday = (d) => d.toDateString() === now.toDateString();
-  const isPast = (d) => { const t = new Date(); t.setHours(0,0,0,0); return d < t; };
+  return (
+    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: darkMode ? COLORS.bgDark : COLORS.bgLight, color: darkMode ? "#fff" : "#1c1917" }}>
+      
+      {/* 1. Header (Fixed) */}
+      <header style={{ padding: "16px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: `1px solid ${darkMode ? COLORS.stone[800] : COLORS.stone[200]}`, background: darkMode ? COLORS.stone[900] : "#fff" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{ fontWeight: 700, fontSize: 18, fontFamily: "Inter, sans-serif", letterSpacing: "-0.5px" }}>Linear.</div>
+          <div style={{ display: "flex", background: darkMode ? COLORS.stone[800] : COLORS.stone[100], borderRadius: 8, padding: 2 }}>
+            {['day', 'week', 'year'].map(v => (
+              <button key={v} onClick={() => setViewMode(v)} style={{ padding: "6px 12px", border: "none", borderRadius: 6, background: viewMode === v ? (darkMode ? COLORS.stone[600] : "#fff") : "transparent", color: darkMode ? "#fff" : "#000", boxShadow: viewMode === v ? "0 2px 4px rgba(0,0,0,0.05)" : "none", cursor: "pointer", fontSize: 13, fontWeight: 500, textTransform: "capitalize" }}>{v}</button>
+            ))}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => setDarkMode(!darkMode)} style={{background:"transparent", border:"none", cursor:"pointer", fontSize: 18}}>{darkMode ? "☀️" : "🌙"}</button>
+            <button onClick={() => setShowDeletedOverlay(true)} style={{background:"transparent", border:"none", cursor:"pointer", fontSize: 18}}>🗑</button>
+            <div style={{width: 32, height: 32, borderRadius: "50%", background: "#10b981", color: "#fff", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:600}}>{user.displayName?.[0]}</div>
+        </div>
+      </header>
 
-  // Generate Year Grid Data
-  // We need ~37 columns (Mon-Sun repeating) to cover a full month starting on any day
-  const YEAR_COLS = 38; // 31 days + max offset (6) + buffer
-  const WEEKDAYS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
-  
-  if (!user) return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#0B0E11", color: "#F8FAFC" }}>
-    <div style={{ textAlign: "center" }}>
-      <h1 className="brand" style={{ fontSize: 48, marginBottom: 16, background: "linear-gradient(135deg, #3B82F6, #8B5CF6)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}>{APP_NAME}.</h1>
-      <button onClick={() => signInWithPopup(auth, provider)} style={{ padding: "14px 28px", background: "#3B82F6", color: "#FFF", border: "none", borderRadius: 8, fontSize: 16, cursor: "pointer", fontWeight: 600 }}>Sign In</button>
-    </div>
-  </div>;
+      {/* 2. Navigation Bar (Fixed) */}
+      <div style={{ padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: darkMode ? COLORS.bgDark : COLORS.bgLight }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button onClick={() => navDate(-1)} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[300]}`, background: "transparent", color: "inherit", cursor: "pointer" }}>←</button>
+            <button onClick={() => setCurrentDate(new Date())} style={{ padding: "0 12px", height: 32, borderRadius: 6, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[300]}`, background: "transparent", color: "inherit", cursor: "pointer", fontSize: 13, fontWeight: 500 }}>Today</button>
+            <button onClick={() => navDate(1)} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[300]}`, background: "transparent", color: "inherit", cursor: "pointer" }}>→</button>
+            <h2 style={{ fontSize: 20, fontWeight: 600, marginLeft: 8 }}>
+                {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                {viewMode === 'day' && <span style={{color: COLORS.stone[500], marginLeft: 8, fontWeight: 400}}>{currentDate.getDate()} ({currentDate.toLocaleDateString('en-US', {weekday:'long'})})</span>}
+            </h2>
+        </div>
+        <button onClick={() => openNew()} style={{ background: "#10b981", color: "#fff", border: "none", padding: "8px 16px", borderRadius: 8, fontWeight: 600, cursor: "pointer", boxShadow: "0 4px 6px rgba(16,185,129,0.2)" }}>+ Add Event</button>
+      </div>
 
-  return (
-    <div style={{ height: "100vh", display: "flex", background: colors.bg, color: colors.text }}>
-      
-      {/* SIDEBAR */}
-      <aside style={{ width: 260, background: colors.sidebar, borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", padding: 24, zIndex: 50 }}>
-        <div style={{ marginBottom: 40 }}>
-          <h1 className="brand" style={{ fontSize: 26, fontWeight: 700, letterSpacing: "-0.5px", display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ width: 12, height: 12, background: colors.primary, borderRadius: "50%" }} />
-            {APP_NAME}
-          </h1>
-        </div>
-        
-        <button onClick={() => { setEditingEvent(null); setFormTitle(""); setFormStart("09:00"); setFormEnd("10:00"); setShowModal(true); }} 
-          style={{ width: "100%", padding: "12px", borderRadius: 8, background: colors.primary, color: "#fff", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 32, boxShadow: "0 4px 12px rgba(59, 130, 246, 0.3)" }}>
-          + New Event
-        </button>
-        
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.muted }}>Tags</span>
-            <button onClick={() => setShowSettings(true)} style={{ background: "none", border: "none", color: colors.muted, cursor: "pointer" }}>+</button>
-          </div>
-          {categories.map(c => (
-            <div key={c.id} onClick={() => setActiveTags(p => p.includes(c.id) ? p.filter(x => x !== c.id) : [...p, c.id])} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", opacity: activeTags.includes(c.id) ? 1 : 0.4 }}>
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot }} />
-              <span style={{ fontSize: 14, fontWeight: 500 }}>{c.name}</span>
-            </div>
-          ))}
-        </div>
+      {/* 3. Main Scrollable Content Area */}
+      <div style={{ flex: 1, overflow: "hidden", display: "flex", position: "relative" }}>
+        
+        {/* DAY VIEW (Fixed: Vertical Layout) */}
+        {viewMode === 'day' && (
+            <div ref={containerRef} style={{ flex: 1, overflowY: "auto", position: "relative", scrollBehavior: "smooth" }}>
+                <div style={{ height: 24 * 60 * PIXELS_PER_MINUTE, position: "relative", width: "100%" }}>
+                    
+                    {/* Time Grid (Background) */}
+                    {Array.from({ length: 24 }).map((_, h) => (
+                        <div key={h} style={{ position: "absolute", top: h * 60 * PIXELS_PER_MINUTE, left: 0, right: 0, height: 60 * PIXELS_PER_MINUTE, borderTop: `1px solid ${darkMode ? COLORS.stone[800] : COLORS.stone[200]}` }}>
+                            <span style={{ position: "absolute", top: -10, left: 16, fontSize: 12, color: COLORS.stone[500], background: darkMode ? COLORS.bgDark : COLORS.bgLight, padding: "0 4px" }}>
+                                {h === 0 ? "" : `${h > 12 ? h - 12 : h} ${h >= 12 ? 'PM' : 'AM'}`}
+                            </span>
+                        </div>
+                    ))}
 
-        <button onClick={() => setShowSettings(true)} style={{ padding: 12, borderRadius: 8, background: colors.card, border: `1px solid ${colors.border}`, color: colors.text, fontSize: 13, cursor: "pointer" }}>Settings</button>
-      </aside>
+                    {/* Current Time Line */}
+                    {currentDate.toDateString() === now.toDateString() && (
+                        <div style={{ position: "absolute", top: (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE, left: 0, right: 0, height: 2, background: COLORS.rose[500], zIndex: 10 }}>
+                            <div style={{ position: "absolute", left: 0, top: -4, width: 8, height: 8, borderRadius: "50%", background: COLORS.rose[500] }} />
+                        </div>
+                    )}
 
-      {/* MAIN CONTENT */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        
-        {/* HEADER */}
-        <header style={{ height: 72, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", borderBottom: `1px solid ${colors.border}` }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-             <h2 className="brand" style={{ fontSize: 24, fontWeight: 700 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
-             <div style={{ display: "flex", gap: 4 }}>
-               <button onClick={() => nav(-1, viewMode === 'year' ? 'year' : 'day')} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer" }}>←</button>
-               <button onClick={() => nav(0, 'today')} style={{ padding: "0 12px", height: 32, borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", fontSize: 13, fontWeight: 600 }}>Today</button>
-               <button onClick={() => nav(1, viewMode === 'year' ? 'year' : 'day')} style={{ width: 32, height: 32, borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer" }}>→</button>
-             </div>
-          </div>
+                    {/* Click Area for Creation */}
+                    <div style={{position:"absolute", inset:0, zIndex: 0}} onClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const y = e.clientY - rect.top + e.currentTarget.scrollTop; // Simple approximation
+                        const mins = Math.floor((e.nativeEvent.offsetY) / PIXELS_PER_MINUTE / 15) * 15;
+                        const d = new Date(currentDate); d.setHours(0, mins, 0,0);
+                        openNew(d);
+                    }} />
 
-          <div style={{ display: "flex", background: colors.card, padding: 4, borderRadius: 8, border: `1px solid ${colors.border}` }}>
-            {['day', 'week', 'year'].map(m => (
-              <button key={m} onClick={() => setViewMode(m)} style={{ padding: "6px 16px", borderRadius: 6, border: "none", background: viewMode === m ? colors.activeBtnBg : "transparent", color: viewMode === m ? colors.activeBtnText : colors.muted, fontSize: 13, fontWeight: 600, textTransform: "capitalize", cursor: "pointer" }}>{m}</button>
-            ))}
-          </div>
-        </header>
+                    {/* Events */}
+                    <div style={{ position: "absolute", top: 0, left: 70, right: 20, bottom: 0, pointerEvents: "none" }}>
+                        {processedDayEvents.map(ev => {
+                            const top = (ev.start.getHours() * 60 + ev.start.getMinutes()) * PIXELS_PER_MINUTE;
+                            const height = Math.max(((ev.end - ev.start) / 1000 / 60) * PIXELS_PER_MINUTE, MIN_EVENT_DURATION * PIXELS_PER_MINUTE);
+                            const style = EVENT_COLORS[ev.category] || EVENT_COLORS.emerald;
+                            
+                            return (
+                                <div key={ev.id} onClick={(e) => { e.stopPropagation(); openEdit(ev); }} 
+                                    style={{ 
+                                        position: "absolute", top, height: height - 2, 
+                                        left: `${ev.left}%`, width: `${ev.width}%`,
+                                        background: style.bg, borderLeft: `3px solid ${style.border}`,
+                                        borderRadius: 4, padding: "4px 8px", cursor: "pointer", pointerEvents: "auto",
+                                        overflow: "hidden", zIndex: 5, transition: "transform 0.1s",
+                                        color: style.text, fontSize: 12
+                                    }}
+                                    className="event-card"
+                                >
+                                    <div style={{ fontWeight: 600 }}>{ev.title}</div>
+                                    <div style={{ opacity: 0.8, fontSize: 10 }}>{fmtTime(ev.start)} - {fmtTime(ev.end)}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        )}
 
-        {/* VIEWPORT */}
-        <div ref={containerRef} style={{ flex: 1, overflow: "auto", position: "relative" }}>
-          
-          {/* DAY VIEW */}
-          {viewMode === 'day' && (
-            <div style={{ height: 1440 * PIXELS_PER_MINUTE + 60, position: "relative" }}>
-              {Array.from({length: 24}).map((_, h) => (
-                <div key={h} style={{ position: "absolute", top: h * 60 * PIXELS_PER_MINUTE, left: 0, right: 0, height: 60 * PIXELS_PER_MINUTE, borderTop: `1px solid ${colors.border}` }}>
-                  <span style={{ position: "absolute", top: -10, left: 20, fontSize: 11, fontWeight: 600, color: colors.muted, background: colors.bg, padding: "0 6px" }}>{use24Hour ? `${h}:00` : `${h === 0 ? 12 : h > 12 ? h - 12 : h} ${h >= 12 ? 'PM' : 'AM'}`}</span>
-                </div>
-              ))}
-              
-              {isToday(currentDate) && <div style={{ position: "absolute", top: (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE, left: 0, right: 0, height: 2, background: colors.line, zIndex: 10 }}>
-                <div className="pulse" style={{ position: "absolute", left: 70, top: -5, width: 10, height: 10, borderRadius: "50%", background: colors.line }} />
-              </div>}
+        {/* WEEK VIEW (Simplified) */}
+        {viewMode === 'week' && (
+             <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", height: "100%", width: "100%", overflowY: "auto" }}>
+                {Array.from({length: 7}).map((_, i) => {
+                    const d = new Date(currentDate);
+                    const dayOfWeek = d.getDay(); // 0 is Sun
+                    const diff = d.getDate() - dayOfWeek + (dayOfWeek === 0 ? -6 : 1) + i; // Adjust to start Mon
+                    d.setDate(diff);
+                    
+                    const isToday = d.toDateString() === now.toDateString();
+                    const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+                    const daysEvents = events.filter(e => e.start.toDateString() === d.toDateString()).sort((a,b) => a.start - b.start);
 
-              <div style={{ position: "absolute", inset: "0 0 0 80px", zIndex: 1 }} onClick={(e) => {
-                const m = Math.floor(e.nativeEvent.offsetY / PIXELS_PER_MINUTE / 15) * 15;
-                const d = new Date(currentDate); d.setHours(0, m, 0, 0);
-                setEditingEvent(null); setFormTitle(""); setFormCat(categories[0].id);
-                setFormStart(d.toTimeString().slice(0,5)); d.setMinutes(m+60); setFormEnd(d.toTimeString().slice(0,5));
-                setShowModal(true);
-              }} />
+                    return (
+                        <div key={i} style={{ 
+                            borderRight: `1px solid ${darkMode?COLORS.stone[800]:COLORS.stone[200]}`, 
+                            background: isWeekend ? (darkMode ? COLORS.stone[800] : COLORS.stone[50]) : "transparent",
+                            minHeight: "100%"
+                        }}>
+                            <div style={{ padding: 12, borderBottom: `1px solid ${darkMode?COLORS.stone[800]:COLORS.stone[200]}`, textAlign: "center", background: isToday ? (darkMode ? COLORS.emerald[900] : COLORS.emerald[50]) : "transparent" }}>
+                                <div style={{ fontSize: 11, fontWeight: 600, color: COLORS.stone[500], textTransform: "uppercase" }}>{d.toLocaleDateString('en-US', {weekday:'short'})}</div>
+                                <div style={{ fontSize: 18, fontWeight: 700, marginTop: 4, color: isToday ? COLORS.emerald[500] : "inherit" }}>{d.getDate()}</div>
+                            </div>
+                            <div style={{ padding: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+                                {daysEvents.map(ev => {
+                                    const style = EVENT_COLORS[ev.category];
+                                    return (
+                                        <div key={ev.id} onClick={() => openEdit(ev)} style={{ background: style.bg, borderLeft: `2px solid ${style.border}`, padding: "4px 6px", borderRadius: 4, fontSize: 11, cursor: "pointer", color: style.text }}>
+                                            <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{ev.title}</div>
+                                            <div>{fmtTime(ev.start)}</div>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        </div>
+                    )
+                })}
+             </div>
+        )}
 
-              {events.filter(e => e.start.toDateString() === currentDate.toDateString() && activeTags.includes(e.category)).map(ev => {
-                const cat = categories.find(c => c.id === ev.category) || categories[0];
-                const top = (ev.start.getHours() * 60 + ev.start.getMinutes()) * PIXELS_PER_MINUTE;
-                const h = Math.max(((ev.end - ev.start)/60000) * PIXELS_PER_MINUTE, 30);
-                const isDrag = dragState?.id === ev.id;
-                return (
-                  <div key={ev.id} onMouseDown={(e) => handleDragStart(e, ev, 'move')} style={{ 
-                    position: "absolute", top, height: h, left: 90, right: 24, 
-                    background: cat.bg, borderLeft: `4px solid ${cat.border}`, borderRadius: 4, padding: "6px 12px",
-                    cursor: isDrag ? "grabbing" : "grab", zIndex: isDrag ? 50 : 20, boxShadow: isDrag ? "0 10px 30px rgba(0,0,0,0.2)" : "0 2px 4px rgba(0,0,0,0.05)"
-                  }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: cat.text }}>{ev.title}</div>
-                    <div style={{ fontSize: 11, color: cat.text, opacity: 0.8 }}>{fmtTime(ev.start)} - {fmtTime(ev.end)}</div>
-                    <div onMouseDown={(e) => handleDragStart(e, ev, 'resize')} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, cursor: "ns-resize" }} />
-                  </div>
-                );
-              })}
-            </div>
-          )}
+        {/* YEAR VIEW (Linear with Tone for Weekends) */}
+        {viewMode === 'year' && (
+            <div style={{ flex: 1, overflow: "auto", padding: 32 }}>
+                <div style={{ minWidth: 1000, display: "grid", gridTemplateColumns: "60px repeat(37, 1fr)", gap: 2 }}>
+                    {/* Header Row */}
+                    <div />
+                    {Array.from({length: 37}).map((_, i) => (
+                        <div key={i} style={{ fontSize: 10, fontWeight: 700, color: COLORS.stone[400], textAlign: "center", paddingBottom: 8 }}>
+                            {['M','T','W','T','F','S','S'][i % 7]}
+                        </div>
+                    ))}
+                    
+                    {/* Months */}
+                    {Array.from({ length: 12 }).map((_, m) => {
+                        const monthStart = new Date(currentDate.getFullYear(), m, 1);
+                        const daysInMonth = new Date(currentDate.getFullYear(), m + 1, 0).getDate();
+                        const startOffset = (monthStart.getDay() + 6) % 7; // Mon=0
+                        
+                        return (
+                            <div key={m} style={{ display: "contents" }}>
+                                <div style={{ fontWeight: 600, fontSize: 13, color: COLORS.stone[500], alignSelf: "center", paddingRight: 12 }}>{monthStart.toLocaleDateString('en-US', {month: 'short'})}</div>
+                                
+                                {/* Empty start slots */}
+                                {Array.from({length: startOffset}).map((_, i) => <div key={`empty-${i}`} />)}
+                                
+                                {/* Days */}
+                                {Array.from({length: daysInMonth}).map((_, d) => {
+                                    const date = new Date(currentDate.getFullYear(), m, d + 1);
+                                    const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                                    const isToday = date.toDateString() === now.toDateString();
+                                    const hasEvent = events.some(e => e.start.toDateString() === date.toDateString());
+                                    
+                                    return (
+                                        <div key={d} onClick={() => { setCurrentDate(date); setViewMode('day'); }}
+                                            style={{ 
+                                                aspectRatio: "1/1", 
+                                                background: isToday ? COLORS.emerald[500] : isWeekend ? (darkMode ? "#292524" : "#f5f5f4") : (darkMode ? "#1c1917" : "#fff"),
+                                                borderRadius: 4, 
+                                                display: "flex", alignItems: "center", justifyContent: "center",
+                                                fontSize: 12, fontWeight: isToday ? 600 : 400,
+                                                color: isToday ? "#fff" : "inherit",
+                                                cursor: "pointer", position: "relative",
+                                                border: `1px solid ${darkMode ? (isWeekend?"#292524":"#1c1917") : (isWeekend?"#f5f5f4":"#fff")}`
+                                            }}
+                                            onMouseEnter={e => e.currentTarget.style.border = `1px solid ${COLORS.emerald[500]}`}
+                                            onMouseLeave={e => e.currentTarget.style.border = `1px solid ${darkMode ? (isWeekend?"#292524":"#1c1917") : (isWeekend?"#f5f5f4":"#fff")}`}
+                                        >
+                                            {d + 1}
+                                            {hasEvent && !isToday && <div style={{ position: "absolute", bottom: 4, width: 4, height: 4, borderRadius: "50%", background: COLORS.emerald[500] }} />}
+                                        </div>
+                                    );
+                                })}
+                                {/* Fill rest of row */}
+                                {Array.from({length: 37 - (startOffset + daysInMonth)}).map((_, i) => <div key={`fill-${i}`} />)}
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
+        )}
 
-          {/* WEEK VIEW */}
-          {viewMode === 'week' && (
-            <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", minHeight: "100%" }}>
-              <div style={{ borderRight: `1px solid ${colors.border}` }}>
-                {Array.from({length:24}).map((_,h) => <div key={h} style={{ height: 60, fontSize: 10, color: colors.muted, textAlign: "center", paddingTop: 8 }}>{h}</div>)}
-              </div>
-              {Array.from({length:7}).map((_, i) => {
-                const d = new Date(currentDate); 
-                d.setDate(d.getDate() - d.getDay() + i + (1)); // Start Monday
-                const isT = isToday(d);
-                return (
-                  <div key={i} className={isPast(d) && !isT ? "past-blur" : ""} style={{ borderRight: `1px solid ${colors.border}`, background: isT ? (darkMode ? "#1E232E" : "#EFF6FF") : "transparent" }}>
-                    <div style={{ height: 50, borderBottom: `1px solid ${colors.border}`, textAlign: "center", padding: 8 }}>
-                       <div style={{ fontSize: 11, fontWeight: 700, color: isT ? colors.primary : colors.muted }}>{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
-                       <div style={{ fontSize: 18, fontWeight: 600, color: isT ? colors.primary : colors.text }}>{d.getDate()}</div>
-                    </div>
-                    <div style={{ position: "relative", height: 1440 }}>
-                      {events.filter(e => e.start.toDateString() === d.toDateString() && activeTags.includes(e.category)).map(ev => {
-                         const cat = categories.find(c => c.id === ev.category) || categories[0];
-                         const t = ev.start.getHours() * 60 + ev.start.getMinutes();
-                         const h = (ev.end - ev.start)/60000;
-                         return <div key={ev.id} onClick={() => { setEditingEvent(ev); setFormTitle(ev.title); setFormCat(ev.category); setFormStart(ev.start.toTimeString().slice(0,5)); setFormEnd(ev.end.toTimeString().slice(0,5)); setShowModal(true); }}
-                         style={{ position: "absolute", top: t, height: Math.max(h,20), left: 4, right: 4, background: cat.bg, borderLeft: `3px solid ${cat.border}`, fontSize: 10, color: cat.text, padding: 4, overflow: "hidden", borderRadius: 3, cursor: "pointer", fontWeight: 600 }}>{ev.title}</div>
-                      })}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
+      </div>
 
-          {/* SCREENSHOT-MATCHING YEAR VIEW */}
-          {viewMode === 'year' && (
-            <div style={{ padding: 40, overflowX: "auto" }}>
-               <div style={{ minWidth: 1000 }}>
-                  
-                  {/* Fixed Header Row: Repeated Mo Tu We... */}
-                  <div style={{ display: "flex", marginLeft: 80, marginBottom: 8 }}>
-                     {Array.from({length: YEAR_COLS}).map((_, i) => (
-                        <div key={i} className="year-grid-header" style={{ width: 34 }}>{WEEKDAYS[i % 7]}</div>
-                     ))}
-                  </div>
+      {/* Modals (Simplified for brevity, logic retained) */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+            <div className="fade-in" style={{ width: 400, background: darkMode ? COLORS.stone[900] : "#fff", padding: 24, borderRadius: 12, boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}>
+                <h3 style={{ marginBottom: 20 }}>{editingEvent ? "Edit Event" : "New Event"}</h3>
+                <input placeholder="Title" value={title} onChange={e => setTitle(e.target.value)} style={{ width: "100%", padding: 12, marginBottom: 12, borderRadius: 8, border: `1px solid ${COLORS.stone[300]}`, background: darkMode?COLORS.stone[800]:"#fff", color: "inherit" }} />
+                <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
+                    <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)} style={{ flex: 1, padding: 10, borderRadius: 8, border: `1px solid ${COLORS.stone[300]}`, background: darkMode?COLORS.stone[800]:"#fff", color: "inherit" }} />
+                    <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)} style={{ flex: 1, padding: 10, borderRadius: 8, border: `1px solid ${COLORS.stone[300]}`, background: darkMode?COLORS.stone[800]:"#fff", color: "inherit" }} />
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 20 }}>
+                    {categories.map(c => (
+                        <div key={c.id} onClick={() => setEventCategory(c.id)} style={{ padding: "6px 12px", borderRadius: 20, fontSize: 12, cursor: "pointer", border: eventCategory === c.id ? `2px solid ${EVENT_COLORS[c.color].border}` : `1px solid ${darkMode?COLORS.stone[700]:COLORS.stone[200]}`, background: eventCategory === c.id ? EVENT_COLORS[c.color].bg : "transparent", color: eventCategory === c.id ? EVENT_COLORS[c.color].text : "inherit" }}>{c.name}</div>
+                    ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+                    {editingEvent && <button onClick={() => { deleteEventAction(editingEvent.id); setShowModal(false); }} style={{ color: COLORS.rose[500], background: "transparent", border: "none", cursor: "pointer", marginRight: "auto" }}>Delete</button>}
+                    <button onClick={() => setShowModal(false)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", background: COLORS.stone[200], color: "#000" }}>Cancel</button>
+                    <button onClick={saveEvent} style={{ padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", background: "#10b981", color: "#fff" }}>Save</button>
+                </div>
+            </div>
+        </div>
+      )}
 
-                  {/* Months */}
-                  {Array.from({length: 12}).map((_, m) => {
-                     const monthStart = new Date(currentDate.getFullYear(), m, 1);
-                     const daysInMonth = new Date(currentDate.getFullYear(), m + 1, 0).getDate();
-                     // Calculate shift: Monday=0. If month starts on Tue(2), shift is 1.
-                     // JS getDay(): Sun=0, Mon=1...
-                     // We want header Mon=0. So Mon(1)->0, Tue(2)->1... Sun(0)->6.
-                     let startDay = monthStart.getDay(); 
-                     startDay = startDay === 0 ? 6 : startDay - 1;
-
-                     return (
-                        <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 6 }}>
-                           {/* Month Label */}
-                           <div style={{ width: 80, fontSize: 13, fontWeight: 700, color: colors.primary }}>{monthStart.toLocaleDateString('en-US',{month:'short'})}</div>
-                           
-                           {/* Grid Cells */}
-                           <div style={{ display: "flex" }}>
-                              {Array.from({length: YEAR_COLS}).map((_, colIndex) => {
-                                 const dayNum = colIndex - startDay + 1;
-                                 const isValidDay = dayNum > 0 && dayNum <= daysInMonth;
-                                 
-                                 if (!isValidDay) return <div key={colIndex} style={{ width: 34, height: 32 }} />;
-
-                                 const date = new Date(currentDate.getFullYear(), m, dayNum);
-                                 const isT = isToday(date);
-                                 const hasEv = events.some(e => e.start.toDateString() === date.toDateString());
-
-                                 return (
-                                    <div key={colIndex} onClick={() => { setCurrentDate(date); setViewMode('day'); }}
-                                       style={{ 
-                                          width: 32, height: 32, margin: "0 1px", borderRadius: 4,
-                                          display: "flex", alignItems: "center", justifyContent: "center",
-                                          fontSize: 11, cursor: "pointer", fontWeight: isT ? 700 : 500,
-                                          background: isT ? colors.primary : hasEv ? (darkMode ? "#1E293B" : "#DBEAFE") : "transparent",
-                                          color: isT ? "#fff" : hasEv ? (darkMode ? "#60A5FA" : "#1E40AF") : colors.text
-                                       }}
-                                       className="year-grid-cell"
-                                    >
-                                       {dayNum}
-                                    </div>
-                                 );
-                              })}
-                           </div>
-                        </div>
-                     );
-                  })}
-               </div>
-            </div>
-          )}
-
-        </div>
-      </div>
-
-      {/* NOTIFICATIONS */}
-      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>
-        {notifications.map(n => <div key={n.id} className="fade-in" style={{ padding: "10px 20px", background: n.type==='error'?"#EF4444":"#10B981", color: "#FFF", borderRadius: 8, fontSize: 13, fontWeight: 600 }}>{n.msg}</div>)}
-      </div>
-
-      {/* SETTINGS MODAL */}
-      {showSettings && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowSettings(false)}>
-          <div className="fade-in" style={{ width: 450, background: colors.card, padding: 32, borderRadius: 16, border: `1px solid ${colors.border}` }} onClick={e => e.stopPropagation()}>
-            <h3 className="brand" style={{ fontSize: 24, marginBottom: 24, color: colors.text }}>Settings</h3>
-            <div style={{ marginBottom: 24 }}>
-              <label style={{ display: "flex", justifyContent: "space-between", padding: 12, border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text }}>
-                <span>Dark Mode</span> <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
-              </label>
-            </div>
-            <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: colors.text }}>Tags</h4>
-            <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
-              {categories.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, background: colors.bg, borderRadius: 6, marginBottom: 6 }}>
-                  <div style={{ width: 12, height: 12, borderRadius: 4, background: c.bg, border: `1px solid ${c.border}` }} />
-                  <span style={{ flex: 1, color: colors.text }}>{c.name}</span>
-                  <button onClick={() => setCategories(p => p.filter(x => x.id !== c.id))} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}>✕</button>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input id="newTag" placeholder="New Tag" style={{ flex: 1, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
-              <select id="newColor" style={{ padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }}>{TAG_COLORS.map((c,i) => <option key={i} value={i}>{c.name}</option>)}</select>
-              <button onClick={() => {
-                const name = document.getElementById('newTag').value;
-                if(name) { setCategories(p => [...p, { id: name.toLowerCase(), name, ...TAG_COLORS[document.getElementById('newColor').value] }]); document.getElementById('newTag').value = ""; }
-              }} style={{ padding: "0 16px", background: colors.primary, color: "#fff", borderRadius: 6, border: "none", cursor: "pointer" }}>Add</button>
-            </div>
-            <button onClick={() => signOut(auth)} style={{ marginTop: 24, width: "100%", padding: 12, border: "1px solid #EF4444", background: "transparent", color: "#EF4444", borderRadius: 8, cursor: "pointer" }}>Sign Out</button>
-          </div>
-        </div>
-      )}
-
-      {/* EVENT MODAL */}
-      {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowModal(false)}>
-           <div className="fade-in" style={{ width: 400, background: colors.card, padding: 32, borderRadius: 16, border: `1px solid ${colors.border}` }} onClick={e => e.stopPropagation()}>
-             <h3 className="brand" style={{ fontSize: 22, marginBottom: 20, color: colors.text }}>{editingEvent ? "Edit" : "New"} Event</h3>
-             <input autoFocus value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Title" style={{ width: "100%", padding: 12, marginBottom: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
-             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-               <input type="time" value={formStart} onChange={e => setFormStart(e.target.value)} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
-               <input type="time" value={formEnd} onChange={e => setFormEnd(e.target.value)} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
-             </div>
-             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
-               {categories.map(c => (
-                 <button key={c.id} onClick={() => setFormCat(c.id)} style={{ padding: "6px 12px", borderRadius: 20, border: formCat === c.id ? `2px solid ${c.border}` : `1px solid ${colors.border}`, background: formCat === c.id ? c.bg : "transparent", color: formCat === c.id ? c.text : colors.text, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>{c.name}</button>
-               ))}
-             </div>
-             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
-               {editingEvent && <button onClick={() => deleteEvent(editingEvent.id)} style={{ marginRight: "auto", color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}>Delete</button>}
-               <button onClick={saveEvent} style={{ padding: "10px 24px", background: colors.primary, color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>Save</button>
-             </div>
-           </div>
-        </div>
-      )}
-    </div>
-  );
+      {showDeletedOverlay && (
+          <div style={{position: "fixed", inset:0, background: "rgba(0,0,0,0.5)", zIndex: 100, display: "flex", justifyContent:"center", alignItems:"center"}} onClick={() => setShowDeletedOverlay(false)}>
+              <div style={{width: 400, maxHeight: "80vh", overflow:"auto", background: darkMode?COLORS.stone[900]:"#fff", padding: 24, borderRadius: 12}} onClick={e => e.stopPropagation()}>
+                  <h3>Trash</h3>
+                  {deletedEvents.map(ev => (
+                      <div key={ev.id} style={{padding: 12, borderBottom: `1px solid ${COLORS.stone[200]}`, display:"flex", justifyContent:"space-between", alignItems:"center"}}>
+                          <span>{ev.title}</span>
+                          <button onClick={() => restoreEvent(ev.id)} style={{fontSize: 12, background: COLORS.emerald[100], color: COLORS.emerald[900], padding: "4px 8px", borderRadius: 4, border:"none", cursor:"pointer"}}>Restore</button>
+                      </div>
+                  ))}
+                  {deletedEvents.length === 0 && <p style={{color: COLORS.stone[500]}}>Trash is empty</p>}
+              </div>
+          </div>
+      )}
+    </div>
+  );
 }
