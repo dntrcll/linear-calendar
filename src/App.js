@@ -4,14 +4,13 @@ import { auth, provider } from "./firebase";
 import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { db } from "./firebase";
 
-// --- CONFIGURATION ---
-const PIXELS_PER_MINUTE = 2.5; // Controls width of day view
+const PIXELS_PER_MINUTE = 2.5;
 const EVENT_HEIGHT = 52;
 const ROW_GAP = 8;
+const DAY_WIDTH = 1440 * PIXELS_PER_MINUTE;
 const SNAP_MINUTES = 15;
 const MIN_EVENT_DURATION = 15;
 
-// --- COLORS & THEME ---
 const COLORS = {
   emerald: { 50: "#ecfdf5", 100: "#d1fae5", 200: "#a7f3d0", 400: "#34d399", 500: "#10b981", 600: "#059669", 900: "#064e3b" },
   stone: { 50: "#fafaf9", 100: "#f5f5f4", 200: "#e7e5e4", 300: "#d6d3d1", 400: "#a8a29e", 500: "#78716c", 600: "#57534e", 700: "#44403c", 800: "#292524", 900: "#1c1917" },
@@ -44,62 +43,44 @@ const globalStyles = `
   @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
   .current-day-pulse { animation: pulse 2s ease-in-out infinite; }
   .fade-in { animation: fadeIn 0.3s ease-out forwards; }
-  
-  /* Custom Scrollbar */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: #d6d3d1; border-radius: 4px; }
-  ::-webkit-scrollbar-thumb:hover { background: #a8a29e; }
-  
-  .hide-scrollbar::-webkit-scrollbar { display: none; }
-  .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 `;
 
 export default function App() {
   const PERSONAL_SPACE_ID = "0Ti7Ru6X3gPh9qNwv7lT";
   const QUOTES = ["Every day is a fresh start.", "Small progress is still progress.", "Focus on what you can control.", "Make today count.", "Progress over perfection.", "You've got this.", "Trust the process."];
 
-  // --- STATE ---
   const [user, setUser] = useState(null);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [now, setNow] = useState(() => new Date());
   const [spaceId] = useState(PERSONAL_SPACE_ID);
-  
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
   const [loading, setLoading] = useState(false);
-  
-  // UI State
   const [showModal, setShowModal] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [showDeletedOverlay, setShowDeletedOverlay] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSidebar, setShowSidebar] = useState(true);
-  const [viewMode, setViewMode] = useState("day"); // 'day', 'week', 'year'
-
-  // Form State
   const [title, setTitle] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [eventCategory, setEventCategory] = useState("work");
   const [filterCategory, setFilterCategory] = useState("All");
-
-  // Settings
+  const [viewMode, setViewMode] = useState("day");
   const [categories, setCategories] = useState(() => { const s = localStorage.getItem('categories'); return s ? JSON.parse(s) : DEFAULT_CATEGORIES; });
   const [darkMode, setDarkMode] = useState(() => { const s = localStorage.getItem('darkMode'); return s ? JSON.parse(s) : false; });
   const [use24HourFormat, setUse24HourFormat] = useState(() => { const s = localStorage.getItem('use24HourFormat'); return s ? JSON.parse(s) : false; });
   const [dailyQuote] = useState(() => QUOTES[Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000) % QUOTES.length]);
-
-  // Drag & Drop Refs
   const [draggingEvent, setDraggingEvent] = useState(null);
   const [resizingEvent, setResizingEvent] = useState(null);
   const dragDataRef = useRef({ startX: 0, originalStart: null, originalEnd: null, handle: null });
   const [hasDragged, setHasDragged] = useState(false);
-  
-  const scrollContainerRef = useRef(null); // Unified scroll ref
+  const timelineRef = useRef(null);
   const isSavingRef = useRef(false);
 
-  // --- EFFECTS ---
   useEffect(() => { const s = document.createElement('style'); s.textContent = globalStyles; document.head.appendChild(s); return () => s.remove(); }, []);
   useEffect(() => { setPersistence(auth, browserLocalPersistence).catch(console.error); return auth.onAuthStateChanged(setUser); }, []);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
@@ -107,7 +88,6 @@ export default function App() {
   useEffect(() => { localStorage.setItem('darkMode', JSON.stringify(darkMode)); }, [darkMode]);
   useEffect(() => { localStorage.setItem('use24HourFormat', JSON.stringify(use24HourFormat)); }, [use24HourFormat]);
 
-  // --- DATA LOADING ---
   const loadEvents = useCallback(async () => {
     if (!user || !spaceId) return;
     try {
@@ -123,24 +103,13 @@ export default function App() {
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
-  // --- CRUD OPERATIONS ---
   const saveEvent = async () => {
     if (!title.trim() || !startTime || !endTime || !user) return;
     const [sh, sm] = startTime.split(":").map(Number);
     const [eh, em] = endTime.split(":").map(Number);
     const start = new Date(currentDate); start.setHours(sh, sm, 0, 0);
     const end = new Date(currentDate); end.setHours(eh, em, 0, 0);
-    
-    // Auto-correct crossing midnight or end < start
-    if (end <= start) {
-        // If it looks like user meant next day (e.g. 23:00 to 01:00), add a day to end
-        if (eh < sh) {
-            end.setDate(end.getDate() + 1);
-        } else {
-             alert("End time must be after start time"); return; 
-        }
-    }
-
+    if (end <= start) { alert("End time must be after start time"); return; }
     const data = { title: title.trim(), startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end), category: eventCategory, spaceId, deleted: false, updatedAt: serverTimestamp() };
     try {
       if (editingEvent) await updateDoc(doc(db, "events", editingEvent.id), data);
@@ -153,33 +122,18 @@ export default function App() {
   const restoreEvent = async (id) => { await updateDoc(doc(db, "events", id), { deleted: false, deletedAt: null }); loadEvents(); };
   const permanentlyDeleteEvent = async (id) => { await deleteDoc(doc(db, "events", id)); loadEvents(); };
 
-  // --- HELPERS ---
   const resetForm = () => { setTitle(""); setStartTime(""); setEndTime(""); setEventCategory("work"); setEditingEvent(null); };
   const openNewEvent = (ps, pe) => { resetForm(); if (ps && pe) { setStartTime(fmtIn(ps)); setEndTime(fmtIn(pe)); } setShowModal(true); };
   const openEditEvent = (ev) => { setEditingEvent(ev); setTitle(ev.title); setStartTime(fmtIn(ev.start)); setEndTime(fmtIn(ev.end)); setEventCategory(ev.category || "work"); setShowModal(true); };
 
   const fmtIn = (d) => `${d.getHours().toString().padStart(2,"0")}:${d.getMinutes().toString().padStart(2,"0")}`;
   const fmtTime = (d) => use24HourFormat ? d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }) : d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-  
-  const goToToday = () => { setCurrentDate(new Date()); };
-  const navDate = (dir) => { 
-    const d = new Date(currentDate); 
-    if (viewMode === "day") d.setDate(d.getDate() + dir); 
-    else if (viewMode === "week") d.setDate(d.getDate() + dir * 7); 
-    else d.setFullYear(d.getFullYear() + dir); 
-    setCurrentDate(d); 
-  };
+  const goToToday = () => setCurrentDate(new Date());
+  const navDate = (dir) => { const d = new Date(currentDate); if (viewMode === "day") d.setDate(d.getDate() + dir); else if (viewMode === "week") d.setDate(d.getDate() + dir * 7); else d.setFullYear(d.getFullYear() + dir); setCurrentDate(d); };
   const goToDate = (d) => { setCurrentDate(d); setViewMode("day"); };
 
-  // --- FILTERING & LAYOUT ---
   const filteredEvents = events.filter(ev => filterCategory === "All" || ev.category === filterCategory);
-  const getEvtStyle = (ev, row) => { 
-    const sm = ev.start.getHours() * 60 + ev.start.getMinutes(); 
-    const em = ev.end.getHours() * 60 + ev.end.getMinutes(); 
-    // Handle cross-midnight display logic if needed, simplifed here for single day view
-    const width = Math.max((em - sm) * PIXELS_PER_MINUTE, MIN_EVENT_DURATION * PIXELS_PER_MINUTE);
-    return { left: sm * PIXELS_PER_MINUTE, width: width, top: row * (EVENT_HEIGHT + ROW_GAP) }; 
-  };
+  const getEvtStyle = (ev, row) => { const sm = ev.start.getHours() * 60 + ev.start.getMinutes(); const em = ev.end.getHours() * 60 + ev.end.getMinutes(); return { left: sm * PIXELS_PER_MINUTE, width: Math.max((em - sm) * PIXELS_PER_MINUTE, MIN_EVENT_DURATION * PIXELS_PER_MINUTE), top: row * (EVENT_HEIGHT + ROW_GAP) }; };
 
   const assignRows = (evts) => {
     const sorted = [...evts].sort((a, b) => a.start - b.start);
@@ -195,26 +149,10 @@ export default function App() {
     });
   };
 
-  // --- VIEW DATA ---
   const getDayEvts = () => filteredEvents.filter(ev => ev.start.toDateString() === currentDate.toDateString());
   const getWeekDays = () => { const s = new Date(currentDate); s.setDate(s.getDate() - s.getDay()); return Array.from({ length: 7 }, (_, i) => { const d = new Date(s); d.setDate(d.getDate() + i); return d; }); };
   const weekDays = getWeekDays();
 
-  const isToday = currentDate.toDateString() === now.toDateString();
-  const weekday = currentDate.toLocaleDateString(undefined, { weekday: "long" });
-  const dayDate = currentDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
-  
-  // Day View Calcs
-  const nowPos = (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE;
-  const dayEvts = getDayEvts();
-  const evtsRows = assignRows(dayEvts);
-  const maxRow = Math.max(0, ...evtsRows.map(e => e.row));
-  const tlHeight = (maxRow + 1) * (EVENT_HEIGHT + ROW_GAP) + 40;
-  
-  // Sidebar Upcoming
-  const upcoming = events.filter(ev => ev.start >= now).sort((a, b) => a.start - b.start).slice(0, 8);
-
-  // --- DRAG & DROP HANDLERS ---
   const handleEvtDown = (e, ev, handle = null) => {
     if (e.button !== 0) return;
     e.stopPropagation(); e.preventDefault();
@@ -228,7 +166,6 @@ export default function App() {
     const dx = e.clientX - dragDataRef.current.startX;
     if (Math.abs(dx) > 5) setHasDragged(true);
     const md = Math.round(dx / PIXELS_PER_MINUTE / SNAP_MINUTES) * SNAP_MINUTES;
-    
     if (draggingEvent) {
       const ns = new Date(dragDataRef.current.originalStart); ns.setMinutes(ns.getMinutes() + md);
       const ne = new Date(dragDataRef.current.originalEnd); ne.setMinutes(ne.getMinutes() + md);
@@ -265,21 +202,27 @@ export default function App() {
     }
   }, [draggingEvent, resizingEvent, handleMove, handleUp]);
 
-  // Click on background to create
   const handleTlClick = (e) => {
     if (hasDragged || draggingEvent || resizingEvent) return;
-    
-    // Correct offset calculation using the container ref
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = e.clientX - rect.left; // x position inside the content div
-    
+    const x = e.clientX - rect.left + (timelineRef.current?.scrollLeft || 0);
     const mins = Math.round(x / PIXELS_PER_MINUTE / SNAP_MINUTES) * SNAP_MINUTES;
     const sd = new Date(currentDate); sd.setHours(Math.floor(mins / 60), mins % 60, 0, 0);
     const ed = new Date(sd); ed.setMinutes(ed.getMinutes() + 60);
     openNewEvent(sd, ed);
   };
 
-  // --- AUTH SCREEN ---
+  const isToday = currentDate.toDateString() === now.toDateString();
+  const weekday = currentDate.toLocaleDateString(undefined, { weekday: "long" });
+  const dayDate = currentDate.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+  const nowPos = (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE;
+  const dayEvts = getDayEvts();
+  const evtsRows = assignRows(dayEvts);
+  const maxRow = Math.max(0, ...evtsRows.map(e => e.row));
+  const tlHeight = (maxRow + 1) * (EVENT_HEIGHT + ROW_GAP) + 40;
+  const upcoming = events.filter(ev => ev.start >= now).sort((a, b) => a.start - b.start).slice(0, 8);
+
+  // Auth Screen
   if (!user) {
     return (
       <div style={{ minHeight: "100vh", background: COLORS.bgLight, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}>
@@ -297,16 +240,12 @@ export default function App() {
     );
   }
 
-  // --- RENDER ---
-  const DAY_WIDTH_PX = 1440 * PIXELS_PER_MINUTE;
-
   return (
     <div style={{ minHeight: "100vh", background: darkMode ? COLORS.bgDark : COLORS.bgLight, display: "flex" }}>
       {/* Main Content */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 24, height: "100vh", overflow: "hidden" }}>
-        
-        {/* Header Section */}
-        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexShrink: 0 }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: 24 }}>
+        {/* Header */}
+        <header style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, flexWrap: "wrap", gap: 16 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ width: 44, height: 44, borderRadius: 12, background: "linear-gradient(135deg, #10b981, #059669)", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 4px 12px rgba(16, 185, 129, 0.25)" }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -316,7 +255,7 @@ export default function App() {
               <p style={{ fontSize: 13, color: darkMode ? COLORS.stone[400] : COLORS.stone[500], fontStyle: "italic" }}>"{dailyQuote}"</p>
             </div>
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div style={{ display: "flex", background: darkMode ? COLORS.stone[800] : "#fff", borderRadius: 10, padding: 4, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}` }}>
               {["day", "week", "year"].map(m => (
                 <button key={m} onClick={() => setViewMode(m)} style={{ padding: "8px 16px", borderRadius: 8, border: "none", background: viewMode === m ? "linear-gradient(135deg, #10b981, #059669)" : "transparent", color: viewMode === m ? "#fff" : darkMode ? COLORS.stone[400] : COLORS.stone[600], fontSize: 13, fontWeight: 600, cursor: "pointer", textTransform: "capitalize" }}>{m}</button>
@@ -329,8 +268,8 @@ export default function App() {
           </div>
         </header>
 
-        {/* Date Navigation */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexShrink: 0 }}>
+        {/* Date Nav */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <div style={{ display: "flex", gap: 4 }}>
               <button onClick={() => navDate(-1)} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, background: darkMode ? COLORS.stone[800] : "#fff", color: darkMode ? COLORS.stone[400] : COLORS.stone[600], cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>←</button>
@@ -339,10 +278,10 @@ export default function App() {
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
               <div>
                 <div style={{ fontSize: 24, fontWeight: 700, color: darkMode ? COLORS.stone[100] : COLORS.stone[900], fontFamily: "'Fraunces', serif" }}>
-                  {viewMode === "day" ? weekday : viewMode === "week" ? `Week of ${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : `Year ${currentDate.getFullYear()}`}
+                  {viewMode === "day" ? weekday : viewMode === "week" ? `Week of ${weekDays[0].toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : currentDate.getFullYear()}
                 </div>
                 <div style={{ fontSize: 14, color: darkMode ? COLORS.stone[400] : COLORS.stone[500] }}>
-                  {viewMode === "day" ? dayDate : viewMode === "week" ? `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}` : "Linear Overview"}
+                  {viewMode === "day" ? dayDate : viewMode === "week" ? `${weekDays[0].toLocaleDateString()} - ${weekDays[6].toLocaleDateString()}` : "Linear Year Overview"}
                 </div>
               </div>
               {isToday && viewMode === "day" && <div className="current-day-pulse" style={{ width: 10, height: 10, borderRadius: "50%", background: COLORS.emerald[500], boxShadow: `0 0 0 4px ${COLORS.emerald[100]}` }} />}
@@ -351,34 +290,24 @@ export default function App() {
           <button onClick={() => openNewEvent()} style={{ padding: "12px 24px", borderRadius: 12, border: "none", background: "linear-gradient(135deg, #10b981, #059669)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 8, boxShadow: "0 4px 14px rgba(16, 185, 129, 0.3)" }}>+ New Event</button>
         </div>
 
-        {/* View Container */}
-        <div style={{ flex: 1, background: darkMode ? COLORS.stone[800] : "#fff", borderRadius: 16, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)", position: "relative" }}>
-          
-          {/* DAY VIEW - FIXED SCROLLING */}
+        {/* Calendar Area */}
+        <div style={{ flex: 1, background: darkMode ? COLORS.stone[800] : "#fff", borderRadius: 16, border: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, overflow: "hidden", boxShadow: "0 4px 20px rgba(0,0,0,0.04)" }}>
+          {/* DAY VIEW - LINEAR TIMELINE */}
           {viewMode === "day" && (
-            <div ref={scrollContainerRef} style={{ height: "100%", overflowX: "auto", overflowY: "auto", position: "relative" }}>
-              {/* This inner container holds everything and ensures they scroll together */}
-              <div style={{ minWidth: DAY_WIDTH_PX, height: "100%", display: "flex", flexDirection: "column" }}>
-                
-                {/* Time Header */}
-                <div style={{ height: 48, display: "flex", borderBottom: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, background: darkMode ? COLORS.stone[900] : COLORS.stone[50], position: "sticky", top: 0, zIndex: 20 }}>
+            <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", borderBottom: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, background: darkMode ? COLORS.stone[900] : COLORS.stone[50] }}>
+                <div ref={timelineRef} style={{ display: "flex", overflowX: "auto", width: "100%" }}>
                   {Array.from({ length: 24 }, (_, h) => (
-                    <div key={h} style={{ width: 60 * PIXELS_PER_MINUTE, padding: "12px 8px", fontSize: 12, fontWeight: 600, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], borderRight: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[100]}`, flexShrink: 0 }}>
+                    <div key={h} style={{ minWidth: 60 * PIXELS_PER_MINUTE, padding: "12px 8px", fontSize: 12, fontWeight: 600, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], borderRight: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[100]}` }}>
                       {use24HourFormat ? `${h.toString().padStart(2, "0")}:00` : `${h === 0 ? 12 : h > 12 ? h - 12 : h} ${h < 12 ? "AM" : "PM"}`}
                     </div>
                   ))}
                 </div>
-
-                {/* Event Area */}
-                <div onClick={handleTlClick} style={{ flex: 1, position: "relative", minHeight: Math.max(tlHeight, 200), cursor: "crosshair" }}>
-                  
-                  {/* Grid Lines */}
+              </div>
+              <div style={{ flex: 1, overflowX: "auto", overflowY: "auto" }}>
+                <div onClick={handleTlClick} style={{ position: "relative", width: DAY_WIDTH, minHeight: Math.max(tlHeight, 200), cursor: "crosshair" }}>
                   {Array.from({ length: 24 }, (_, h) => <div key={h} style={{ position: "absolute", left: h * 60 * PIXELS_PER_MINUTE, top: 0, bottom: 0, width: 1, background: darkMode ? COLORS.stone[700] : COLORS.stone[100] }} />)}
-                  
-                  {/* Current Time Indicator */}
-                  {isToday && <div style={{ position: "absolute", left: nowPos, top: 0, bottom: 0, width: 2, background: COLORS.emerald[500], zIndex: 5, pointerEvents: "none" }}><div style={{ position: "absolute", top: 0, left: -4, width: 10, height: 10, borderRadius: "50%", background: COLORS.emerald[500] }} /></div>}
-                  
-                  {/* Events */}
+                  {isToday && <div style={{ position: "absolute", left: nowPos, top: 0, bottom: 0, width: 2, background: COLORS.emerald[500], zIndex: 5 }}><div style={{ position: "absolute", top: 0, left: -4, width: 10, height: 10, borderRadius: "50%", background: COLORS.emerald[500] }} /></div>}
                   {evtsRows.map(ev => {
                     const st = getEvtStyle(ev, ev.row);
                     const cs = EVENT_COLORS[ev.category] || EVENT_COLORS.emerald;
@@ -400,12 +329,12 @@ export default function App() {
 
           {/* WEEK VIEW */}
           {viewMode === "week" && (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", height: "100%", overflowY: "auto" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", height: "100%" }}>
               {weekDays.map((day, idx) => {
                 const dEvts = filteredEvents.filter(ev => ev.start.toDateString() === day.toDateString());
                 const isTd = day.toDateString() === now.toDateString();
                 return (
-                  <div key={idx} onClick={() => goToDate(day)} style={{ borderRight: idx < 6 ? `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}` : "none", padding: 12, cursor: "pointer", background: isTd ? (darkMode ? COLORS.emerald[900] + "40" : COLORS.emerald[50]) : "transparent", minHeight: "100%" }}>
+                  <div key={idx} onClick={() => goToDate(day)} style={{ borderRight: idx < 6 ? `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}` : "none", padding: 12, cursor: "pointer", background: isTd ? (darkMode ? COLORS.emerald[900] + "40" : COLORS.emerald[50]) : "transparent" }}>
                     <div style={{ textAlign: "center", marginBottom: 12, paddingBottom: 12, borderBottom: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}` }}>
                       <div style={{ fontSize: 11, fontWeight: 700, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], textTransform: "uppercase", marginBottom: 4 }}>{day.toLocaleDateString(undefined, { weekday: "short" })}</div>
                       <div style={{ fontSize: 20, fontWeight: 700, color: isTd ? COLORS.emerald[500] : darkMode ? COLORS.stone[200] : COLORS.stone[800], display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
@@ -413,13 +342,13 @@ export default function App() {
                       </div>
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      {dEvts.slice(0, 8).map(ev => { const cs = EVENT_COLORS[ev.category] || EVENT_COLORS.emerald; return (
+                      {dEvts.slice(0, 4).map(ev => { const cs = EVENT_COLORS[ev.category] || EVENT_COLORS.emerald; return (
                         <div key={ev.id} onClick={e => { e.stopPropagation(); openEditEvent(ev); }} style={{ padding: "6px 8px", borderRadius: 6, background: cs.light, borderLeft: `3px solid ${cs.border}`, cursor: "pointer" }}>
                           <div style={{ fontSize: 12, fontWeight: 600, color: darkMode ? COLORS.stone[200] : COLORS.stone[800], whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ev.title}</div>
                           <div style={{ fontSize: 10, color: darkMode ? COLORS.stone[400] : COLORS.stone[500] }}>{fmtTime(ev.start)}</div>
                         </div>
                       ); })}
-                      {dEvts.length > 8 && <div style={{ fontSize: 11, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], textAlign: "center" }}>+{dEvts.length - 8} more</div>}
+                      {dEvts.length > 4 && <div style={{ fontSize: 11, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], textAlign: "center" }}>+{dEvts.length - 4} more</div>}
                     </div>
                   </div>
                 );
@@ -429,85 +358,91 @@ export default function App() {
 
           {/* LINEAR YEAR VIEW - NEW IMPLEMENTATION */}
           {viewMode === "year" && (
-            <div style={{ height: "100%", overflowX: "auto", overflowY: "hidden", whiteSpace: "nowrap", padding: "20px 0", display: "flex", alignItems: "flex-start" }}>
-              {Array.from({ length: 12 }, (_, monthIndex) => {
-                const monthDate = new Date(currentDate.getFullYear(), monthIndex, 1);
-                const daysInMonth = new Date(currentDate.getFullYear(), monthIndex + 1, 0).getDate();
-                const monthEvents = filteredEvents.filter(ev => ev.start.getMonth() === monthIndex && ev.start.getFullYear() === currentDate.getFullYear());
-
-                return (
-                  <div key={monthIndex} style={{ display: "inline-flex", flexDirection: "column", marginRight: 24, verticalAlign: "top" }}>
-                    {/* Month Label */}
-                    <div style={{ padding: "0 12px", marginBottom: 16, borderBottom: `2px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, paddingBottom: 8 }}>
-                       <div style={{ fontSize: 18, fontWeight: 700, color: darkMode ? COLORS.stone[200] : COLORS.stone[800] }}>{monthDate.toLocaleDateString(undefined, { month: "long" })}</div>
+            <div style={{ height: "100%", overflowX: "auto", overflowY: "auto", padding: "30px", background: darkMode ? COLORS.stone[900] : COLORS.stone[50] }}>
+              <div style={{ minWidth: "fit-content" }}>
+                {/* Header: Weekdays (Repeating) */}
+                <div style={{ display: "flex", marginBottom: 16 }}>
+                  <div style={{ width: 60, flexShrink: 0 }}></div> {/* Corner spacer */}
+                  {Array.from({ length: 37 }).map((_, i) => (
+                    <div key={i} style={{ width: 34, textAlign: "center", fontSize: 11, fontWeight: 700, color: darkMode ? COLORS.stone[600] : COLORS.stone[400], textTransform: "uppercase" }}>
+                      {["M", "T", "W", "T", "F", "S", "S"][i % 7]}
                     </div>
+                  ))}
+                </div>
 
-                    {/* Linear Days Strip */}
-                    <div style={{ display: "flex", gap: 4 }}>
-                      {Array.from({ length: daysInMonth }, (_, d) => {
-                        const dayNum = d + 1;
-                        const dateObj = new Date(currentDate.getFullYear(), monthIndex, dayNum);
-                        const isTodayDate = dateObj.toDateString() === now.toDateString();
-                        const dayEvts = monthEvents.filter(ev => ev.start.getDate() === dayNum);
-                        const intensity = Math.min(dayEvts.length, 3); // 0, 1, 2, 3 scale
+                {/* Rows: Months */}
+                {Array.from({ length: 12 }, (_, mIdx) => {
+                  const monthName = new Date(currentDate.getFullYear(), mIdx, 1).toLocaleDateString(undefined, { month: "short" });
+                  const daysInMonth = new Date(currentDate.getFullYear(), mIdx + 1, 0).getDate();
+                  // Calculate shift: Monday=0, Sunday=6
+                  let firstDay = new Date(currentDate.getFullYear(), mIdx, 1).getDay();
+                  firstDay = firstDay === 0 ? 6 : firstDay - 1;
+
+                  return (
+                    <div key={mIdx} style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                      {/* Month Label */}
+                      <div style={{ width: 60, flexShrink: 0, fontSize: 13, fontWeight: 700, color: darkMode ? COLORS.emerald[400] : COLORS.emerald[600] }}>
+                        {monthName}
+                      </div>
+
+                      {/* Spacer for alignment */}
+                      {Array.from({ length: firstDay }).map((_, i) => (
+                        <div key={`spacer-${i}`} style={{ width: 34, height: 34 }} />
+                      ))}
+
+                      {/* Days */}
+                      {Array.from({ length: daysInMonth }, (_, dIdx) => {
+                        const dayNum = dIdx + 1;
+                        const dateObj = new Date(currentDate.getFullYear(), mIdx, dayNum);
+                        const isToday = dateObj.toDateString() === now.toDateString();
+                        const hasEv = filteredEvents.some(ev => ev.start.toDateString() === dateObj.toDateString());
 
                         return (
-                           <div key={dayNum} onClick={() => goToDate(dateObj)}
-                                style={{ 
-                                  width: 32, 
-                                  display: "flex", 
-                                  flexDirection: "column", 
-                                  alignItems: "center", 
-                                  cursor: "pointer",
-                                  opacity: dayEvts.length > 0 ? 1 : 0.7
-                                }}>
-                                {/* Weekday letter */}
-                                <div style={{ fontSize: 10, fontWeight: 600, color: darkMode ? COLORS.stone[500] : COLORS.stone[400], marginBottom: 4 }}>{dateObj.toLocaleDateString(undefined, { weekday: "narrow" })}</div>
-                                
-                                {/* Day Number / Bubble */}
-                                <div style={{ 
-                                  width: 28, height: 28, 
-                                  borderRadius: 8, 
-                                  display: "flex", alignItems: "center", justifyContent: "center",
-                                  fontSize: 12, fontWeight: isTodayDate ? 700 : 500,
-                                  color: isTodayDate ? "#fff" : darkMode ? COLORS.stone[300] : COLORS.stone[700],
-                                  background: isTodayDate ? COLORS.emerald[500] : darkMode ? COLORS.stone[700] : COLORS.stone[100],
-                                  marginBottom: 6,
-                                  border: isTodayDate ? "none" : `1px solid ${darkMode ? COLORS.stone[600] : COLORS.stone[200]}`
-                                }}>
-                                  {dayNum}
-                                </div>
-
-                                {/* Event Indicators */}
-                                <div style={{ height: 60, width: 4, background: darkMode ? COLORS.stone[800] : COLORS.stone[100], borderRadius: 2, position: "relative", overflow: "hidden" }}>
-                                   {/* Fill bar based on event count */}
-                                   {dayEvts.length > 0 && (
-                                     <div style={{ 
-                                       position: "absolute", bottom: 0, left: 0, right: 0, 
-                                       height: `${Math.min(dayEvts.length * 20, 100)}%`, 
-                                       background: "linear-gradient(to top, #10b981, #34d399)",
-                                       borderRadius: 2
-                                     }} />
-                                   )}
-                                </div>
-                           </div>
+                          <div
+                            key={dayNum}
+                            onClick={() => goToDate(dateObj)}
+                            style={{
+                              width: 34,
+                              height: 34,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              fontSize: 12,
+                              fontWeight: isToday ? 700 : 500,
+                              color: isToday ? "#fff" : darkMode ? COLORS.stone[300] : COLORS.stone[600],
+                              background: isToday 
+                                ? COLORS.emerald[500] 
+                                : hasEv 
+                                  ? (darkMode ? COLORS.emerald[900] + "60" : COLORS.emerald[100]) 
+                                  : "transparent",
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              position: "relative",
+                              transition: "background 0.2s"
+                            }}
+                            onMouseEnter={e => { if(!isToday) e.currentTarget.style.background = darkMode ? COLORS.stone[800] : COLORS.stone[200] }}
+                            onMouseLeave={e => { if(!isToday) e.currentTarget.style.background = hasEv ? (darkMode ? COLORS.emerald[900] + "60" : COLORS.emerald[100]) : "transparent" }}
+                          >
+                            {dayNum}
+                            {hasEv && !isToday && (
+                              <div style={{ position: "absolute", bottom: 4, width: 4, height: 4, borderRadius: "50%", background: COLORS.emerald[500] }} />
+                            )}
+                          </div>
                         );
                       })}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           )}
-
         </div>
-        
         {loading && <div style={{ position: "fixed", bottom: 24, left: "50%", transform: "translateX(-50%)", background: "#fff", padding: "12px 24px", borderRadius: 10, boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }}>Loading...</div>}
       </div>
 
       {/* SIDEBAR */}
       {showSidebar && (
-        <aside style={{ width: 280, background: darkMode ? COLORS.stone[900] : "#fff", borderLeft: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, display: "flex", flexDirection: "column", flexShrink: 0 }}>
+        <aside style={{ width: 280, background: darkMode ? COLORS.stone[900] : "#fff", borderLeft: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "20px 16px", borderBottom: `1px solid ${darkMode ? COLORS.stone[700] : COLORS.stone[200]}`, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ fontSize: 14, fontWeight: 700, color: darkMode ? COLORS.stone[300] : COLORS.stone[700], textTransform: "uppercase" }}>Upcoming</h3>
             <button onClick={() => setShowSidebar(false)} style={{ width: 28, height: 28, borderRadius: 6, border: "none", background: darkMode ? COLORS.stone[800] : COLORS.stone[100], color: darkMode ? COLORS.stone[500] : COLORS.stone[400], cursor: "pointer" }}>✕</button>
