@@ -1,107 +1,73 @@
 import { useEffect, useState, useRef, useCallback } from "react";
-import { signInWithPopup, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { collection, query, where, getDocs, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { auth, provider, db } from "./firebase";
-// Icons used to match the polished AnuCal aesthetic
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Settings, 
-  Plus, 
-  LogOut, 
-  Grid, 
-  AlignJustify, 
-  Trash2,
-  Calendar
-} from "lucide-react";
+import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { auth, provider } from "./firebase";
+import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { db } from "./firebase";
 
 // --- CONFIGURATION ---
 const APP_NAME = "Epoch";
-const PIXELS_PER_MINUTE = 1.8;
+const PIXELS_PER_MINUTE = 2; // Taller for better drag precision
 const SNAP_MINUTES = 15;
 
-// --- LUXE COLOR PALETTE ---
+// --- LUXE THEME PALETTE ---
 const THEME = {
   light: {
-    bg: "#FDFCF8",
-    sidebar: "#F4F2EB",
-    text: "#1C1917",
-    muted: "#78716C",
-    border: "#E7E5E4",
-    line: "#D97706",
-    active: "#1C1917",
-    inactive: "#A8A29E"
+    bg: "#FAFAF9", // Stone 50
+    sidebar: "#F5F5F4", // Stone 100
+    card: "#FFFFFF",
+    text: "#1C1917", // Stone 900
+    muted: "#78716C", // Stone 500
+    border: "#E7E5E4", // Stone 200
+    line: "#D97706", // Amber 600
+    weekend: "#F3F4F6",
+    activeBtnText: "#FFFFFF",
+    activeBtnBg: "#1C1917",
   },
   dark: {
-    bg: "#0C0A09",
-    sidebar: "#1C1917",
-    text: "#E7E5E4",
-    muted: "#78716C",
-    border: "#292524",
-    line: "#F59E0B",
-    active: "#E7E5E4",
-    inactive: "#57534E"
+    bg: "#0C0A09", // Stone 950
+    sidebar: "#1C1917", // Stone 900
+    card: "#292524", // Stone 800
+    text: "#FAFAF9", // Stone 50
+    muted: "#A8A29E", // Stone 400
+    border: "#44403C", // Stone 700
+    line: "#F59E0B", // Amber 500
+    weekend: "#151412",
+    activeBtnText: "#1C1917",
+    activeBtnBg: "#E7E5E4",
   }
 };
 
-const PALETTE_OPTIONS = [
-  { label: "Emerald", bg: "#d1fae5", text: "#064e3b", border: "#059669" },
-  { label: "Amber",   bg: "#fef3c7", text: "#78350f", border: "#d97706" },
-  { label: "Stone",   bg: "#e7e5e4", text: "#1c1917", border: "#57534e" },
-  { label: "Clay",    bg: "#ffedd5", text: "#7c2d12", border: "#ea580c" },
-  { label: "Slate",   bg: "#f1f5f9", text: "#0f172a", border: "#475569" },
-  { label: "Rose",    bg: "#ffe4e6", text: "#881337", border: "#e11d48" },
+const TAG_COLORS = [
+  { name: "Emerald", bg: "#ECFDF5", border: "#10B981", text: "#064E3B", dot: "#10B981" },
+  { name: "Amber",   bg: "#FFFBEB", border: "#F59E0B", text: "#78350F", dot: "#F59E0B" },
+  { name: "Rose",    bg: "#FFF1F2", border: "#F43F5E", text: "#881337", dot: "#F43F5E" },
+  { name: "Indigo",  bg: "#EEF2FF", border: "#6366F1", text: "#312E81", dot: "#6366F1" },
+  { name: "Stone",   bg: "#F5F5F4", border: "#78716C", text: "#1C1917", dot: "#78716C" },
 ];
 
-const DEFAULT_CATEGORIES = [
-  { id: "work", name: "Deep Work", ...PALETTE_OPTIONS[0] },
-  { id: "meeting", name: "Meeting", ...PALETTE_OPTIONS[2] },
+const DEFAULT_CATS = [
+  { id: "work", name: "Work", ...TAG_COLORS[3] },
+  { id: "personal", name: "Personal", ...TAG_COLORS[0] },
 ];
 
 const GLOBAL_STYLES = `
-  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
   
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; transition: background 0.3s ease; }
+  body { font-family: 'Plus Jakarta Sans', sans-serif; overflow: hidden; transition: background 0.3s ease, color 0.3s ease; }
   h1, h2, h3, h4, .serif { font-family: 'Playfair Display', serif; }
   
-  /* Scrollbar */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, 0.3); border-radius: 3px; }
   
-  /* Animations */
-  .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-in { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   
-  .pulse { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7); animation: pulse-animation 2s infinite; }
-  @keyframes pulse-animation {
-    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7); }
-    70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); }
-    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); }
-  }
+  .pulse { animation: pulse 2s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.4); } 70% { box-shadow: 0 0 0 6px rgba(217, 119, 6, 0); } 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0); } }
 
-  .btn-hover:hover { transform: translateY(-1px); transition: all 0.2s; }
-  input:focus, select:focus { outline: 2px solid #d97706; outline-offset: 1px; }
-
-  /* Year View Grid Styles */
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; margin-top: 8px; }
-  .calendar-day { 
-    aspect-ratio: 1/1; 
-    display: flex; 
-    align-items: center; 
-    justify-content: center; 
-    font-size: 10px; 
-    border-radius: 4px; 
-    position: relative;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-  .calendar-day:hover { background: rgba(0,0,0,0.05); }
-  .has-event::after { 
-    content: ''; position: absolute; bottom: 3px; 
-    width: 3px; height: 3px; background: #d97706; border-radius: 50%; 
-  }
+  .past-blur { filter: grayscale(100%) opacity(0.5); pointer-events: none; }
 `;
 
 export default function App() {
@@ -110,38 +76,37 @@ export default function App() {
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
-  const [viewMode, setViewMode] = useState("day"); // 'day' or 'year'
+  const [viewMode, setViewMode] = useState("day"); // day, week, year
   
-  // Customization State
-  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('darkMode')) || false);
-  const [use24Hour, setUse24Hour] = useState(false);
-  const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem('categories')) || DEFAULT_CATEGORIES);
+  // Settings
+  const [darkMode, setDarkMode] = useState(() => JSON.parse(localStorage.getItem('epoch_dark')) || false);
+  const [use24Hour, setUse24Hour] = useState(() => JSON.parse(localStorage.getItem('epoch_24h')) || false);
+  const [categories, setCategories] = useState(() => JSON.parse(localStorage.getItem('epoch_cats')) || DEFAULT_CATS);
   const [activeTags, setActiveTags] = useState(categories.map(c => c.id));
   
-  // UI State
+  // UI
   const [showSettings, setShowSettings] = useState(false);
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [notifications, setNotifications] = useState([]); 
+  const [showModal, setShowModal] = useState(false);
+  const [notifications, setNotifications] = useState([]);
   
-  // Form State
+  // Form/Drag
   const [editingEvent, setEditingEvent] = useState(null);
   const [formTitle, setFormTitle] = useState("");
   const [formStart, setFormStart] = useState("");
   const [formEnd, setFormEnd] = useState("");
   const [formCat, setFormCat] = useState(categories[0].id);
-
-  // Drag State
-  const [dragState, setDragState] = useState(null);
+  const [dragState, setDragState] = useState(null); // { id, mode: 'move'|'resize', startY, origStart, origEnd }
+  
   const containerRef = useRef(null);
-
   const colors = darkMode ? THEME.dark : THEME.light;
 
   // --- EFFECTS ---
   useEffect(() => { const s = document.createElement('style'); s.textContent = GLOBAL_STYLES; document.head.appendChild(s); return () => s.remove(); }, []);
   useEffect(() => { setPersistence(auth, browserLocalPersistence); auth.onAuthStateChanged(setUser); }, []);
   useEffect(() => { const i = setInterval(() => setNow(new Date()), 60000); return () => clearInterval(i); }, []);
-  useEffect(() => { localStorage.setItem('darkMode', JSON.stringify(darkMode)); }, [darkMode]);
-  useEffect(() => { localStorage.setItem('categories', JSON.stringify(categories)); }, [categories]);
+  useEffect(() => { localStorage.setItem('epoch_dark', JSON.stringify(darkMode)); }, [darkMode]);
+  useEffect(() => { localStorage.setItem('epoch_24h', JSON.stringify(use24Hour)); }, [use24Hour]);
+  useEffect(() => { localStorage.setItem('epoch_cats', JSON.stringify(categories)); }, [categories]);
 
   // Load Data
   const loadEvents = useCallback(async () => {
@@ -153,57 +118,52 @@ export default function App() {
         id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() 
       }));
       setEvents(data);
-    } catch (e) { notify("Failed to load events", "error"); }
+    } catch (e) { notify("Error loading events", "error"); }
   }, [user]);
 
   useEffect(() => { loadEvents(); }, [loadEvents]);
 
-  // --- NOTIFICATIONS ---
+  // --- ACTIONS ---
   const notify = (msg, type = "success") => {
     const id = Date.now();
     setNotifications(p => [...p, { id, msg, type }]);
     setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 3000);
   };
 
-  // --- ACTIONS ---
-  const navDate = (amount) => {
+  const nav = (amt, mode) => {
     const d = new Date(currentDate);
-    if (viewMode === 'day') {
-        d.setDate(d.getDate() + amount);
-    } else if (viewMode === 'year') {
-        d.setFullYear(d.getFullYear() + amount);
-    }
+    if (mode === 'year') d.setFullYear(d.getFullYear() + amt);
+    else if (mode === 'week') d.setDate(d.getDate() + (amt * 7));
+    else d.setDate(d.getDate() + amt);
     setCurrentDate(d);
   };
 
-  const handleSaveEvent = async () => {
-    if (!formTitle || !formStart || !formEnd) return notify("Please fill required fields", "error");
-    
-    // Parse times
+  const saveEvent = async () => {
+    if (!formTitle || !formStart || !formEnd) return notify("Missing fields", "error");
     const [sh, sm] = formStart.split(":").map(Number);
     const [eh, em] = formEnd.split(":").map(Number);
-    const baseDate = editingEvent ? editingEvent.start : currentDate;
-    const start = new Date(baseDate); start.setHours(sh, sm, 0, 0);
-    const end = new Date(baseDate); end.setHours(eh, em, 0, 0);
-    if (end <= start) end.setDate(end.getDate() + 1); // Handle overnight
+    const base = editingEvent ? editingEvent.start : currentDate;
+    const s = new Date(base); s.setHours(sh, sm, 0, 0);
+    const e = new Date(base); e.setHours(eh, em, 0, 0);
+    if (e <= s) e.setDate(e.getDate() + 1);
 
     const payload = {
       uid: user.uid, title: formTitle, category: formCat,
-      startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end),
+      startTime: Timestamp.fromDate(s), endTime: Timestamp.fromDate(e),
       deleted: false, updatedAt: serverTimestamp()
     };
 
     try {
       if (editingEvent) await updateDoc(doc(db, "events", editingEvent.id), payload);
       else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), payload); }
-      setShowEventModal(false); loadEvents(); notify("Event saved");
-    } catch (e) { notify("Error saving", "error"); }
+      setShowModal(false); loadEvents(); notify(editingEvent ? "Updated" : "Created");
+    } catch { notify("Save failed", "error"); }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Delete this event?")) return;
+  const deleteEvent = async (id) => {
+    if (!window.confirm("Delete?")) return;
     await updateDoc(doc(db, "events", id), { deleted: true });
-    setShowEventModal(false); loadEvents(); notify("Event deleted");
+    setShowModal(false); loadEvents(); notify("Deleted");
   };
 
   // --- DRAG HANDLERS ---
@@ -220,17 +180,11 @@ export default function App() {
 
     setEvents(prev => prev.map(ev => {
       if (ev.id !== dragState.id) return ev;
-      const newS = new Date(dragState.origStart);
-      const newE = new Date(dragState.origEnd);
-      
-      if (dragState.mode === 'move') {
-        newS.setMinutes(newS.getMinutes() + deltaMins);
-        newE.setMinutes(newE.getMinutes() + deltaMins);
-      } else {
-        newE.setMinutes(newE.getMinutes() + deltaMins);
-        if ((newE - newS) < 15 * 60000) return ev; // Min duration
-      }
-      return { ...ev, start: newS, end: newE };
+      const s = new Date(dragState.origStart);
+      const end = new Date(dragState.origEnd);
+      if (dragState.mode === 'move') { s.setMinutes(s.getMinutes() + deltaMins); end.setMinutes(end.getMinutes() + deltaMins); }
+      else { end.setMinutes(end.getMinutes() + deltaMins); if ((end - s) < 15 * 60000) return ev; }
+      return { ...ev, start: s, end: end };
     }));
   }, [dragState]);
 
@@ -238,339 +192,263 @@ export default function App() {
     if (!dragState) return;
     const ev = events.find(e => e.id === dragState.id);
     if (ev) {
-      await updateDoc(doc(db, "events", ev.id), {
-        startTime: Timestamp.fromDate(ev.start), endTime: Timestamp.fromDate(ev.end)
-      });
-      notify("Event updated");
+      await updateDoc(doc(db, "events", ev.id), { startTime: Timestamp.fromDate(ev.start), endTime: Timestamp.fromDate(ev.end) });
+      notify("Event moved");
     }
     setDragState(null);
   }, [dragState, events]);
 
   useEffect(() => {
-    if (dragState) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => { window.removeEventListener('mousemove', handleMouseMove); window.removeEventListener('mouseup', handleMouseUp); };
-    }
+    if (dragState) { window.addEventListener("mousemove", handleMouseMove); window.addEventListener("mouseup", handleMouseUp); }
+    return () => { window.removeEventListener("mousemove", handleMouseMove); window.removeEventListener("mouseup", handleMouseUp); };
   }, [dragState, handleMouseMove, handleMouseUp]);
 
-  // --- RENDER HELPERS ---
+  // --- HELPERS ---
   const fmtTime = (d) => d.toLocaleTimeString([], { hour: use24Hour ? "2-digit" : "numeric", minute: "2-digit", hour12: !use24Hour });
   const isToday = (d) => d.toDateString() === now.toDateString();
+  const isPast = (d) => { const t = new Date(); t.setHours(0,0,0,0); return d < t; };
 
-  if (!user) return <LoginScreen onLogin={() => signInWithPopup(auth, provider)} />;
+  if (!user) return <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FAF9F6", color: "#1C1917" }}>
+    <div style={{ textAlign: "center" }}>
+      <h1 className="serif" style={{ fontSize: 48, marginBottom: 16 }}>{APP_NAME}.</h1>
+      <button onClick={() => signInWithPopup(auth, provider)} style={{ padding: "14px 28px", background: "#1C1917", color: "#FFF", border: "none", borderRadius: 8, fontSize: 16, cursor: "pointer" }}>Enter</button>
+    </div>
+  </div>;
 
   return (
     <div style={{ height: "100vh", display: "flex", background: colors.bg, color: colors.text }}>
       
-      {/* --- SIDEBAR --- */}
-      <aside style={{ width: 280, background: colors.sidebar, borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", padding: "32px 24px", zIndex: 20 }}>
+      {/* SIDEBAR */}
+      <aside style={{ width: 280, background: colors.sidebar, borderRight: `1px solid ${colors.border}`, display: "flex", flexDirection: "column", padding: 24, zIndex: 50 }}>
         <div style={{ marginBottom: 40 }}>
           <h1 className="serif" style={{ fontSize: 32, fontWeight: 700, letterSpacing: "-1px" }}>{APP_NAME}.</h1>
-          <p style={{ fontSize: 13, color: colors.muted, marginTop: 4 }}>Curate your time.</p>
+          <p style={{ fontSize: 13, color: colors.muted }}>Curated Time.</p>
         </div>
-
-        <button onClick={() => { setEditingEvent(null); setFormTitle(""); setFormStart("09:00"); setFormEnd("10:00"); setShowEventModal(true); }} 
-          className="btn-hover"
-          style={{ width: "100%", padding: "12px", borderRadius: 12, background: "#1C1917", color: "#F4F2EB", border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 32, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}>
-          <Plus size={18} /> Create Event
-        </button>
-
+        
+        <button onClick={() => { setEditingEvent(null); setFormTitle(""); setFormStart("09:00"); setFormEnd("10:00"); setShowModal(true); }} style={{ width: "100%", padding: 14, borderRadius: 12, background: colors.text, color: colors.bg, border: "none", fontSize: 14, fontWeight: 600, cursor: "pointer", marginBottom: 32 }}>Create Event</button>
+        
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-             <h3 style={{ fontSize: 11, fontWeight: 700, letterSpacing: "1px", textTransform: "uppercase", color: colors.muted }}>Categories</h3>
-             <button onClick={() => setShowSettings(true)} style={{ background: "transparent", border: "none", color: colors.muted, cursor: "pointer" }}>
-                <Settings size={14}/>
-             </button>
+            <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.muted, letterSpacing: 1 }}>Tags</span>
+            <button onClick={() => setShowSettings(true)} style={{ background: "none", border: "none", color: colors.muted, cursor: "pointer", fontSize: 16 }}>+</button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {categories.map(cat => (
-              <div key={cat.id} onClick={() => setActiveTags(p => p.includes(cat.id) ? p.filter(x => x !== cat.id) : [...p, cat.id])}
-                style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 10px", borderRadius: 8, cursor: "pointer", background: activeTags.includes(cat.id) ? (darkMode ? '#292524' : '#fff') : 'transparent', transition: 'all 0.2s', opacity: activeTags.includes(cat.id) ? 1 : 0.5 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: cat.border, boxShadow: activeTags.includes(cat.id) ? `0 0 8px ${cat.bg}` : 'none' }} />
-                <span style={{ fontSize: 14, fontWeight: 500 }}>{cat.name}</span>
-              </div>
-            ))}
-          </div>
+          {categories.map(c => (
+            <div key={c.id} onClick={() => setActiveTags(p => p.includes(c.id) ? p.filter(x => x !== c.id) : [...p, c.id])} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", opacity: activeTags.includes(c.id) ? 1 : 0.4 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: c.dot }} />
+              <span style={{ fontSize: 14, fontWeight: 500 }}>{c.name}</span>
+            </div>
+          ))}
         </div>
 
-        <div style={{ borderTop: `1px solid ${colors.border}`, paddingTop: 24, display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={() => auth.signOut()} style={{ padding: "8px", borderRadius: 8, background: "transparent", border: "none", color: colors.muted, cursor: "pointer" }}>
-            <LogOut size={18} />
-          </button>
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 500, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user.displayName}</div>
-          <div style={{ width: 32, height: 32, borderRadius: "50%", background: colors.text, color: colors.bg, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 12 }}>
-            {user.displayName?.[0]}
-          </div>
-        </div>
+        <button onClick={() => setShowSettings(true)} style={{ padding: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>Settings</button>
       </aside>
 
-      {/* --- MAIN CONTENT --- */}
+      {/* MAIN */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
         
-        {/* Header */}
-        <header style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${colors.border}` }}>
+        {/* HEADER */}
+        <header style={{ height: 80, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", borderBottom: `1px solid ${colors.border}` }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-             <div style={{ display: "flex", gap: 8 }}>
-               <button onClick={() => navDate(-1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                 <ChevronLeft size={16}/>
-               </button>
-               <button onClick={() => navDate(1)} style={{ width: 32, height: 32, borderRadius: 8, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                 <ChevronRight size={16}/>
-               </button>
+             <div style={{ display: "flex", gap: 4 }}>
+               <button onClick={() => nav(-1, viewMode === 'year' ? 'year' : 'day')} style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer" }}>←</button>
+               <button onClick={() => nav(1, viewMode === 'year' ? 'year' : 'day')} style={{ width: 36, height: 36, borderRadius: "50%", border: `1px solid ${colors.border}`, background: "transparent", color: colors.text, cursor: "pointer" }}>→</button>
              </div>
              <div>
-               <h2 className="serif" style={{ fontSize: 28, fontWeight: 600, color: colors.text }}>
-                 {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-               </h2>
-               {viewMode === 'day' && <p style={{ fontSize: 14, color: colors.muted, display:"flex", alignItems:"center", gap:8 }}>
-                  {currentDate.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric' })}
-                  {isToday(currentDate) && <span style={{fontSize:10, fontWeight:700, color: colors.line, textTransform:"uppercase", letterSpacing:1}}>Today</span>}
-               </p>}
+               <h2 className="serif" style={{ fontSize: 24, fontWeight: 600 }}>{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+               {viewMode === 'day' && isToday(currentDate) && <span style={{ fontSize: 11, fontWeight: 700, color: colors.line, textTransform: "uppercase", letterSpacing: 1 }}>Today</span>}
              </div>
           </div>
 
-          <div style={{ background: colors.sidebar, padding: 4, borderRadius: 10, display: "flex", border: `1px solid ${colors.border}` }}>
-             <button onClick={() => setViewMode("day")} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: viewMode === "day" ? (darkMode ? "#292524" : "#fff") : "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-               <AlignJustify size={14}/> <span style={{fontSize: 13, fontWeight: 600}}>Day</span>
-             </button>
-             <button onClick={() => setViewMode("year")} style={{ padding: "6px 12px", borderRadius: 6, border: "none", background: viewMode === "year" ? (darkMode ? "#292524" : "#fff") : "transparent", color: colors.text, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
-               <Grid size={14}/> <span style={{fontSize: 13, fontWeight: 600}}>Year</span>
-             </button>
+          <div style={{ display: "flex", background: colors.sidebar, padding: 4, borderRadius: 10, border: `1px solid ${colors.border}` }}>
+            {['day', 'week', 'year'].map(m => (
+              <button key={m} onClick={() => setViewMode(m)} style={{ padding: "8px 20px", borderRadius: 7, border: "none", background: viewMode === m ? colors.activeBtnBg : "transparent", color: viewMode === m ? colors.activeBtnText : colors.muted, fontSize: 13, fontWeight: 600, textTransform: "capitalize", cursor: "pointer", transition: "all 0.2s" }}>{m}</button>
+            ))}
           </div>
         </header>
 
-        {/* Viewport */}
-        <div ref={containerRef} style={{ flex: 1, overflowY: "auto", position: "relative" }}>
+        {/* CONTENT */}
+        <div ref={containerRef} style={{ flex: 1, overflow: "auto", position: "relative" }}>
           
           {/* DAY VIEW */}
           {viewMode === 'day' && (
-            <div style={{ height: 1440 * PIXELS_PER_MINUTE + 100, position: "relative", width: "100%" }}>
-              {/* Grid Background */}
-              {Array.from({ length: 24 }).map((_, h) => (
+            <div style={{ height: 1440 * PIXELS_PER_MINUTE + 60, position: "relative" }}>
+              {Array.from({length: 24}).map((_, h) => (
                 <div key={h} style={{ position: "absolute", top: h * 60 * PIXELS_PER_MINUTE, left: 0, right: 0, height: 60 * PIXELS_PER_MINUTE, borderTop: `1px solid ${colors.border}` }}>
-                  <span style={{ position: "absolute", top: -10, left: 24, fontSize: 12, fontWeight: 500, color: colors.muted, background: colors.bg, padding: "0 8px" }}>
-                    {use24Hour ? `${h}:00` : `${h === 0 ? 12 : h > 12 ? h - 12 : h} ${h >= 12 ? 'PM' : 'AM'}`}
-                  </span>
+                  <span style={{ position: "absolute", top: -10, left: 20, fontSize: 11, color: colors.muted, background: colors.bg, padding: "0 6px" }}>{use24Hour ? `${h}:00` : `${h === 0 ? 12 : h > 12 ? h - 12 : h} ${h >= 12 ? 'PM' : 'AM'}`}</span>
                 </div>
               ))}
+              
+              {isToday(currentDate) && <div style={{ position: "absolute", top: (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE, left: 0, right: 0, height: 1, background: colors.line, zIndex: 10 }}>
+                <div className="pulse" style={{ position: "absolute", left: 70, top: -4, width: 8, height: 8, borderRadius: "50%", background: colors.line }} />
+              </div>}
 
-              {/* Today Marker */}
-              {isToday(currentDate) && (
-                <div style={{ position: "absolute", top: (now.getHours() * 60 + now.getMinutes()) * PIXELS_PER_MINUTE, left: 0, right: 0, height: 1, background: colors.line, zIndex: 10 }}>
-                   <div className="pulse" style={{ position: "absolute", left: 80, top: -4, width: 8, height: 8, borderRadius: "50%", background: colors.line }} />
-                </div>
-              )}
-
-              {/* Click Surface */}
-              <div style={{ position: "absolute", inset: "0 0 0 90px", zIndex: 1 }} onClick={(e) => {
-                const mins = Math.floor((e.nativeEvent.offsetY) / PIXELS_PER_MINUTE / 15) * 15;
-                const d = new Date(currentDate); d.setHours(0, mins, 0, 0);
+              <div style={{ position: "absolute", inset: "0 0 0 80px", zIndex: 1 }} onClick={(e) => {
+                const m = Math.floor(e.nativeEvent.offsetY / PIXELS_PER_MINUTE / 15) * 15;
+                const d = new Date(currentDate); d.setHours(0, m, 0, 0);
                 setEditingEvent(null); setFormTitle(""); setFormCat(categories[0].id);
-                setFormStart(d.toTimeString().slice(0,5)); d.setMinutes(d.getMinutes()+60); setFormEnd(d.toTimeString().slice(0,5));
-                setShowEventModal(true);
+                setFormStart(d.toTimeString().slice(0,5)); d.setMinutes(m+60); setFormEnd(d.toTimeString().slice(0,5));
+                setShowModal(true);
               }} />
 
-              {/* Events */}
-              <div style={{ position: "absolute", inset: "0 40px 0 90px", pointerEvents: "none" }}>
-                {events.filter(e => activeTags.includes(e.category) && e.start.toDateString() === currentDate.toDateString()).map(ev => {
-                  const cat = categories.find(c => c.id === ev.category) || categories[0];
-                  const top = (ev.start.getHours() * 60 + ev.start.getMinutes()) * PIXELS_PER_MINUTE;
-                  const height = Math.max(((ev.end - ev.start)/60000) * PIXELS_PER_MINUTE, 30);
-                  const isDrag = dragState?.id === ev.id;
-
-                  return (
-                    <div key={ev.id} onMouseDown={(e) => handleDragStart(e, ev, 'move')}
-                      style={{ 
-                        position: "absolute", top, height, left: 0, right: 0,
-                        background: cat.bg, borderLeft: `4px solid ${cat.border}`, borderRadius: 4,
-                        padding: "8px 12px", cursor: isDrag ? "grabbing" : "grab", pointerEvents: "auto",
-                        zIndex: isDrag ? 50 : 10, boxShadow: isDrag ? "0 10px 30px rgba(0,0,0,0.1)" : "0 2px 5px rgba(0,0,0,0.02)",
-                        transition: isDrag ? "none" : "all 0.2s"
-                      }}>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: cat.text }}>{ev.title}</div>
-                      <div style={{ fontSize: 11, color: cat.text, opacity: 0.8 }}>{fmtTime(ev.start)} - {fmtTime(ev.end)}</div>
-                      {/* Resize Handle */}
-                      <div onMouseDown={(e) => handleDragStart(e, ev, 'resize')} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 10, cursor: "ns-resize", display: "flex", justifyContent: "center" }}>
-                        <div style={{ width: 30, height: 4, background: cat.border, borderRadius: 2, opacity: 0.5, marginTop: 4 }} />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {events.filter(e => e.start.toDateString() === currentDate.toDateString() && activeTags.includes(e.category)).map(ev => {
+                const cat = categories.find(c => c.id === ev.category) || categories[0];
+                const top = (ev.start.getHours() * 60 + ev.start.getMinutes()) * PIXELS_PER_MINUTE;
+                const h = Math.max(((ev.end - ev.start)/60000) * PIXELS_PER_MINUTE, 30);
+                const isDrag = dragState?.id === ev.id;
+                return (
+                  <div key={ev.id} onMouseDown={(e) => handleDragStart(e, ev, 'move')} style={{ 
+                    position: "absolute", top, height: h, left: 90, right: 24, 
+                    background: cat.bg, borderLeft: `4px solid ${cat.border}`, borderRadius: 4, padding: "6px 12px",
+                    cursor: isDrag ? "grabbing" : "grab", zIndex: isDrag ? 50 : 20, boxShadow: isDrag ? "0 10px 30px rgba(0,0,0,0.15)" : "none" 
+                  }}>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: cat.text }}>{ev.title}</div>
+                    <div style={{ fontSize: 11, color: cat.text, opacity: 0.8 }}>{fmtTime(ev.start)} - {fmtTime(ev.end)}</div>
+                    <div onMouseDown={(e) => handleDragStart(e, ev, 'resize')} style={{ position: "absolute", bottom: 0, left: 0, right: 0, height: 8, cursor: "ns-resize" }} />
+                  </div>
+                );
+              })}
             </div>
           )}
 
-          {/* NEW: YEAR VIEW (Inspired by AnuCal) */}
+          {/* WEEK VIEW */}
+          {viewMode === 'week' && (
+            <div style={{ display: "grid", gridTemplateColumns: "60px repeat(7, 1fr)", minHeight: "100%" }}>
+              <div style={{ borderRight: `1px solid ${colors.border}` }}>
+                {Array.from({length:24}).map((_,h) => <div key={h} style={{ height: 60, fontSize: 10, color: colors.muted, textAlign: "center", paddingTop: 8 }}>{h}</div>)}
+              </div>
+              {Array.from({length:7}).map((_, i) => {
+                const d = new Date(currentDate); 
+                d.setDate(d.getDate() - d.getDay() + i + (JSON.parse(localStorage.getItem('epoch_mon')||false) ? (d.getDay()===0?-6:1) : 0));
+                const isT = isToday(d);
+                return (
+                  <div key={i} className={isPast(d) && !isT ? "past-blur" : ""} style={{ borderRight: `1px solid ${colors.border}`, background: isT ? (darkMode ? "#1C1917" : "#FFFBEB") : "transparent" }}>
+                    <div style={{ height: 50, borderBottom: `1px solid ${colors.border}`, textAlign: "center", padding: 8 }}>
+                       <div style={{ fontSize: 11, fontWeight: 700, color: colors.muted }}>{d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+                       <div style={{ fontSize: 16, fontWeight: 600, color: isT ? colors.line : colors.text }}>{d.getDate()}</div>
+                    </div>
+                    <div style={{ position: "relative", height: 1440 }}>
+                      {events.filter(e => e.start.toDateString() === d.toDateString() && activeTags.includes(e.category)).map(ev => {
+                         const cat = categories.find(c => c.id === ev.category) || categories[0];
+                         const t = ev.start.getHours() * 60 + ev.start.getMinutes();
+                         const h = (ev.end - ev.start)/60000;
+                         return <div key={ev.id} onClick={() => { setEditingEvent(ev); setFormTitle(ev.title); setFormCat(ev.category); setFormStart(ev.start.toTimeString().slice(0,5)); setFormEnd(ev.end.toTimeString().slice(0,5)); setShowModal(true); }}
+                         style={{ position: "absolute", top: t, height: Math.max(h,20), left: 2, right: 2, background: cat.bg, borderLeft: `2px solid ${cat.border}`, fontSize: 10, color: cat.text, padding: 2, overflow: "hidden", borderRadius: 3, cursor: "pointer" }}>{ev.title}</div>
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+
+          {/* LINEAR YEAR VIEW (Fixed) */}
           {viewMode === 'year' && (
-             <YearView 
-                currentDate={currentDate} 
-                events={events} 
-                colors={colors} 
-                onDayClick={(d) => { setCurrentDate(d); setViewMode('day'); }} 
-             />
+            <div style={{ padding: 40, paddingBottom: 100 }}>
+               {/* Header Row: Days 1-31 */}
+               <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
+                 {Array.from({length: 31}).map((_, i) => (
+                   <div key={i} style={{ flex: 1, minWidth: 32, fontSize: 10, fontWeight: 700, color: colors.muted, textAlign: "center" }}>{i+1}</div>
+                 ))}
+               </div>
+               
+               {/* Months Rows */}
+               {Array.from({length: 12}).map((_, m) => {
+                 const monthStart = new Date(currentDate.getFullYear(), m, 1);
+                 const daysInMonth = new Date(currentDate.getFullYear(), m + 1, 0).getDate();
+                 return (
+                   <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 12 }}>
+                     <div className="serif" style={{ width: 100, fontSize: 14, fontWeight: 600, color: colors.muted }}>{monthStart.toLocaleDateString('en-US',{month:'long'})}</div>
+                     <div style={{ flex: 1, display: "flex" }}>
+                        {Array.from({length: 31}).map((_, d) => {
+                           if (d >= daysInMonth) return <div key={d} style={{ flex: 1, minWidth: 32 }} />;
+                           const date = new Date(currentDate.getFullYear(), m, d+1);
+                           const isT = isToday(date);
+                           const isW = date.getDay()===0 || date.getDay()===6;
+                           const hasEv = events.some(e => e.start.toDateString() === date.toDateString());
+                           return (
+                             <div key={d} onClick={() => { setCurrentDate(date); setViewMode('day'); }}
+                               style={{ 
+                                 flex: 1, minWidth: 32, height: 32, margin: "0 1px", 
+                                 background: isT ? colors.line : isW ? colors.weekend : "transparent",
+                                 borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", position: "relative" 
+                               }}>
+                               {hasEv && !isT && <div style={{ width: 6, height: 6, borderRadius: "50%", background: isW ? colors.muted : colors.text }} />}
+                               {isT && <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#fff" }} />}
+                             </div>
+                           )
+                        })}
+                     </div>
+                   </div>
+                 )
+               })}
+            </div>
           )}
         </div>
       </div>
 
-      {/* --- NOTIFICATIONS --- */}
-      <div style={{ position: "fixed", bottom: 24, right: 24, display: "flex", flexDirection: "column", gap: 10, zIndex: 200 }}>
-        {notifications.map(n => (
-          <div key={n.id} className="fade-in" style={{ padding: "12px 24px", background: n.type === 'error' ? '#ef4444' : '#10b981', color: '#fff', borderRadius: 8, fontSize: 14, fontWeight: 600, boxShadow: "0 10px 30px rgba(0,0,0,0.2)" }}>
-            {n.msg}
-          </div>
-        ))}
+      {/* NOTIFICATIONS */}
+      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>
+        {notifications.map(n => <div key={n.id} className="fade-in" style={{ padding: "10px 20px", background: n.type==='error'?"#EF4444":"#10B981", color: "#FFF", borderRadius: 8, fontSize: 13, fontWeight: 600 }}>{n.msg}</div>)}
       </div>
 
-      {/* --- MODALS --- */}
-      {showEventModal && (
-        <Modal onClose={() => setShowEventModal(false)} colors={colors}>
-           <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>{editingEvent ? "Edit Event" : "New Event"}</h3>
-           <Input label="Title" value={formTitle} onChange={setFormTitle} colors={colors} autoFocus />
-           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-             <Input label="Start" type="time" value={formStart} onChange={setFormStart} colors={colors} />
-             <Input label="End" type="time" value={formEnd} onChange={setFormEnd} colors={colors} />
-           </div>
-           <div style={{ margin: "20px 0" }}>
-             <label style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: colors.muted }}>Category</label>
-             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 8 }}>
-               {categories.map(c => (
-                 <button key={c.id} onClick={() => setFormCat(c.id)} style={{ padding: "8px 16px", borderRadius: 20, border: formCat === c.id ? `2px solid ${c.border}` : `1px solid ${colors.border}`, background: formCat === c.id ? c.bg : "transparent", color: formCat === c.id ? c.text : colors.text, fontSize: 13, cursor: "pointer", fontWeight: 500 }}>{c.name}</button>
-               ))}
-             </div>
-           </div>
-           <div style={{ display: "flex", justifyContent: "flex-end", gap: 12, marginTop: 32 }}>
-             {editingEvent && <button onClick={() => handleDelete(editingEvent.id)} style={{ marginRight: "auto", color: "#ef4444", background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>Delete</button>}
-             <button onClick={handleSaveEvent} style={{ padding: "12px 24px", background: "#1C1917", color: "#fff", border: "none", borderRadius: 8, fontWeight: 600, cursor: "pointer" }}>Save Event</button>
-           </div>
-        </Modal>
-      )}
-
+      {/* SETTINGS MODAL */}
       {showSettings && (
-        <Modal onClose={() => setShowSettings(false)} colors={colors}>
-          <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>Settings</h3>
-          
-          <div style={{ marginBottom: 32 }}>
-             <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Appearance</h4>
-             <label style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: 12, border: `1px solid ${colors.border}`, borderRadius: 8 }}>
-               <span>Dark Mode</span>
-               <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
-             </label>
-          </div>
-
-          <div>
-            <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>Manage Tags</h4>
-            <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 16 }}>
-               {categories.map((c, i) => (
-                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, padding: 8, background: colors.bg, borderRadius: 6 }}>
-                   <div style={{ width: 16, height: 16, borderRadius: 4, background: c.bg, border: `1px solid ${c.border}` }} />
-                   <span style={{ flex: 1 }}>{c.name}</span>
-                   <button onClick={() => setCategories(p => p.filter(x => x.id !== c.id))} style={{ color: "#ef4444", background: "none", border: "none", cursor: "pointer" }}><Trash2 size={16}/></button>
-                 </div>
-               ))}
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowSettings(false)}>
+          <div className="fade-in" style={{ width: 450, background: colors.card, padding: 32, borderRadius: 16, border: `1px solid ${colors.border}` }} onClick={e => e.stopPropagation()}>
+            <h3 className="serif" style={{ fontSize: 24, marginBottom: 24, color: colors.text }}>Settings</h3>
+            <div style={{ marginBottom: 24 }}>
+              <label style={{ display: "flex", justifyContent: "space-between", padding: 12, border: `1px solid ${colors.border}`, borderRadius: 8, color: colors.text }}>
+                <span>Dark Mode</span> <input type="checkbox" checked={darkMode} onChange={e => setDarkMode(e.target.checked)} />
+              </label>
+              <label style={{ display: "flex", justifyContent: "space-between", padding: 12, border: `1px solid ${colors.border}`, borderRadius: 8, marginTop: 10, color: colors.text }}>
+                <span>24-Hour Time</span> <input type="checkbox" checked={use24Hour} onChange={e => setUse24Hour(e.target.checked)} />
+              </label>
+            </div>
+            <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, color: colors.text }}>Manage Tags</h4>
+            <div style={{ maxHeight: 200, overflowY: "auto", marginBottom: 12 }}>
+              {categories.map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: 8, background: colors.bg, borderRadius: 6, marginBottom: 6 }}>
+                  <div style={{ width: 12, height: 12, borderRadius: 4, background: c.bg, border: `1px solid ${c.border}` }} />
+                  <span style={{ flex: 1, color: colors.text }}>{c.name}</span>
+                  <button onClick={() => setCategories(p => p.filter(x => x.id !== c.id))} style={{ color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}>✕</button>
+                </div>
+              ))}
             </div>
             <div style={{ display: "flex", gap: 8 }}>
-               <input placeholder="New Tag Name" id="newTag" style={{ flex: 1, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text }} />
-               <select id="newColor" style={{ padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: "transparent", color: colors.text }}>
-                 {PALETTE_OPTIONS.map((p, i) => <option key={i} value={i}>{p.label}</option>)}
-               </select>
-               <button onClick={() => {
-                  const name = document.getElementById('newTag').value;
-                  const colorIdx = document.getElementById('newColor').value;
-                  if(name) {
-                     setCategories(p => [...p, { id: name.toLowerCase(), name, ...PALETTE_OPTIONS[colorIdx] }]);
-                     document.getElementById('newTag').value = "";
-                  }
-               }} style={{ padding: "0 16px", background: colors.text, color: colors.bg, border: "none", borderRadius: 6, cursor: "pointer" }}>Add</button>
+              <input id="newTag" placeholder="New Tag" style={{ flex: 1, padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
+              <select id="newColor" style={{ padding: 8, borderRadius: 6, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }}>{TAG_COLORS.map((c,i) => <option key={i} value={i}>{c.name}</option>)}</select>
+              <button onClick={() => {
+                const name = document.getElementById('newTag').value;
+                if(name) { setCategories(p => [...p, { id: name.toLowerCase(), name, ...TAG_COLORS[document.getElementById('newColor').value] }]); document.getElementById('newTag').value = ""; }
+              }} style={{ padding: "0 16px", background: colors.text, color: colors.bg, borderRadius: 6, border: "none", cursor: "pointer" }}>Add</button>
             </div>
+            <button onClick={() => signOut(auth)} style={{ marginTop: 24, width: "100%", padding: 12, border: "1px solid #EF4444", background: "transparent", color: "#EF4444", borderRadius: 8, cursor: "pointer" }}>Sign Out</button>
           </div>
-        </Modal>
+        </div>
       )}
 
+      {/* EVENT MODAL */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={() => setShowModal(false)}>
+           <div className="fade-in" style={{ width: 400, background: colors.card, padding: 32, borderRadius: 16, border: `1px solid ${colors.border}` }} onClick={e => e.stopPropagation()}>
+             <h3 className="serif" style={{ fontSize: 22, marginBottom: 20, color: colors.text }}>{editingEvent ? "Edit" : "New"} Event</h3>
+             <input autoFocus value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Title" style={{ width: "100%", padding: 12, marginBottom: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
+             <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
+               <input type="time" value={formStart} onChange={e => setFormStart(e.target.value)} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
+               <input type="time" value={formEnd} onChange={e => setFormEnd(e.target.value)} style={{ flex: 1, padding: 12, borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text }} />
+             </div>
+             <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+               {categories.map(c => (
+                 <button key={c.id} onClick={() => setFormCat(c.id)} style={{ padding: "6px 12px", borderRadius: 20, border: formCat === c.id ? `2px solid ${c.border}` : `1px solid ${colors.border}`, background: formCat === c.id ? c.bg : "transparent", color: formCat === c.id ? c.text : colors.text, fontSize: 12, fontWeight: 500, cursor: "pointer" }}>{c.name}</button>
+               ))}
+             </div>
+             <div style={{ display: "flex", justifyContent: "flex-end", gap: 12 }}>
+               {editingEvent && <button onClick={() => deleteEvent(editingEvent.id)} style={{ marginRight: "auto", color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}>Delete</button>}
+               <button onClick={saveEvent} style={{ padding: "10px 24px", background: colors.text, color: colors.bg, border: "none", borderRadius: 8, cursor: "pointer", fontWeight: 600 }}>Save</button>
+             </div>
+           </div>
+        </div>
+      )}
     </div>
   );
 }
-
-// --- YEAR VIEW COMPONENT ---
-// This handles the Year Grid visualization logic extracted from the reference app
-const YearView = ({ currentDate, events, colors, onDayClick }) => {
-  const year = currentDate.getFullYear();
-  const months = Array.from({ length: 12 });
-
-  return (
-    <div style={{ padding: 40 }}>
-       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 40 }}>
-         {months.map((_, m) => {
-           const date = new Date(year, m, 1);
-           const daysInMonth = new Date(year, m + 1, 0).getDate();
-           // Calculate start day offset (0 = Sunday, etc.)
-           const startOffset = date.getDay(); 
-           
-           return (
-             <div key={m}>
-               <h4 className="serif" style={{ fontSize: 20, marginBottom: 16, color: colors.muted, borderBottom: `1px solid ${colors.border}`, paddingBottom: 8 }}>
-                 {date.toLocaleDateString('en-US', { month: 'long' })}
-               </h4>
-               <div className="calendar-grid">
-                 {/* Weekday Headers */}
-                 {['S','M','T','W','T','F','S'].map(d => (
-                    <div key={d} style={{ fontSize: 10, textAlign: "center", color: colors.muted, marginBottom: 4 }}>{d}</div>
-                 ))}
-                 
-                 {/* Empty Cells for Offset */}
-                 {Array.from({ length: startOffset }).map((_, i) => <div key={`empty-${i}`} />)}
-                 
-                 {/* Days */}
-                 {Array.from({ length: daysInMonth }).map((_, d) => {
-                   const dayDate = new Date(year, m, d + 1);
-                   const isToday = dayDate.toDateString() === new Date().toDateString();
-                   const hasEvent = events.some(e => e.start.toDateString() === dayDate.toDateString());
-                   
-                   return (
-                     <div key={d} 
-                        className={`calendar-day ${hasEvent ? 'has-event' : ''}`}
-                        onClick={() => onDayClick(dayDate)}
-                        style={{ 
-                          background: isToday ? colors.line : (colors.bg === '#0C0A09' ? '#292524' : '#E7E5E4'),
-                          backgroundColor: isToday ? colors.line : 'transparent',
-                          color: isToday ? '#fff' : colors.text,
-                          fontWeight: isToday ? 700 : 400,
-                        }}>
-                       {d + 1}
-                     </div>
-                   )
-                 })}
-               </div>
-             </div>
-           )
-         })}
-       </div>
-    </div>
-  );
-};
-
-// --- SUBCOMPONENTS ---
-const Modal = ({ children, onClose, colors }) => (
-  <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", backdropFilter: "blur(5px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }} onClick={onClose}>
-    <div className="fade-in" style={{ width: 450, background: colors.sidebar, padding: 32, borderRadius: 16, border: `1px solid ${colors.border}`, boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)" }} onClick={e => e.stopPropagation()}>
-      {children}
-    </div>
-  </div>
-);
-
-const Input = ({ label, colors, ...props }) => (
-  <div style={{ marginBottom: 16 }}>
-    <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: colors.muted, textTransform: "uppercase", marginBottom: 6 }}>{label}</label>
-    <input {...props} style={{ width: "100%", padding: "12px", borderRadius: 8, border: `1px solid ${colors.border}`, background: colors.bg, color: colors.text, fontSize: 15 }} />
-  </div>
-);
-
-const LoginScreen = ({ onLogin }) => (
-  <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#FDFCF8" }}>
-     <div style={{ textAlign: "center" }}>
-        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: 64, marginBottom: 16, color: "#1C1917" }}>Epoch.</h1>
-        <p style={{ color: "#78716C", marginBottom: 32 }}>Time, refined.</p>
-        <button onClick={onLogin} style={{ padding: "16px 32px", background: "#1C1917", color: "#fff", fontSize: 16, borderRadius: 8, border: "none", cursor: "pointer" }}>Enter</button>
-     </div>
-  </div>
-);
