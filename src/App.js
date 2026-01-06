@@ -5,12 +5,12 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, s
 import { db } from "./firebase";
 
 // ==========================================
-// 1. CONFIGURATION & GEOMETRY
+// 1. CONFIGURATION & ASSETS (Moved to Top Scope)
 // ==========================================
 
 const CONFIG = {
   APP_NAME: "Timeline",
-  HOUR_HEIGHT: 80, // Taller rows for better precision
+  HOUR_HEIGHT: 80, // High definition grid
   SIDEBAR_WIDTH: 320,
   HEADER_HEIGHT: 90,
   SNAP: 15
@@ -31,6 +31,14 @@ const THEME = {
   warning: "#F59E0B",
   gridLine: "#1F1F1F",
   glass: "rgba(20, 20, 20, 0.8)"
+};
+
+const ICONS = {
+  Settings: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+  Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
+  Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  Habits: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  Budget: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
 };
 
 // ==========================================
@@ -70,8 +78,11 @@ const CSS = `
   .event-card:hover { z-index: 50; transform: scale(1.02); box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
 
   /* Sidebar Widgets (Matches Screenshot) */
-  .widget { background: #121212; border: 1px solid #1F1F1F; border-radius: 16px; padding: 20px; margin-bottom: 16px; }
-  .progress-track { height: 6px; background: #27272a; border-radius: 3px; overflow: hidden; margin-top: 12px; }
+  .widget { background: #F8F8F8; border: 1px solid #E5E5E5; border-radius: 16px; padding: 20px; margin-bottom: 16px; color: #1C1917; }
+  .dark .widget { background: #121212; border: 1px solid #1F1F1F; color: #FFF; }
+  
+  .progress-track { height: 6px; background: #E5E5E5; border-radius: 3px; overflow: hidden; margin-top: 12px; }
+  .dark .progress-track { background: #27272a; }
   .progress-fill { height: 100%; border-radius: 3px; }
 
   /* Settings Modal (Matches Screenshot) */
@@ -97,7 +108,7 @@ export default function TimelineArchitect() {
   const [user, setUser] = useState(null);
   const [events, setEvents] = useState([]);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState("week"); // Default to Week to show fix
+  const [view, setView] = useState("week");
   
   // Settings
   const [config, setConfig] = useState({ theme: 'dark', blurPast: true, weekStartMon: true, use24h: false });
@@ -152,8 +163,8 @@ export default function TimelineArchitect() {
   if (!user) return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} />;
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      <Sidebar user={user} openSettings={() => setSettingsOpen(true)} onNew={() => { setEditingEvent(null); setModalOpen(true); }} />
+    <div style={{ display: "flex", height: "100vh" }} className={config.theme}>
+      <Sidebar user={user} openSettings={() => setSettingsOpen(true)} onNew={() => { setEditingEvent(null); setModalOpen(true); }} config={config} />
       
       <div style={{ flex: 1, display: "flex", flexDirection: "column", background: THEME.bg }}>
         {/* Header */}
@@ -182,7 +193,7 @@ export default function TimelineArchitect() {
         {/* Viewport */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", position: "relative" }}>
           {view === 'week' && <WeekView currentDate={currentDate} events={events} onEdit={(ev) => { setEditingEvent(ev); setModalOpen(true); }} config={config} />}
-          {view === 'day' && <DayView currentDate={currentDate} events={events} onEdit={(ev) => { setEditingEvent(ev); setModalOpen(true); }} />}
+          {view === 'day' && <DayView currentDate={currentDate} events={events} onEdit={(ev) => { setEditingEvent(ev); setModalOpen(true); }} config={config} />}
         </div>
       </div>
 
@@ -282,7 +293,9 @@ function WeekView({ currentDate, events, onEdit, config }) {
 // 5. SIDEBAR & WIDGETS
 // ==========================================
 
-function Sidebar({ user, openSettings, onNew }) {
+function Sidebar({ user, openSettings, onNew, config }) {
+  const isDark = config.theme === 'dark';
+  
   return (
     <aside style={{ width: CONFIG.SIDEBAR_WIDTH, background: THEME.sidebar, borderRight: `1px solid ${THEME.border}`, display: "flex", flexDirection: "column", padding: 24, zIndex: 50, overflowY: "auto" }}>
       <div style={{ marginBottom: 32 }}>
@@ -291,43 +304,41 @@ function Sidebar({ user, openSettings, onNew }) {
       </div>
 
       <button onClick={onNew} className="btn" style={{ width: "100%", padding: "14px", borderRadius: 12, background: THEME.accent, color: "#fff", fontWeight: 600, fontSize: 14, boxShadow: "0 4px 20px rgba(59, 130, 246, 0.4)", marginBottom: 32 }}>
-        <span style={{marginRight: 8}}>+</span> New Event
+        <span style={{marginRight: 8}}><ICONS.Plus/></span> New Event
       </button>
 
       <div style={{ fontSize: 11, fontWeight: 700, color: THEME.textSec, letterSpacing: 1, marginBottom: 16 }}>LIFE OS</div>
 
       {/* Habits Widget (Screenshot Match) */}
-      <div className="widget">
+      <div className="widget" style={{background: isDark ? '#121212' : '#F8F8F8', color: isDark ? '#fff' : '#1C1917'}}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-            Habits
+            <ICONS.Habits /> Habits
           </div>
           <span style={{ fontSize: 11, color: "#F59E0B", fontWeight: 600 }}>High Perf</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: "#A1A1AA" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, marginBottom: 4, color: isDark ? "#A1A1AA" : "#57534E" }}>
           <span>Workout</span>
           <span>12 day streak</span>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "#A1A1AA" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: isDark ? "#A1A1AA" : "#57534E" }}>
           <span>Reading</span>
           <span>5 day streak</span>
         </div>
       </div>
 
       {/* Budget Widget (Screenshot Match) */}
-      <div className="widget">
+      <div className="widget" style={{background: isDark ? '#121212' : '#F8F8F8', color: isDark ? '#fff' : '#1C1917'}}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontWeight: 600 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-            Monthly Budget
+            <ICONS.Budget /> Monthly Budget
           </div>
           <span style={{ fontSize: 14, fontWeight: 700 }}>41%</span>
         </div>
-        <div className="progress-track">
+        <div className="progress-track" style={{background: isDark ? '#27272a' : '#E5E5E5'}}>
           <div className="progress-fill" style={{ width: "41%", background: "#10B981" }} />
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#71717A", marginTop: 8 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: isDark ? "#71717A" : "#57534E", marginTop: 8 }}>
           <span>$1240 spent</span>
           <span>$3000 limit</span>
         </div>
@@ -358,8 +369,8 @@ function SettingsModal({ config, setConfig, onClose, onSignOut }) {
         <div style={{ marginBottom: 24 }}>
           <label style={{ fontSize: 14, fontWeight: 600, display: "block", marginBottom: 12 }}>Theme</label>
           <div className="segmented-control">
-            <div className={`segment-btn ${!config.darkMode ? 'active' : ''}`} onClick={() => setConfig({...config, darkMode: false})}>☀ Light</div>
-            <div className={`segment-btn ${config.darkMode ? 'active' : ''}`} onClick={() => setConfig({...config, darkMode: true})}>☾ Dark</div>
+            <div className={`segment-btn ${config.theme !== 'dark' ? 'active' : ''}`} onClick={() => setConfig({...config, theme: 'light'})}>☀ Light</div>
+            <div className={`segment-btn ${config.theme === 'dark' ? 'active' : ''}`} onClick={() => setConfig({...config, theme: 'dark'})}>☾ Dark</div>
           </div>
         </div>
 
@@ -437,7 +448,7 @@ function EventModal({ event, onSave, onClose }) {
 // 8. DAY VIEW (Manifesto)
 // ==========================================
 
-function DayView({ currentDate, events, onEdit }) {
+function DayView({ currentDate, events, onEdit, config }) {
   const dEvents = events.filter(e => e.start.toDateString() === currentDate.toDateString()).sort((a,b) => a.start - b.start);
   
   return (
@@ -453,7 +464,7 @@ function DayView({ currentDate, events, onEdit }) {
           const slotEvents = dEvents.filter(e => e.start.getHours() === h);
           return (
             <div key={h} style={{ minHeight: 80, position: "relative", paddingBottom: 20 }}>
-              <div className="serif" style={{ position: "absolute", left: -100, top: -8, color: THEME.textSec, width: 50, textAlign: "right", fontStyle: "italic" }}>{h % 12 || 12} {h < 12 ? 'AM' : 'PM'}</div>
+              <div className="serif" style={{ position: "absolute", left: -100, top: -8, color: THEME.textSec, width: 50, textAlign: "right", fontStyle: "italic" }}>{config.use24h ? `${h}:00` : `${h % 12 || 12} ${h < 12 ? 'AM' : 'PM'}`}</div>
               <div style={{ position: "absolute", left: -46, top: 4, width: 11, height: 11, borderRadius: "50%", background: THEME.bg, border: `2px solid ${THEME.border}` }} />
               
               {slotEvents.map(ev => (
