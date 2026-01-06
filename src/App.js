@@ -5,19 +5,19 @@ import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, s
 import { db } from "./firebase";
 
 // ==========================================
-// 1. CORE SYSTEM CONFIGURATION
+// 1. CORE CONFIGURATION & CONSTANTS
 // ==========================================
 
 const APP_META = { 
   name: "Timeline", 
-  version: "4.2.0-Ultra",
+  version: "4.3.0-Roadmap",
   quoteInterval: 14400000 
 };
 
 const LAYOUT = {
-  SIDEBAR_WIDTH: 290,
+  SIDEBAR_WIDTH: 300,
   HEADER_HEIGHT: 84,
-  PIXELS_PER_MINUTE: 2.4, // Increased precision for Day View
+  PIXELS_PER_MINUTE: 2.4, 
   SNAP_MINUTES: 15,
   YEAR_COLS: 38 
 };
@@ -45,11 +45,12 @@ const ICONS = {
   Close: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
   Calendar: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
   Clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  MapPin: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+  MapPin: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  Finance: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  Health: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
 };
 
 const PALETTE = {
-  // Luxury Color Options for Tags
   onyx: { bg: "#27272a", text: "#f4f4f5", border: "#52525b" },
   ceramic: { bg: "#f5f5f4", text: "#44403c", border: "#d6d3d1" },
   gold: { bg: "#fffbeb", text: "#92400e", border: "#fcd34d" },
@@ -64,7 +65,7 @@ const THEMES = {
   light: {
     id: 'light',
     bg: "#FAFAF9", 
-    sidebar: "#FFFFFF", 
+    sidebar: "#F5F5F4", 
     card: "#FFFFFF",
     text: "#1C1917", 
     textSec: "#57534E",
@@ -136,6 +137,11 @@ const CSS = `
   /* Day View Journal Card */
   .event-card-journal { transition: all 0.3s var(--ease); border-left-width: 3px; border-left-style: solid; }
   .event-card-journal:hover { transform: translateX(4px); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+
+  /* Roadmap Modules */
+  .life-module { padding: 16px; border-radius: 12px; background: rgba(0,0,0,0.02); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.05); }
+  .progress-bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.1); overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
 `;
 
 // ==========================================
@@ -155,6 +161,10 @@ export default function TimelineOS() {
   const [activeTagIds, setActiveTagIds] = useState(tags.map(t => t.id));
   const [quote, setQuote] = useState(QUOTES[0]);
   
+  // Roadmap: Phase 3 & 4 Data
+  const [habits, setHabits] = useState([ { id: 1, name: "Workout", streak: 12 }, { id: 2, name: "Reading", streak: 5 } ]);
+  const [budget, setBudget] = useState({ spent: 1240, limit: 3000 });
+
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -173,7 +183,19 @@ export default function TimelineOS() {
     const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
     const i = setInterval(() => setNow(new Date()), 60000);
     const qI = setInterval(() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]), APP_META.quoteInterval);
-    return () => { s.remove(); clearInterval(i); clearInterval(qI); };
+    
+    // Keyboard Shortcuts (Roadmap Phase 2)
+    const handleKey = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      if (e.key === 'd') setViewMode('day');
+      if (e.key === 'w') setViewMode('week');
+      if (e.key === 'm') setViewMode('month');
+      if (e.key === 'y') setViewMode('year');
+      if (e.key === 't') setCurrentDate(new Date());
+    };
+    window.addEventListener('keydown', handleKey);
+
+    return () => { s.remove(); clearInterval(i); clearInterval(qI); window.removeEventListener('keydown', handleKey); };
   }, []);
 
   useEffect(() => {
@@ -244,6 +266,7 @@ export default function TimelineOS() {
     const d = new Date(currentDate);
     if(viewMode === 'year') d.setFullYear(d.getFullYear() + amt);
     else if(viewMode === 'week') d.setDate(d.getDate() + (amt*7));
+    else if(viewMode === 'month') d.setMonth(d.getMonth() + amt);
     else d.setDate(d.getDate() + amt);
     setCurrentDate(d);
   };
@@ -254,7 +277,7 @@ export default function TimelineOS() {
     <div style={{ display: "flex", height: "100vh", background: theme.bg, color: theme.text }}>
       
       {/* SIDEBAR */}
-      <aside style={{ width: LAYOUT.SIDEBAR_WIDTH, background: theme.sidebar, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", zIndex: 50 }}>
+      <aside style={{ width: LAYOUT.SIDEBAR_WIDTH, background: theme.sidebar, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", zIndex: 50, overflowY: "auto" }}>
         <div style={{ marginBottom: 32 }}>
           <h1 className="serif" style={{ fontSize: 32, fontWeight: 700, color: theme.text, letterSpacing: "-0.5px" }}>Timeline.</h1>
           <div style={{ fontSize: 13, color: theme.textSec, marginTop: 4 }}>Welcome back, <span style={{fontWeight:600}}>{user.displayName?.split(" ")[0]}</span></div>
@@ -269,13 +292,45 @@ export default function TimelineOS() {
           <ICONS.Plus /> New Event
         </button>
 
-        {/* Mini Calendar */}
+        {/* Phase 2: Mini Calendar */}
         <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${theme.border}` }}>
            <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
         </div>
 
+        {/* Phase 3 & 4: Life Modules */}
+        <div style={{ marginBottom: 24 }}>
+          <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Life OS</h4>
+          
+          {/* Health Module */}
+          <div className="life-module">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+              <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.Health /> Habits</span>
+              <span style={{color: theme.accent}}>High Perf</span>
+            </div>
+            {habits.map(h => (
+              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4, color: theme.textSec }}>
+                <span>{h.name}</span>
+                <span>{h.streak} day streak</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Finance Module */}
+          <div className="life-module">
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600 }}>
+              <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.Finance /> Monthly Budget</span>
+              <span>{Math.round((budget.spent/budget.limit)*100)}%</span>
+            </div>
+            <div className="progress-bar"><div className="progress-fill" style={{ width: `${(budget.spent/budget.limit)*100}%`, background: theme.familyAccent }} /></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 4, color: theme.textMuted }}>
+              <span>${budget.spent} spent</span>
+              <span>${budget.limit} limit</span>
+            </div>
+          </div>
+        </div>
+
         {/* Tags */}
-        <div style={{ flex: 1, overflowY: "auto" }}>
+        <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
              <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Tags</h4>
              <button onClick={() => setTagManagerOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec }}><ICONS.Settings /></button>
@@ -283,9 +338,9 @@ export default function TimelineOS() {
           {tags.map(t => (
             <div key={t.id} onClick={() => setActiveTagIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
               className="btn-hover"
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
               <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.id === 'dark' ? t.color : t.text }} />
-              <span style={{ fontSize: 14, fontWeight: 500 }}>{t.name}</span>
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
             </div>
           ))}
         </div>
@@ -315,7 +370,7 @@ export default function TimelineOS() {
             </div>
           </div>
           <div style={{ display: "flex", background: theme.sidebar, padding: 4, borderRadius: 12 }}>
-            {['day', 'week', 'year'].map(m => (
+            {['day', 'week', 'month', 'year'].map(m => (
               <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>{m}</button>
             ))}
           </div>
@@ -328,7 +383,7 @@ export default function TimelineOS() {
             <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
               <div style={{ marginBottom: 60 }}>
                 <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
-                <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
+                <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
               </div>
               <div style={{ position: "relative", borderLeft: `1px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
                 {Array.from({length: 24}).map((_, h) => {
@@ -404,6 +459,9 @@ export default function TimelineOS() {
 
           {/* WEEK VIEW - FIXED ALIGNMENT */}
           {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={tags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: tags[0].id}); setModalOpen(true); }} />}
+          
+          {/* MONTH VIEW (Phase 2 Roadmap) */}
+          {viewMode === 'month' && <MonthView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} setCurrentDate={setCurrentDate} setViewMode={setViewMode} />}
         </div>
       </div>
 
@@ -507,6 +565,46 @@ function WeekView({ currentDate, events, theme, config, tags, onNew }) {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function MonthView({ currentDate, events, theme, config, setCurrentDate, setViewMode }) {
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const startDay = startOfMonth.getDay();
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const offset = config.weekStartMon ? (startDay === 0 ? 6 : startDay - 1) : startDay;
+
+  return (
+    <div className="fade-enter" style={{ padding: 40, height: '100%' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%', gap: 8 }}>
+        {(config.weekStartMon ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]).map(d => (
+          <div key={d} style={{ textAlign: 'center', fontWeight: 600, color: theme.textMuted, paddingBottom: 10 }}>{d}</div>
+        ))}
+        {Array.from({length: offset}).map((_, i) => <div key={`empty-${i}`} />)}
+        {Array.from({length: daysInMonth}).map((_, i) => {
+          const day = i + 1;
+          const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+          const dayEvents = events.filter(e => e.start.toDateString() === d.toDateString());
+          const isToday = d.toDateString() === new Date().toDateString();
+          
+          return (
+            <div key={day} onClick={() => { setCurrentDate(d); setViewMode('day'); }} 
+              style={{ border: `1px solid ${theme.border}`, borderRadius: 8, padding: 8, minHeight: 100, cursor: 'pointer', background: isToday ? (config.darkMode ? '#1C1917' : '#FAFAFA') : 'transparent' }}
+              className="btn-hover">
+              <div style={{ fontWeight: isToday ? 700 : 500, color: isToday ? theme.accent : theme.text, marginBottom: 4 }}>{day}</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                {dayEvents.slice(0,3).map(ev => (
+                  <div key={ev.id} style={{ fontSize: 10, padding: "2px 4px", borderRadius: 3, background: config.darkMode ? "#292524" : "#E7E5E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {ev.title}
+                  </div>
+                ))}
+                {dayEvents.length > 3 && <div style={{ fontSize: 10, color: theme.textMuted }}>+{dayEvents.length - 3} more</div>}
               </div>
             </div>
           );
