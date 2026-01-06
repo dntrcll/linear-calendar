@@ -10,12 +10,12 @@ import { db } from "./firebase";
 
 const APP_META = { 
   name: "Timeline", 
-  version: "4.0.1-Stable",
+  version: "4.1.0-Luxe",
   quoteInterval: 14400000 // 4 Hours
 };
 
 const LAYOUT = {
-  SIDEBAR_WIDTH: 280,
+  SIDEBAR_WIDTH: 300, // Slightly wider for calendar
   HEADER_HEIGHT: 80,
   PIXELS_PER_MINUTE: 2.2,
   SNAP_MINUTES: 15,
@@ -73,7 +73,7 @@ const THEMES = {
   }
 };
 
-const TAGS = [
+const DEFAULT_TAGS = [
   { id: 'work',    name: "Business",  color: "#78716C", bg: "#F5F5F4", darkBg: "#292524" },
   { id: 'health',  name: "Wellness",  color: "#BE123C", bg: "#FFF1F2", darkBg: "#881337" },
   { id: 'finance', name: "Finance",   color: "#059669", bg: "#ECFDF5", darkBg: "#064E3B" },
@@ -112,6 +112,14 @@ const CSS = `
   .seg-opt { flex: 1; padding: 6px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 6px; color: inherit; opacity: 0.6; transition: 0.2s; }
   .seg-opt.active { background: #3B82F6; color: #fff; opacity: 1; font-weight: 600; box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3); }
   .light-mode .seg-opt.active { background: #fff; color: #000; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  
+  /* Sidebar Calendar */
+  .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin-top: 8px; }
+  .mini-cal-day { font-size: 11px; padding: 6px; border-radius: 6px; cursor: pointer; transition: 0.2s; color: inherit; opacity: 0.8; }
+  .mini-cal-day:hover { background: rgba(0,0,0,0.05); opacity: 1; }
+  .mini-cal-day.active { background: #D97706; color: #fff; font-weight: 600; opacity: 1; }
+  .mini-cal-day.today { border: 1px solid #D97706; }
+  .mini-cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; font-weight: 600; font-size: 13px; }
 `;
 
 // ==========================================
@@ -127,13 +135,17 @@ export default function TimelineOS() {
   const [context, setContext] = useState("personal");
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
-  const [activeTags, setActiveTags] = useState(TAGS.map(t => t.id));
   const [quote, setQuote] = useState(QUOTES[0]);
+  
+  // Tag Management State
+  const [tags, setTags] = useState(() => JSON.parse(localStorage.getItem('timeline_tags')) || DEFAULT_TAGS);
+  const [activeTagIds, setActiveTagIds] = useState(tags.map(t => t.id));
   
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
   
@@ -157,6 +169,7 @@ export default function TimelineOS() {
   }, []);
 
   useEffect(() => localStorage.setItem('timeline_v4_cfg', JSON.stringify(config)), [config]);
+  useEffect(() => localStorage.setItem('timeline_tags', JSON.stringify(tags)), [tags]);
 
   useEffect(() => {
     if ((viewMode === 'day' || viewMode === 'week') && scrollRef.current) {
@@ -211,7 +224,7 @@ export default function TimelineOS() {
     setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 4000);
   };
 
-  const filteredEvents = useMemo(() => events.filter(e => e.context === context && activeTags.includes(e.category)), [events, context, activeTags]);
+  const filteredEvents = useMemo(() => events.filter(e => e.context === context && activeTagIds.includes(e.category)), [events, context, activeTagIds]);
   const upcomingEvents = useMemo(() => events.filter(e => e.context === context && e.start > now && !e.deleted).sort((a,b) => a.start - b.start).slice(0, 3), [events, now, context]);
 
   const [dragData, setDragData] = useState(null);
@@ -261,41 +274,49 @@ export default function TimelineOS() {
           <div style={{ fontSize: 13, color: theme.textSec, marginTop: 4 }}>Welcome back, <span style={{fontWeight:600}}>{user.displayName?.split(" ")[0]}</span></div>
         </div>
 
-        <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", padding: 4, borderRadius: 12, marginBottom: 32 }}>
+        <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", padding: 4, borderRadius: 12, marginBottom: 24 }}>
           <button onClick={() => setContext('personal')} className={`btn-reset tab-pill ${context==='personal'?'active':''}`} style={{ flex: 1, background: context==='personal' ? theme.card : 'transparent', color: context==='personal' ? theme.accent : theme.textSec }}>Personal</button>
           <button onClick={() => setContext('family')} className={`btn-reset tab-pill ${context==='family'?'active':''}`} style={{ flex: 1, background: context==='family' ? theme.card : 'transparent', color: context==='family' ? theme.familyAccent : theme.textSec }}>Family</button>
         </div>
 
-        <button onClick={() => { setEditingEvent(null); setModalOpen(true); }} className="btn-reset btn-hover" style={{ width: "100%", padding: "14px", borderRadius: 12, background: context==='family' ? theme.familyAccent : theme.accent, color: "#fff", fontSize: 14, fontWeight: 600, boxShadow: theme.shadow, marginBottom: 32 }}>+ New Event</button>
+        <button onClick={() => { setEditingEvent(null); setModalOpen(true); }} className="btn-reset btn-hover" style={{ width: "100%", padding: "14px", borderRadius: 12, background: context==='family' ? theme.familyAccent : theme.accent, color: "#fff", fontSize: 14, fontWeight: 600, boxShadow: theme.shadow, marginBottom: 24 }}>+ New Event</button>
 
-        <div style={{ padding: 20, background: theme.card, borderRadius: 16, border: `1px solid ${theme.border}`, marginBottom: 32 }}>
-          <p className="serif" style={{ fontSize: 16, fontStyle: "italic", lineHeight: 1.5, color: theme.textSec }}>"{quote}"</p>
+        {/* Mini Calendar */}
+        <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${theme.border}` }}>
+           <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
         </div>
 
+        {/* Tags */}
         <div style={{ flex: 1, overflowY: "auto" }}>
-          <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 16 }}>Upcoming</h4>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {upcomingEvents.length === 0 && <span style={{fontSize:13, color: theme.textMuted}}>No upcoming events.</span>}
-            {upcomingEvents.map(e => (
-              <div key={e.id} style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                <div style={{ width: 3, height: 32, borderRadius: 2, background: TAGS.find(t=>t.id===e.category)?.color }} />
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{e.title}</div>
-                  <div style={{ fontSize: 12, color: theme.textMuted }}>{e.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</div>
-                </div>
-              </div>
-            ))}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+             <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Tags</h4>
+             <button onClick={() => setTagManagerOpen(true)} className="btn-reset" style={{fontSize:16, color: theme.textMuted}}>+</button>
           </div>
+          {tags.map(t => (
+            <div key={t.id} onClick={() => setActiveTagIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+              className="btn-hover"
+              style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: t.color }} />
+              <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
+            </div>
+          ))}
         </div>
 
+        {/* Footer Actions */}
         <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between" }}>
-          <button onClick={() => setTrashOpen(true)} className="btn-reset" style={{ color: theme.textSec, fontSize: 14 }}>Trash ({deletedEvents.length})</button>
-          <button onClick={() => setSettingsOpen(true)} className="btn-reset" style={{ color: theme.textSec, fontSize: 14 }}>Settings</button>
+          <button onClick={() => setTrashOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 16 }}>🗑</span> Trash ({deletedEvents.length})
+          </button>
+          <button onClick={() => setSettingsOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ fontSize: 16 }}>⚙</span> Settings
+          </button>
         </div>
       </aside>
 
       {/* MAIN WORKSPACE */}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+        
+        {/* Header */}
         <header style={{ height: LAYOUT.HEADER_HEIGHT, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${theme.border}`, background: theme.bg }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
             <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
@@ -331,7 +352,7 @@ export default function TimelineOS() {
                       <div style={{ position: "absolute", left: -45, top: 4, width: 9, height: 9, borderRadius: "50%", background: theme.bg, border: `2px solid ${theme.textSec}` }} />
                       <div>
                         {slotEvents.map(ev => {
-                          const tag = TAGS.find(t => t.id === ev.category) || TAGS[0];
+                          const tag = tags.find(t => t.id === ev.category) || tags[0];
                           const isPast = config.blurPast && ev.end < now;
                           return (
                             <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`btn-hover ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 12, cursor: "pointer" }}>
@@ -344,7 +365,7 @@ export default function TimelineOS() {
                           <div style={{ height: 40, cursor: "pointer" }} onClick={() => {
                               const s = new Date(currentDate); s.setHours(h,0,0,0);
                               const e = new Date(s); e.setHours(h+1);
-                              setEditingEvent({ start: s, end: e, title: "", category: TAGS[0].id });
+                              setEditingEvent({ start: s, end: e, title: "", category: tags[0].id });
                               setModalOpen(true);
                             }} />
                         )}
@@ -361,7 +382,9 @@ export default function TimelineOS() {
             <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
               <div style={{ minWidth: 1200 }}>
                 <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
-                  {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>)}
+                  {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
+                  ))}
                 </div>
                 {Array.from({length: 12}).map((_, m) => {
                   const monthStart = new Date(currentDate.getFullYear(), m, 1);
@@ -379,7 +402,15 @@ export default function TimelineOS() {
                           const hasEv = events.some(e => e.start.toDateString() === d.toDateString() && e.context === context);
                           return (
                             <div key={col} onClick={() => { setCurrentDate(d); setViewMode('day'); }}
-                              style={{ flex: 1, height: 32, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, cursor: "pointer", background: isT ? theme.accent : hasEv ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent", color: isT ? "#fff" : hasEv ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text, border: isT ? `1px solid ${theme.accent}` : "none", fontWeight: isT ? 700 : 400 }}>{dayNum}</div>
+                              style={{ 
+                                flex: 1, height: 32, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, cursor: "pointer",
+                                background: isT ? theme.accent : hasEv ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
+                                color: isT ? "#fff" : hasEv ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
+                                border: isT ? `1px solid ${theme.accent}` : "none",
+                                fontWeight: isT ? 700 : 400
+                              }}>
+                              {dayNum}
+                            </div>
                           );
                         })}
                       </div>
@@ -391,15 +422,18 @@ export default function TimelineOS() {
           )}
 
           {/* WEEK VIEW */}
-          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: TAGS[0].id}); setModalOpen(true); }} />}
+          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={tags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: tags[0].id}); setModalOpen(true); }} />}
         </div>
       </div>
 
-      {/* SETTINGS */}
+      {/* SETTINGS MODAL */}
       {settingsOpen && (
         <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setSettingsOpen(false)}>
           <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 24, borderRadius: 20, boxShadow: theme.shadow }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}><h3 className="serif" style={{ fontSize: 20 }}>Settings</h3><button onClick={() => setSettingsOpen(false)} className="btn-reset" style={{ fontSize: 20 }}>✕</button></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+              <h3 className="serif" style={{ fontSize: 20 }}>Settings</h3>
+              <button onClick={() => setSettingsOpen(false)} className="btn-reset" style={{ fontSize: 20 }}>✕</button>
+            </div>
             <div style={{ marginBottom: 24 }}>
               <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Theme</label>
               <div className={`segmented ${!config.darkMode ? 'light-mode' : ''}`}>
@@ -418,19 +452,18 @@ export default function TimelineOS() {
       {/* EVENT MODAL */}
       {modalOpen && (
         <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={() => setModalOpen(false)}>
-          <EventEditor event={editingEvent} theme={theme} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} />
+          <EventEditor event={editingEvent} theme={theme} tags={tags} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} />
         </div>
       )}
 
-      {/* TRASH MODAL - Fixed Scope & Props */}
+      {/* TRASH MODAL */}
       {trashOpen && (
-        <TrashModal 
-          events={deletedEvents} 
-          theme={theme} 
-          onClose={() => setTrashOpen(false)} 
-          onRestore={(id) => { restoreEvent(id); setTrashOpen(false); }} 
-          onDelete={(id) => { hardDelete(id); setTrashOpen(false); }}
-        />
+        <TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={(id) => { restoreEvent(id); setTrashOpen(false); }} onDelete={(id) => { hardDelete(id); setTrashOpen(false); }} />
+      )}
+
+      {/* TAG MANAGER MODAL */}
+      {tagManagerOpen && (
+        <TagManager tags={tags} setTags={setTags} theme={theme} onClose={() => setTagManagerOpen(false)} />
       )}
 
       {/* NOTIFICATIONS */}
@@ -443,7 +476,44 @@ export default function TimelineOS() {
 // 4. SUB-COMPONENTS
 // ==========================================
 
-function WeekView({ currentDate, events, theme, config, onNew }) {
+function MiniCalendar({ currentDate, setCurrentDate, theme }) {
+  const days = ["S","M","T","W","T","F","S"];
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const startDay = startOfMonth.getDay();
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const today = new Date();
+
+  return (
+    <div>
+      <div className="mini-cal-header" style={{color: theme.text}}>
+        <span>{currentDate.toLocaleDateString('en-US', {month:'long', year:'numeric'})}</span>
+        <div style={{display:'flex', gap:4}}>
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))} className="btn-reset" style={{fontSize:16}}>‹</button>
+          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))} className="btn-reset" style={{fontSize:16}}>›</button>
+        </div>
+      </div>
+      <div className="mini-cal-grid">
+        {days.map(d => <div key={d} style={{fontSize:10, color:theme.textMuted}}>{d}</div>)}
+        {Array.from({length:startDay}).map((_,i) => <div key={`e-${i}`} />)}
+        {Array.from({length:daysInMonth}).map((_,i) => {
+          const day = i+1;
+          const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
+          const isSelected = currentDate.getDate() === day;
+          return (
+            <div key={day} 
+                 className={`mini-cal-day ${isSelected?'active':''} ${isToday?'today':''}`}
+                 onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+            >
+              {day}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ currentDate, events, theme, config, tags, onNew }) {
   const days = useMemo(() => {
     const s = new Date(currentDate);
     const day = s.getDay();
@@ -479,7 +549,7 @@ function WeekView({ currentDate, events, theme, config, onNew }) {
                 {dEvents.map(ev => {
                   const top = (ev.start.getHours()*60 + ev.start.getMinutes()) * LAYOUT.PIXELS_PER_MINUTE;
                   const h = Math.max(((ev.end - ev.start)/60000) * LAYOUT.PIXELS_PER_MINUTE, 24);
-                  const tag = TAGS.find(t => t.id === ev.category) || TAGS[0];
+                  const tag = tags.find(t => t.id === ev.category) || tags[0];
                   return (
                     <div key={ev.id} className="btn-hover" style={{ position: "absolute", top, height: h, left: 4, right: 4, background: config.darkMode ? tag.darkBg : tag.bg, borderLeft: `3px solid ${tag.color}`, borderRadius: 4, padding: 4, fontSize: 11, color: theme.text, cursor: "pointer", zIndex: 5, overflow: "hidden" }}>
                       <div style={{ fontWeight: 600 }}>{ev.title}</div>
@@ -495,10 +565,10 @@ function WeekView({ currentDate, events, theme, config, onNew }) {
   );
 }
 
-function EventEditor({ event, theme, onSave, onDelete, onCancel }) {
+function EventEditor({ event, theme, tags, onSave, onDelete, onCancel }) {
   const [data, setData] = useState({ 
     title: event?.title || "", 
-    category: event?.category || TAGS[0].id,
+    category: event?.category || tags[0].id,
     start: event?.start ? event.start.toTimeString().slice(0,5) : "09:00",
     end: event?.end ? event.end.toTimeString().slice(0,5) : "10:00",
     description: event?.description || "",
@@ -523,8 +593,8 @@ function EventEditor({ event, theme, onSave, onDelete, onCancel }) {
           <input type="time" value={data.end} onChange={e => setData({...data, end: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {TAGS.map(t => (
-            <button key={t.id} onClick={() => setData({...data, category: t.id})} className="btn-reset" style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${data.category===t.id ? t.color : theme.border}`, background: data.category===t.id ? t.bg : "transparent", color: t.color, fontSize: 12, cursor: "pointer" }}>{t.name}</button>
+          {tags.map(t => (
+            <button key={t.id} onClick={() => setData({...data, category: t.id})} className="btn-reset" style={{ padding: "6px 12px", borderRadius: 20, fontSize: 12, border: `1px solid ${data.category===t.id ? t.color : theme.border}`, background: data.category===t.id ? t.bg : "transparent", color: t.color }}>{t.name}</button>
           ))}
         </div>
         <input value={data.location} onChange={e => setData({...data, location: e.target.value})} placeholder="Location..." className="input-luxe" style={{ color: theme.text }} />
@@ -533,7 +603,7 @@ function EventEditor({ event, theme, onSave, onDelete, onCancel }) {
           {onDelete ? <button onClick={onDelete} className="btn-reset" style={{ color: theme.indicator, fontWeight: 600 }}>Delete</button> : <div/>}
           <div style={{ display: "flex", gap: 12 }}>
             <button onClick={onCancel} className="btn-reset" style={{ color: theme.textSec }}>Cancel</button>
-            <button onClick={submit} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, background: theme.accent, color: "#fff", fontWeight: 600 }}>Save</button>
+            <button onClick={submit} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, background: theme.accent, color: "#fff", fontWeight: 600 }}>Save Event</button>
           </div>
         </div>
       </div>
@@ -543,7 +613,7 @@ function EventEditor({ event, theme, onSave, onDelete, onCancel }) {
 
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
   return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)" }} onClick={onClose}>
+    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ width: 500, height: "70vh", background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow, display: "flex", flexDirection: "column" }}>
         <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>Trash</h3>
         <div style={{ flex: 1, overflowY: "auto" }}>
@@ -555,6 +625,38 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
                 <button onClick={() => onRestore(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer" }}>Restore</button>
                 <button onClick={() => onDelete(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", cursor: "pointer" }}>Purge</button>
               </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TagManager({ tags, setTags, theme, onClose }) {
+  const [newTag, setNewTag] = useState("");
+  const addTag = () => {
+    if(!newTag.trim()) return;
+    const id = newTag.toLowerCase().replace(/\s+/g,'-');
+    setTags([...tags, { id, name: newTag, color: "#78716C", bg: "#F5F5F4", darkBg: "#292524" }]);
+    setNewTag("");
+  };
+  return (
+    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 24, borderRadius: 20, boxShadow: theme.shadow }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+          <h3 className="serif" style={{ fontSize: 20 }}>Manage Tags</h3>
+          <button onClick={onClose} className="btn-reset" style={{ fontSize: 20 }}>✕</button>
+        </div>
+        <div style={{ marginBottom: 16, display: "flex", gap: 8 }}>
+          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="New tag name..." className="input-luxe" style={{ color: theme.text }} />
+          <button onClick={addTag} style={{ padding: "0 16px", background: theme.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer" }}>Add</button>
+        </div>
+        <div style={{ maxHeight: 300, overflowY: "auto" }}>
+          {tags.map((t, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
+              <span>{t.name}</span>
+              <button onClick={() => setTags(tags.filter(tg => tg.id !== t.id))} className="btn-reset" style={{ color: theme.indicator }}>Delete</button>
             </div>
           ))}
         </div>
