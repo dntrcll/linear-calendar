@@ -433,7 +433,7 @@ function AuthScreen({ onLogin }) {
 // DAY VIEW · HOUR GRID · NOW LINE · JOURNAL MODE
 // ============================================================================
 
-import { useMemo } from "react";
+
 import { LAYOUT, getNowPosition, snapDateToGrid } from "./TimelineOS";
 
 // ----------------------------------------------------------------------------
@@ -654,7 +654,7 @@ function HourSlot({
 // WEEK VIEW · GRID ENGINE · EVENT POSITIONING · NOW LINE
 // ============================================================================
 
-import { useMemo, useCallback } from "react";
+
 import { LAYOUT, getNowPosition } from "./TimelineOS";
 
 // ----------------------------------------------------------------------------
@@ -879,7 +879,7 @@ function WeekDayColumn({
 // MONTH VIEW · YEAR VIEW · DATE NAVIGATION ENGINE
 // ============================================================================
 
-import { useMemo } from "react";
+
 import { LAYOUT } from "./TimelineOS";
 
 // ----------------------------------------------------------------------------
@@ -1097,7 +1097,7 @@ function YearMonthRow({ monthDate, events, onSelectDay }) {
 // EVENT EDITOR · MODALS · FORMS · VALIDATION
 // ============================================================================
 
-import { useState, useEffect } from "react";
+
 import { snapDateToGrid } from "./TimelineOS";
 
 // ----------------------------------------------------------------------------
@@ -1485,7 +1485,7 @@ function formatRange(start, end) {
 // TAG SYSTEM · COLOR ENGINE · FILTERING · PERSISTENCE
 // ============================================================================
 
-import { useState, useMemo, useEffect } from "react";
+
 
 // ----------------------------------------------------------------------------
 // DEFAULT TAG PALETTE
@@ -1691,7 +1691,7 @@ export function TagSelector({
 // FAMILY SPACE · CONTEXT SWITCH · SHARED EVENTS · PERMISSIONS
 // ============================================================================
 
-import { useState, useEffect, useMemo, useCallback } from "react";
+
 import {
   collection,
   query,
@@ -1906,7 +1906,7 @@ export function canEditFamilyEvent({
 // TRASH · SOFT DELETE · RESTORE · ACTIVITY LOG · AUDIT TRAIL
 // ============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+
 import {
   collection,
   query,
@@ -2181,7 +2181,7 @@ export function ActivityFeed({ user, context }) {
 // NOTIFICATIONS · REMINDERS · TIME-BASED TRIGGERS · LOCAL + FIRESTORE
 // ============================================================================
 
-import { useEffect, useState, useRef, useCallback } from "react";
+
 import {
   collection,
   addDoc,
@@ -2357,7 +2357,7 @@ export async function markReminderSent(id) {
 // KEYBOARD COMMAND PALETTE · SHORTCUTS · GLOBAL NAVIGATION
 // ============================================================================
 
-import { useState, useEffect, useCallback } from "react";
+
 
 // ----------------------------------------------------------------------------
 // COMMAND DEFINITIONS
@@ -2537,7 +2537,7 @@ export function CommandPalette({
 // LIFE OS MODULES · HABITS · GOALS · PROGRESS TRACKING · DASHBOARD
 // ============================================================================
 
-import { useState, useEffect, useMemo } from "react";
+
 import {
   collection,
   addDoc,
@@ -2834,7 +2834,6 @@ function isSameDay(a, b) {
 // SETTINGS · THEMES · PREFERENCES · PERSISTENCE · UI TOKENS
 // ============================================================================
 
-import { useState, useEffect } from "react";
 
 // ----------------------------------------------------------------------------
 // THEME TOKENS
@@ -3071,7 +3070,7 @@ function ToggleRow({ label, value, onChange }) {
 // APP SHELL · COMPOSITION · FINAL WIRES · BOOTSTRAP
 // ============================================================================
 
-import { useState, useEffect } from "react";
+
 import {
   useSettings,
   useApplyTheme
@@ -3486,7 +3485,7 @@ export function startOfWeek(date, monday = true) {
 // AUTH · FIREBASE BOOTSTRAP · DATA SYNC · PERSISTENCE
 // ============================================================================
 
-import { useEffect, useState } from "react";
+
 import {
   signInWithPopup,
   signOut,
