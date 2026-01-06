@@ -655,6 +655,21 @@ function EventEditor({ event, onSave, onClose }) {
     });
   };
 
+  // ADD THIS CODE TO YOUR src/Apo.js FILE:
+
+const inputStyle = {
+  // Basic input styling - customize as needed
+  width: '100%',
+  padding: '10px 15px',
+  margin: '8px 0',
+  border: '1px solid #ccc',
+  borderRadius: '4px',
+  fontSize: '16px',
+  boxSizing: 'border-box',
+  backgroundColor: '#fff',
+  color: '#333'
+};
+
   return (
     <Modal onClose={onClose}>
       <div style={{ width: 440, padding: 28, display: "flex", flexDirection: "column", gap: 16 }}>
