@@ -1,758 +1,1251 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { auth, provider } from "./firebase";
-import { 
-  collection, query, where, getDocs, addDoc, 
-  updateDoc, deleteDoc, doc, serverTimestamp, Timestamp,
-  getDoc
-} from "firebase/firestore";
-import { db } from "./firebase";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import "./App.css";
 
-// ==========================================
-// 1. CORE SYSTEM CONFIGURATION
-// ==========================================
-
-const APP_META = { 
-  name: "Timeline", 
-  version: "5.0.0-Ultimate",
-  quoteInterval: 14400000 
-};
-
-const LAYOUT = {
-  SIDEBAR_WIDTH: 320,
-  HEADER_HEIGHT: 88,
-  PIXELS_PER_MINUTE: 2.2, // Tuned for optimal spacing
-  SNAP_MINUTES: 15,
-  YEAR_COLS: 38 
-};
-
-const QUOTES = [
-  "Time is the luxury you cannot buy.",
-  "Design your life, or someone else will.",
-  "Focus on the rhythm, not the speed.",
-  "Simplicity is the ultimate sophistication.",
-  "Act as if what you do makes a difference.",
-  "The best way to predict the future is to create it.",
-  "Order is the sanity of the mind."
-];
-
-// ==========================================
-// 2. LUXURY DESIGN SYSTEM
-// ==========================================
-
-const ICONS = {
-  Settings: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-  Trash: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>,
-  Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  ChevronLeft: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevronRight: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  Close: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Calendar: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  Clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  MapPin: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-  Target: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>,
-  CreditCard: () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>,
-};
-
-// Premium Swatch Palette
-const PALETTE = {
-  onyx:    { bg: "#27272a", text: "#f4f4f5", border: "#52525b" },
-  slate:   { bg: "#64748b", text: "#f8fafc", border: "#94a3b8" },
-  gold:    { bg: "#fbbf24", text: "#78350f", border: "#f59e0b" },
-  emerald: { bg: "#10b981", text: "#064e3b", border: "#059669" },
-  rose:    { bg: "#f43f5e", text: "#881337", border: "#e11d48" },
-  ocean:   { bg: "#3b82f6", text: "#1e3a8a", border: "#2563eb" },
-  royal:   { bg: "#8b5cf6", text: "#4c1d95", border: "#7c3aed" },
-  clay:    { bg: "#f97316", text: "#7c2d12", border: "#ea580c" }
-};
-
-const THEMES = {
-  light: {
-    id: 'light',
-    bg: "#FAFAF9", 
-    sidebar: "#F5F5F4", 
-    card: "#FFFFFF",
-    text: "#1C1917", 
-    textSec: "#57534E",
-    textMuted: "#A8A29E",
-    border: "#E7E5E4",
-    accent: "#D97706", 
-    familyAccent: "#059669", 
-    selection: "#FDE68A",
-    shadow: "0 8px 24px -4px rgba(28, 25, 23, 0.06)",
-    glass: "rgba(255, 255, 255, 0.95)",
-    indicator: "#BE123C", 
-    manifestoLine: "#D6D3D1",
-    danger: "#EF4444"
+// Mock Firebase services using localStorage
+const mockAuth = {
+  currentUser: { uid: "demo-user", email: "demo@example.com", displayName: "Demo User" },
+  onAuthStateChanged: (callback) => {
+    // Immediately call with demo user
+    callback({ uid: "demo-user", email: "demo@example.com", displayName: "Demo User" });
+    return () => {}; // cleanup function
   },
-  dark: {
-    id: 'dark',
-    bg: "#0B0E11", 
-    sidebar: "#111418",
-    card: "#181B21",
-    text: "#F5F5F4",
-    textSec: "#A8A29E",
-    textMuted: "#57534E",
-    border: "#292524",
-    accent: "#3B82F6", 
-    familyAccent: "#10B981",
-    selection: "#1E3A8A",
-    shadow: "0 24px 48px -12px rgba(0, 0, 0, 0.8)",
-    glass: "rgba(18, 21, 27, 0.95)",
-    indicator: "#F43F5E",
-    manifestoLine: "#292524",
-    danger: "#EF4444"
+  signInWithPopup: () => {
+    return Promise.resolve({
+      user: { uid: "demo-user", email: "demo@example.com", displayName: "Demo User" }
+    });
+  },
+  signOut: () => {
+    return Promise.resolve();
   }
 };
 
-const DEFAULT_TAGS = [
-  { id: 'work',    name: "Business", ...PALETTE.onyx },
-  { id: 'health',  name: "Wellness", ...PALETTE.rose },
-  { id: 'finance', name: "Finance",  ...PALETTE.emerald },
-  { id: 'family',  name: "Family",   ...PALETTE.slate },
-  { id: 'deep',    name: "Deep Work",...PALETTE.ocean },
-];
-
-const CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@500&display=swap');
-  
-  :root { --ease: cubic-bezier(0.22, 1, 0.36, 1); }
-  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-font-smoothing: antialiased; }
-  
-  body { font-family: 'Inter', sans-serif; overflow: hidden; transition: background 0.4s var(--ease); }
-  h1, h2, h3, .serif { font-family: 'Playfair Display', serif; }
-  .mono { font-family: 'JetBrains Mono', monospace; }
-  
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar { width: 5px; height: 5px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, 0.2); border-radius: 10px; }
-  
-  /* Animations */
-  .fade-enter { animation: fadeIn 0.5s var(--ease) forwards; }
-  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-  
-  .glass-panel { backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); }
-  
-  /* Buttons & Inputs */
-  .btn-reset { border: none; background: transparent; cursor: pointer; color: inherit; font-family: inherit; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-  .btn-hover:hover { transform: translateY(-1px); }
-  .btn-scale:active { transform: scale(0.96); }
-  
-  .input-luxe { width: 100%; padding: 14px 16px; border-radius: 12px; font-size: 15px; transition: 0.2s; border: 1px solid transparent; background: rgba(0,0,0,0.03); }
-  .input-luxe:focus { outline: none; background: rgba(0,0,0,0.05); box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2); }
-  
-  /* Segmented Control (Screenshot Match) */
-  .segmented { display: flex; background: rgba(120, 120, 120, 0.1); padding: 4px; border-radius: 10px; width: 100%; }
-  .seg-opt { flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; cursor: pointer; border-radius: 8px; color: inherit; opacity: 0.6; transition: 0.2s; }
-  .seg-opt.active { background: #fff; opacity: 1; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); color: #000; }
-  .dark .seg-opt.active { background: #27272a; color: #fff; }
-
-  /* Switch (Screenshot Match) */
-  .switch-track { width: 44px; height: 24px; border-radius: 12px; background: rgba(120,120,120,0.2); position: relative; cursor: pointer; transition: 0.3s; }
-  .switch-track.active { background: #3B82F6; }
-  .switch-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: 0.3s var(--ease); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-  .switch-track.active .switch-thumb { transform: translateX(20px); }
-
-  /* Life Modules */
-  .life-module { padding: 16px; border-radius: 16px; background: rgba(0,0,0,0.03); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.05); }
-  .progress-bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.1); overflow: hidden; margin-top: 10px; }
-  .progress-fill { height: 100%; border-radius: 3px; transition: width 0.6s ease; }
-  
-  /* Mini Calendar */
-  .mini-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; margin-top: 12px; }
-  .mini-cal-day { font-size: 11px; padding: 8px 0; border-radius: 6px; cursor: pointer; transition: 0.2s; color: inherit; opacity: 0.8; font-weight: 500; }
-  .mini-cal-day:hover { background: rgba(0,0,0,0.05); opacity: 1; }
-  .mini-cal-day.active { background: #D97706; color: #fff; font-weight: 600; opacity: 1; }
-  .mini-cal-day.today { border: 1px solid #D97706; }
-`;
-
-// ==========================================
-// 3. MAIN APPLICATION KERNEL
-// ==========================================
-
-export default function TimelineOS() {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [now, setNow] = useState(new Date());
-  const [viewMode, setViewMode] = useState("week");
-  const [context, setContext] = useState("personal");
-  
-  const [events, setEvents] = useState([]);
-  const [deletedEvents, setDeletedEvents] = useState([]);
-  const [tags, setTags] = useState(() => JSON.parse(localStorage.getItem('timeline_tags_v2')) || DEFAULT_TAGS);
-  const [activeTagIds, setActiveTagIds] = useState(tags.map(t => t.id));
-  const [quote, setQuote] = useState(QUOTES[0]);
-  
-  // Life OS Data
-  const [habits] = useState([ { id: 1, name: "Workout", streak: 12, target: 5 }, { id: 2, name: "Reading", streak: 5, target: 7 } ]);
-  const [budget] = useState({ spent: 1240, limit: 3000 });
-
-  // UI State
-  const [modalOpen, setModalOpen] = useState(false);
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [trashOpen, setTrashOpen] = useState(false);
-  const [tagManagerOpen, setTagManagerOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState(null);
-  const [notifications, setNotifications] = useState([]);
-  
-  const [config, setConfig] = useState(() => JSON.parse(localStorage.getItem('timeline_v5_cfg')) || {
-    darkMode: true, use24Hour: false, blurPast: true, weekStartMon: true
-  });
-
-  const scrollRef = useRef(null);
-  const theme = config.darkMode ? THEMES.dark : THEMES.light;
-
-  // --- INITIALIZATION ---
-  useEffect(() => {
-    const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
-    const i = setInterval(() => setNow(new Date()), 60000);
-    const qI = setInterval(() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]), APP_META.quoteInterval);
-    return () => { s.remove(); clearInterval(i); clearInterval(qI); };
-  }, []);
-
-  useEffect(() => {
-    setPersistence(auth, browserLocalPersistence);
-    return auth.onAuthStateChanged(u => { setUser(u); if(u) loadData(u); else setLoading(false); });
-  }, []);
-
-  useEffect(() => localStorage.setItem('timeline_v5_cfg', JSON.stringify(config)), [config]);
-  useEffect(() => localStorage.setItem('timeline_tags_v2', JSON.stringify(tags)), [tags]);
-
-  // Scroll to 8 AM
-  useEffect(() => {
-    if ((viewMode === 'day' || viewMode === 'week') && scrollRef.current) {
-      scrollRef.current.scrollTop = 8 * 60 * LAYOUT.PIXELS_PER_MINUTE;
-    }
-  }, [viewMode]);
-
-  // --- DATA OPERATIONS ---
-  const loadData = async (u) => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "events"), where("uid", "==", u.uid));
-      const snap = await getDocs(q);
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() }));
-      setEvents(all.filter(e => !e.deleted));
-      setDeletedEvents(all.filter(e => e.deleted));
-    } catch(e) { notify("Sync failed.", "error"); }
-    setLoading(false);
-  };
-
-  const handleSave = async (data) => {
-    if(!user) return;
-    try {
-      const payload = {
-        uid: user.uid, title: data.title, category: data.category, context: context, description: data.description || "", location: data.location || "",
-        startTime: Timestamp.fromDate(data.start), endTime: Timestamp.fromDate(data.end), deleted: false, updatedAt: serverTimestamp()
-      };
-      if(data.id) await updateDoc(doc(db, "events", data.id), payload);
-      else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), payload); }
-      setModalOpen(false); loadData(user); notify("Event saved.");
-    } catch(e) { notify("Save failed.", "error"); }
-  };
-
-  const softDelete = async (id) => {
-    if(!window.confirm("Move to trash?")) return;
-    try { await updateDoc(doc(db, "events", id), { deleted: true, deletedAt: serverTimestamp() }); setModalOpen(false); loadData(user); notify("Moved to trash."); } 
-    catch(e) { notify("Delete failed.", "error"); }
-  };
-
-  const restoreEvent = async (id) => {
-    try { await updateDoc(doc(db, "events", id), { deleted: false }); loadData(user); notify("Event restored."); } catch(e) {}
-  };
-
-  const hardDelete = async (id) => {
-    if(!window.confirm("Permanently destroy?")) return;
-    try { await deleteDoc(doc(db, "events", id)); loadData(user); notify("Permanently deleted."); } catch(e) {}
-  };
-
-  const notify = (msg, type='neutral') => {
-    const id = Date.now();
-    setNotifications(p => [...p, {id, msg, type}]);
-    setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 4000);
-  };
-
-  const filteredEvents = useMemo(() => events.filter(e => e.context === context && activeTagIds.includes(e.category)), [events, context, activeTagIds]);
-  const nav = (amt) => {
-    const d = new Date(currentDate);
-    if(viewMode === 'year') d.setFullYear(d.getFullYear() + amt);
-    else if(viewMode === 'week') d.setDate(d.getDate() + (amt*7));
-    else d.setDate(d.getDate() + amt);
-    setCurrentDate(d);
-  };
-
-  if (!user) return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
-
-  return (
-    <div style={{ display: "flex", height: "100vh", background: theme.bg, color: theme.text }} className={config.darkMode ? 'dark' : 'light'}>
-      
-      {/* SIDEBAR */}
-      <aside style={{ width: LAYOUT.SIDEBAR_WIDTH, background: theme.sidebar, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", zIndex: 50, overflowY: "auto" }}>
-        
-        {/* Brand */}
-        <div style={{ marginBottom: 32 }}>
-          <h1 className="serif" style={{ fontSize: 32, fontWeight: 700, color: theme.text, letterSpacing: "-0.5px" }}>Timeline.</h1>
-          <div style={{ fontSize: 13, color: theme.textSec, marginTop: 4 }}>Welcome back, <span style={{fontWeight:600}}>{user.displayName?.split(" ")[0]}</span></div>
-        </div>
-
-        {/* Context Tabs */}
-        <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", padding: 4, borderRadius: 12, marginBottom: 24 }}>
-          <button onClick={() => setContext('personal')} className={`btn-reset tab-pill ${context==='personal'?'active':''}`} style={{ flex: 1, background: context==='personal' ? theme.card : 'transparent', color: context==='personal' ? theme.accent : theme.textSec }}>Personal</button>
-          <button onClick={() => setContext('family')} className={`btn-reset tab-pill ${context==='family'?'active':''}`} style={{ flex: 1, background: context==='family' ? theme.card : 'transparent', color: context==='family' ? theme.familyAccent : theme.textSec }}>Family</button>
-        </div>
-
-        {/* Action */}
-        <button onClick={() => { setEditingEvent(null); setModalOpen(true); }} className="btn-reset btn-hover" style={{ width: "100%", padding: "14px", borderRadius: 12, background: context==='family' ? theme.familyAccent : theme.accent, color: "#fff", fontSize: 14, fontWeight: 600, boxShadow: theme.shadow, marginBottom: 24, gap: 8 }}>
-          <ICONS.Plus /> New Event
-        </button>
-
-        {/* Mini Calendar */}
-        <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${theme.border}` }}>
-           <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
-        </div>
-
-        {/* Life Modules */}
-        <div style={{ marginBottom: 24 }}>
-          <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Life OS</h4>
-          
-          <div className="life-module">
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
-              <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.Target /> Habits</span>
-              <span style={{color: theme.accent}}>High Perf</span>
-            </div>
-            {habits.map(h => (
-              <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, marginTop: 4, color: theme.textSec }}>
-                <span>{h.name}</span>
-                <span>{h.streak} day streak</span>
-              </div>
-            ))}
-          </div>
-
-          <div className="life-module">
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600 }}>
-              <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.CreditCard /> Monthly Budget</span>
-              <span>{Math.round((budget.spent/budget.limit)*100)}%</span>
-            </div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${(budget.spent/budget.limit)*100}%`, background: theme.familyAccent }} /></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 4, color: theme.textMuted }}>
-              <span>${budget.spent} spent</span>
-              <span>${budget.limit} limit</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Tags */}
-        <div style={{ flex: 1 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-             <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Tags</h4>
-             <button onClick={() => setTagManagerOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec }}><ICONS.Settings /></button>
-          </div>
-          {tags.map(t => (
-            <div key={t.id} onClick={() => setActiveTagIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
-              className="btn-hover"
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: t.bg, border: `1px solid ${t.border}` }} />
-              <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Footer Actions */}
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between" }}>
-          <button onClick={() => setTrashOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, gap: 8 }}>
-            <ICONS.Trash /> Trash
-          </button>
-          <button onClick={() => setSettingsOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, gap: 8 }}>
-            <ICONS.Settings /> Settings
-          </button>
-        </div>
-      </aside>
-
-      {/* MAIN WORKSPACE */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        
-        {/* Header */}
-        <header style={{ height: LAYOUT.HEADER_HEIGHT, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${theme.border}`, background: theme.bg }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
-            <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => nav(-1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronLeft/></button>
-              <button onClick={() => setCurrentDate(new Date())} className="btn-reset btn-hover" style={{ padding: "0 20px", height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, fontSize: 13, fontWeight: 500 }}>Today</button>
-              <button onClick={() => nav(1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronRight/></button>
-            </div>
-          </div>
-          <div style={{ display: "flex", background: theme.sidebar, padding: 4, borderRadius: 12 }}>
-            {['day', 'week', 'year'].map(m => (
-              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>{m}</button>
-            ))}
-          </div>
-        </header>
-
-        <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", position: "relative" }}>
-          
-          {/* DAY VIEW - Journal Style */}
-          {viewMode === 'day' && (
-            <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
-              <div style={{ marginBottom: 60 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
-                <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
-              </div>
-              <div style={{ position: "relative", borderLeft: `1px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
-                {Array.from({length: 24}).map((_, h) => {
-                  if (h < 5) return null;
-                  const slotEvents = filteredEvents.filter(e => e.start.toDateString() === currentDate.toDateString() && e.start.getHours() === h);
-                  return (
-                    <div key={h} style={{ minHeight: 90, position: "relative", marginBottom: 20 }}>
-                      <div className="serif" style={{ position: "absolute", left: -100, top: -8, fontSize: 18, color: theme.textMuted, width: 50, textAlign: "right" }}>{config.use24Hour ? h : (h % 12 || 12) + (h<12?' AM':' PM')}</div>
-                      <div style={{ position: "absolute", left: -46, top: 4, width: 11, height: 11, borderRadius: "50%", background: theme.bg, border: `2px solid ${theme.textSec}` }} />
-                      <div>
-                        {slotEvents.map(ev => {
-                          const tag = tags.find(t => t.id === ev.category) || tags[0];
-                          const isPast = config.blurPast && ev.end < now;
-                          return (
-                            <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`event-card-journal ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 16, cursor: "pointer", background: config.darkMode ? tag.bg+"20" : tag.bg, borderLeftColor: tag.bg, padding: "20px 24px", borderRadius: 12 }}>
-                              <div style={{ fontSize: 22, fontWeight: 500, color: theme.text, fontFamily: 'Playfair Display', marginBottom: 4 }}>{ev.title}</div>
-                              <div style={{ display: "flex", gap: 16, fontSize: 13, color: theme.textSec, alignItems: "center" }}>
-                                <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.Clock/> {ev.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} — {ev.end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>
-                                {ev.location && <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.MapPin/> {ev.location}</span>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {slotEvents.length === 0 && <div style={{ height: 60, cursor: "pointer" }} onClick={() => { const s = new Date(currentDate); s.setHours(h,0,0,0); setEditingEvent({ start: s, end: new Date(s.getTime()+3600000), title: "", category: tags[0].id }); setModalOpen(true); }} />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* YEAR VIEW - Linear */}
-          {viewMode === 'year' && (
-            <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
-              <div style={{ minWidth: 1200 }}>
-                <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
-                  {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
-                    <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
-                  ))}
-                </div>
-                {Array.from({length: 12}).map((_, m) => {
-                  const monthStart = new Date(currentDate.getFullYear(), m, 1);
-                  const daysInMonth = new Date(currentDate.getFullYear(), m+1, 0).getDate();
-                  let offset = monthStart.getDay(); if(config.weekStartMon) offset = offset===0 ? 6 : offset-1;
-                  return (
-                    <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 8, height: 36 }}>
-                      <div className="serif" style={{ width: 100, fontSize: 14, fontWeight: 600, color: theme.textSec }}>{monthStart.toLocaleDateString('en-US',{month:'short'})}</div>
-                      <div style={{ flex: 1, display: "flex", gap: 2 }}>
-                        {Array.from({length: LAYOUT.YEAR_COLS}).map((_, col) => {
-                          const dayNum = col - offset + 1;
-                          if(dayNum < 1 || dayNum > daysInMonth) return <div key={col} style={{ flex: 1 }} />;
-                          const d = new Date(currentDate.getFullYear(), m, dayNum);
-                          const isT = d.toDateString() === now.toDateString();
-                          const hasEv = events.some(e => e.start.toDateString() === d.toDateString() && e.context === context);
-                          return (
-                            <div key={col} onClick={() => { setCurrentDate(d); setViewMode('day'); }}
-                              style={{ 
-                                flex: 1, height: 32, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, cursor: "pointer",
-                                background: isT ? theme.accent : hasEv ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
-                                color: isT ? "#fff" : hasEv ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
-                                border: isT ? `1px solid ${theme.accent}` : "none", fontWeight: isT ? 700 : 400
-                              }}>{dayNum}</div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* WEEK VIEW - Precision Grid */}
-          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={tags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: tags[0].id}); setModalOpen(true); }} />}
-        </div>
-      </div>
-
-      {/* MODALS */}
-      {settingsOpen && <SettingsModal config={config} setConfig={setConfig} theme={theme} onClose={() => setSettingsOpen(false)} />}
-      {modalOpen && <EventEditor event={editingEvent} theme={theme} tags={tags} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} />}
-      {trashOpen && <TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={(id) => restoreEvent(id)} onDelete={(id) => hardDelete(id)} />}
-      {tagManagerOpen && <TagManager tags={tags} setTags={setTags} theme={theme} onClose={() => setTagManagerOpen(false)} />}
-
-      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>{notifications.map(n => (<div key={n.id} className="fade-enter" style={{ padding: "12px 24px", background: n.type==='error' ? theme.danger : theme.card, color: n.type==='error' ? '#fff' : theme.text, borderRadius: 8, boxShadow: "0 10px 40px rgba(0,0,0,0.2)", fontSize: 13, fontWeight: 600 }}>{n.msg}</div>))}</div>
-    </div>
-  );
-}
-
-// ==========================================
-// 4. SUB-COMPONENTS
-// ==========================================
-
-function MiniCalendar({ currentDate, setCurrentDate, theme }) {
-  const days = ["S","M","T","W","T","F","S"];
-  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  const startDay = startOfMonth.getDay();
-  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-  const today = new Date();
-
-  return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12, alignItems: 'center', padding: '0 4px' }}>
-        <span style={{ fontSize: 14, fontWeight: 600 }}>{currentDate.toLocaleDateString('en-US', {month:'long', year:'numeric'})}</span>
-        <div style={{display:'flex', gap:4}}>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronLeft/></button>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronRight/></button>
-        </div>
-      </div>
-      <div className="mini-cal-grid">
-        {days.map(d => <div key={d} style={{fontSize:10, color:theme.textMuted}}>{d}</div>)}
-        {Array.from({length:startDay}).map((_,i) => <div key={`e-${i}`} />)}
-        {Array.from({length:daysInMonth}).map((_,i) => {
-          const day = i+1;
-          const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth();
-          const isSelected = currentDate.getDate() === day;
-          return (
-            <div key={day} className={`mini-cal-day ${isSelected?'active':''} ${isToday?'today':''}`} onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}>
-              {day}
-            </div>
-          )
-        })}
-      </div>
-    </div>
-  );
-}
-
-function WeekView({ currentDate, events, theme, config, tags, onNew }) {
-  const days = useMemo(() => {
-    const s = new Date(currentDate);
-    const day = s.getDay();
-    const diff = s.getDate() - day + (config.weekStartMon ? (day === 0 ? -6 : 1) : 0);
-    return Array.from({length:7}, (_,i) => { const d = new Date(s); d.setDate(diff + i); return d; });
-  }, [currentDate, config.weekStartMon]);
-
-  const HOUR_HEIGHT = 60 * LAYOUT.PIXELS_PER_MINUTE;
-
-  // Collision detection for overlapping events
-  const getEventStyle = (ev, dEvents) => {
-    // Simple overlap logic: find neighbors
-    const neighbors = dEvents.filter(e => e.id !== ev.id && (
-      (e.start < ev.end && e.end > ev.start)
-    ));
-    const width = 100 / (neighbors.length + 1);
-    const index = neighbors.findIndex(e => e.id === ev.id) + 1 || 0; // Simplified for demo
-    
+const mockDb = {
+  collection: (collectionName) => {
     return {
-      top: (ev.start.getHours() * 60 + ev.start.getMinutes()) * LAYOUT.PIXELS_PER_MINUTE,
-      height: Math.max(((ev.end - ev.start)/60000) * LAYOUT.PIXELS_PER_MINUTE, 24),
-      width: `${width}%`,
-      left: `${index * width}%`
+      doc: (docId) => {
+        const storageKey = `firestore_${collectionName}_${docId}`;
+        
+        return {
+          get: () => {
+            const data = JSON.parse(localStorage.getItem(storageKey) || "null");
+            return Promise.resolve({
+              exists: () => !!data,
+              data: () => data
+            });
+          },
+          set: (data) => {
+            localStorage.setItem(storageKey, JSON.stringify(data));
+            return Promise.resolve();
+          },
+          update: (data) => {
+            const existing = JSON.parse(localStorage.getItem(storageKey) || "{}");
+            localStorage.setItem(storageKey, JSON.stringify({ ...existing, ...data }));
+            return Promise.resolve();
+          },
+          delete: () => {
+            localStorage.removeItem(storageKey);
+            return Promise.resolve();
+          },
+          onSnapshot: (callback) => {
+            // Load initial data
+            const data = JSON.parse(localStorage.getItem(storageKey) || "null");
+            callback({
+              exists: () => !!data,
+              data: () => data
+            });
+            
+            // Listen for storage changes (simulate real-time)
+            const handleStorageChange = (e) => {
+              if (e.key === storageKey) {
+                const newData = JSON.parse(e.newValue || "null");
+                callback({
+                  exists: () => !!newData,
+                  data: () => newData
+                });
+              }
+            };
+            
+            window.addEventListener("storage", handleStorageChange);
+            
+            return () => {
+              window.removeEventListener("storage", handleStorageChange);
+            };
+          }
+        };
+      },
+      where: () => {
+        return {
+          get: () => Promise.resolve({ docs: [] }),
+          onSnapshot: (callback) => {
+            callback({ docs: [] });
+            return () => {};
+          }
+        };
+      }
     };
-  };
+  }
+};
 
-  return (
-    <div style={{ display: "flex", minHeight: "100%" }}>
-      <div style={{ width: 60, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.bg }}>
-        {Array.from({length:24}).map((_,h) => (
-          <div key={h} style={{ height: HOUR_HEIGHT, position:"relative" }}>
-            <span style={{ position:"absolute", top:-6, right:8, fontSize:11, color:theme.textMuted }}>{h}:00</span>
-          </div>
-        ))}
-      </div>
-      <div style={{ flex: 1, display: "flex" }}>
-        {days.map((d, i) => {
-          const isT = d.toDateString() === new Date().toDateString();
-          const dEvents = events.filter(e => e.start.toDateString() === d.toDateString()).sort((a,b) => a.start - b.start);
-          return (
-            <div key={i} style={{ flex: 1, borderRight: `1px solid ${theme.border}`, position: "relative", background: isT ? (config.darkMode ? "#1C1917" : "#FAFAFA") : "transparent" }}>
-              <div style={{ height: 60, borderBottom: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "sticky", top: 0, background: theme.sidebar, zIndex: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: isT ? theme.accent : theme.textMuted }}>{d.toLocaleDateString('en-US',{weekday:'short'})}</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: isT ? theme.accent : theme.text }}>{d.getDate()}</span>
-              </div>
-              <div style={{ position: "relative", height: 24 * HOUR_HEIGHT }}>
-                {Array.from({length:24}).map((_,h) => <div key={h} style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${theme.border}40`, boxSizing: "border-box" }} />)}
-                <div style={{position:"absolute", inset:0, zIndex:1}} onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const y = e.clientY - rect.top;
-                  const m = Math.floor(y / LAYOUT.PIXELS_PER_MINUTE / 15) * 15;
-                  const s = new Date(d); s.setHours(0, m, 0, 0);
-                  const end = new Date(s); end.setMinutes(m+60);
-                  onNew(s, end);
-                }} />
-                {dEvents.map(ev => {
-                  const style = getEventStyle(ev, dEvents);
-                  const tag = tags.find(t => t.id === ev.category) || tags[0];
-                  return (
-                    <div key={ev.id} className="btn-hover" 
-                      style={{ 
-                        position: "absolute", ...style, 
-                        background: config.darkMode ? tag.bg+"30" : tag.bg, 
-                        borderLeft: `3px solid ${tag.border}`, 
-                        borderRadius: 4, padding: 4, fontSize: 11, color: theme.text, 
-                        cursor: "pointer", zIndex: 5, overflow: "hidden", 
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)" 
-                      }}>
-                      <div style={{ fontWeight: 600 }}>{ev.title}</div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+const mockProvider = {};
 
-function SettingsModal({ config, setConfig, theme, onClose }) {
-  return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 32 }}>
-          <h3 className="serif" style={{ fontSize: 24 }}>Settings</h3>
-          <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
-        </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Theme</label>
-          <div className={`segmented ${!config.darkMode ? 'light-mode' : ''}`}>
-            <div onClick={() => setConfig({...config, darkMode: false})} className={`seg-opt ${!config.darkMode?'active':''}`}>☀ Light</div>
-            <div onClick={() => setConfig({...config, darkMode: true})} className={`seg-opt ${config.darkMode?'active':''}`}>☾ Dark</div>
-          </div>
-        </div>
-        <div className="settings-row" style={{marginBottom: 24}}>
-          <div><div className="settings-label">Blur Past Dates</div><div className="settings-sub">Fade old days</div></div>
-          <div className={`switch-track ${config.blurPast?'active':''}`} onClick={() => setConfig({...config, blurPast:!config.blurPast})}><div className="switch-thumb"/></div>
-        </div>
-        <div className="settings-row" style={{marginBottom: 32}}>
-          <div><div className="settings-label">Week Starts Monday</div><div className="settings-sub">Align calendar</div></div>
-          <div className={`switch-track ${config.weekStartMon?'active':''}`} onClick={() => setConfig({...config, weekStartMon:!config.weekStartMon})}><div className="switch-thumb"/></div>
-        </div>
-        <button onClick={() => signOut(auth)} style={{ width: "100%", padding: "14px", borderRadius: 12, border: `1px solid ${theme.danger}`, color: theme.danger, background: "transparent", fontWeight: 600, cursor: "pointer" }}>Sign Out</button>
-      </div>
-    </div>
-  );
-}
-
-function TagManager({ tags, setTags, theme, onClose }) {
-  const [newTag, setNewTag] = useState("");
-  const [color, setColor] = useState("onyx");
-
-  const addTag = () => {
-    if(!newTag.trim()) return;
-    const palette = PALETTE[color];
-    const id = newTag.toLowerCase().replace(/\s+/g,'-') + Date.now();
-    setTags([...tags, { id, name: newTag, ...palette }]);
-    setNewTag("");
-  };
-
-  return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
-        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
-          <h3 className="serif" style={{ fontSize: 24 }}>Manage Tags</h3>
-          <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
-        </div>
-        <div style={{ marginBottom: 24 }}>
-          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Tag name..." className="input-luxe" style={{ color: theme.text, marginBottom: 16 }} />
-          <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-            {Object.keys(PALETTE).map(key => (
-              <div key={key} className={`color-swatch ${color === key ? 'active' : ''}`} style={{ background: PALETTE[key].bg, borderColor: PALETTE[key].border }} onClick={() => setColor(key)} />
-            ))}
-          </div>
-          <button onClick={addTag} style={{ width: "100%", padding: "12px", background: theme.accent, color: "#fff", borderRadius: 12, border: "none", cursor: "pointer", fontWeight: 600 }}>Create Tag</button>
-        </div>
-        <div style={{ maxHeight: 300, overflowY: "auto" }}>
-          {tags.map((t, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "12px 0", borderBottom: `1px solid ${theme.border}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ width: 12, height: 12, borderRadius: "50%", background: t.bg, border: `1px solid ${t.border}` }} />
-                <span>{t.name}</span>
-              </div>
-              <button onClick={() => setTags(tags.filter(tg => tg.id !== t.id))} className="btn-reset" style={{ color: theme.danger }}><ICONS.Trash/></button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel }) {
-  const [data, setData] = useState({ 
-    title: event?.title || "", category: event?.category || tags[0].id,
-    start: event?.start ? event.start.toTimeString().slice(0,5) : "09:00",
-    end: event?.end ? event.end.toTimeString().slice(0,5) : "10:00",
-    description: event?.description || "", location: event?.location || ""
-  });
-
-  const submit = () => {
-    const s = new Date(event?.start || new Date()); const [sh, sm] = data.start.split(':'); s.setHours(sh, sm);
-    const e = new Date(s); const [eh, em] = data.end.split(':'); e.setHours(eh, em);
-    onSave({ ...data, id: event?.id, start: s, end: e });
-  };
-
-  return (
-    <div onClick={e => e.stopPropagation()} style={{ width: 440, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
-      <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>{event?.id ? "Edit Event" : "Create Event"}</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <input autoFocus value={data.title} onChange={e => setData({...data, title: e.target.value})} placeholder="Title" className="input-luxe" style={{ fontSize: 18, fontWeight: 600, background: theme.bg, color: theme.text }} />
-        <div style={{ display: "flex", gap: 12 }}>
-          <input type="time" value={data.start} onChange={e => setData({...data, start: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
-          <input type="time" value={data.end} onChange={e => setData({...data, end: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {tags.map(t => (
-            <button key={t.id} onClick={() => setData({...data, category: t.id})} className="btn-reset" style={{ padding: "6px 12px", borderRadius: 20, fontSize: 12, border: `1px solid ${data.category===t.id ? t.border : theme.border}`, background: data.category===t.id ? t.bg : "transparent", color: theme.text }}>{t.name}</button>
-          ))}
-        </div>
-        <input value={data.location} onChange={e => setData({...data, location: e.target.value})} placeholder="Location..." className="input-luxe" style={{ color: theme.text }} />
-        <textarea value={data.description} onChange={e => setData({...data, description: e.target.value})} placeholder="Notes..." className="input-luxe" style={{ minHeight: 80, resize: "none", color: theme.text }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-          {onDelete ? <button onClick={onDelete} className="btn-reset" style={{ color: theme.danger, fontWeight: 600 }}>Delete</button> : <div/>}
-          <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={onCancel} className="btn-reset" style={{ color: theme.textSec }}>Cancel</button>
-            <button onClick={submit} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, background: theme.accent, color: "#fff", fontWeight: 600 }}>Save</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
-  return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 500, height: "70vh", background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow, display: "flex", flexDirection: "column" }}>
-        <div style={{display:'flex', justifyContent:'space-between', marginBottom:24}}>
-          <h3 className="serif" style={{ fontSize: 24 }}>Trash</h3>
-          <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {events.length === 0 && <div style={{textAlign:'center', color:theme.textMuted, marginTop:40}}>Empty</div>}
-          {events.map(ev => (
-            <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottom: `1px solid ${theme.border}` }}>
-              <div><div style={{fontWeight:600}}>{ev.title}</div><div style={{fontSize:12, color:theme.textMuted}}>{ev.start.toLocaleDateString()}</div></div>
-              <div style={{display:'flex', gap:8}}>
-                <button onClick={() => onRestore(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer" }}>Restore</button>
-                <button onClick={() => onDelete(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.danger}`, color: theme.danger, background: "transparent", cursor: "pointer" }}>Purge</button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+// Use these instead of Firebase imports
+const auth = mockAuth;
+const db = mockDb;
+const provider = mockProvider;
 
 function AuthScreen({ onLogin, theme }) {
+  const [loading, setLoading] = useState(false);
+  
+  const handleLogin = async () => {
+    setLoading(true);
+    try {
+      const result = await auth.signInWithPopup(provider);
+      onLogin(result.user);
+    } catch (error) {
+      console.error("Login error:", error);
+      // Auto-login with demo user
+      onLogin(auth.currentUser);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   return (
-    <div style={{ height: "100vh", background: "#0B0E11", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-      <h1 className="serif" style={{ fontSize: 64, color: "#F5F5F4", marginBottom: 24 }}>Timeline.</h1>
-      <p style={{ color: "#A8A29E", marginBottom: 40, fontSize: 18, fontFamily: "serif", fontStyle: "italic" }}>"Time is the luxury you cannot buy."</p>
-      <button onClick={onLogin} style={{ padding: "16px 40px", borderRadius: 4, background: "#D97706", color: "#fff", border: "none", fontSize: 14, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 600 }}>Enter System</button>
+    <div style={{
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: theme === "dark" 
+        ? "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)" 
+        : "linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)",
+      padding: 20
+    }}>
+      <div style={{
+        background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+        backdropFilter: "blur(10px)",
+        borderRadius: 24,
+        padding: "48px 40px",
+        boxShadow: theme === "dark" 
+          ? "0 20px 60px rgba(0, 0, 0, 0.3)" 
+          : "0 20px 60px rgba(0, 0, 0, 0.1)",
+        border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+        maxWidth: 440,
+        width: "100%",
+        textAlign: "center"
+      }}>
+        <div style={{
+          width: 72,
+          height: 72,
+          borderRadius: 20,
+          background: theme === "dark" 
+            ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+            : "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          margin: "0 auto 28px",
+          fontSize: 32,
+          color: "white",
+          fontWeight: "bold"
+        }}>
+          ⌛
+        </div>
+        
+        <h1 style={{
+          fontSize: 32,
+          fontWeight: 800,
+          marginBottom: 12,
+          background: theme === "dark" 
+            ? "linear-gradient(135deg, #60a5fa 0%, #c4b5fd 100%)" 
+            : "linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text"
+        }}>
+          Linear Calendar
+        </h1>
+        
+        <p style={{
+          color: theme === "dark" ? "#94a3b8" : "#64748b",
+          fontSize: 16,
+          lineHeight: 1.6,
+          marginBottom: 40
+        }}>
+          AI-powered life optimization system. Visualize your time, track habits, and achieve your goals with intelligent scheduling.
+        </p>
+        
+        <button
+          onClick={handleLogin}
+          disabled={loading}
+          style={{
+            width: "100%",
+            padding: "16px 24px",
+            background: theme === "dark" 
+              ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+              : "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+            color: "white",
+            border: "none",
+            borderRadius: 16,
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = "translateY(-2px)";
+            e.target.style.boxShadow = theme === "dark" 
+              ? "0 10px 30px rgba(59, 130, 246, 0.3)" 
+              : "0 10px 30px rgba(37, 99, 235, 0.3)";
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = "translateY(0)";
+            e.target.style.boxShadow = "none";
+          }}
+        >
+          {loading ? (
+            <>
+              <div className="thinking-dots">
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "white", animationDelay: "0s" }}></div>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "white", animationDelay: "0.2s" }}></div>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "white", animationDelay: "0.4s" }}></div>
+              </div>
+              Connecting...
+            </>
+          ) : (
+            "Enter Life OS →"
+          )}
+        </button>
+        
+        <div style={{
+          fontSize: 11,
+          color: theme === "dark" ? "rgba(148, 163, 184, 0.6)" : "rgba(100, 116, 139, 0.6)",
+          marginTop: 24,
+          letterSpacing: 1,
+          textTransform: "uppercase"
+        }}>
+          v5.0 • AI-Powered • Life Optimization
+        </div>
+      </div>
     </div>
   );
 }
+
+function Calendar() {
+  const [events, setEvents] = useState([]);
+  const [newEvent, setNewEvent] = useState({ title: "", date: "", description: "" });
+  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [view, setView] = useState("month");
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [tags, setTags] = useState(["Work", "Personal", "Study"]);
+  const [newTag, setNewTag] = useState("");
+  const [theme, setTheme] = useState("light");
+  
+  const user = auth.currentUser;
+  
+  useEffect(() => {
+    // Load events from localStorage
+    const loadEvents = () => {
+      const savedEvents = JSON.parse(localStorage.getItem("calendar-events") || "[]");
+      setEvents(savedEvents);
+    };
+    
+    loadEvents();
+    
+    // Listen for auth changes
+    const unsubscribe = auth.onAuthStateChanged((user) => {
+      if (user) {
+        loadEvents();
+      }
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  useEffect(() => {
+    // Save events to localStorage
+    localStorage.setItem("calendar-events", JSON.stringify(events));
+  }, [events]);
+  
+  const handleAddEvent = () => {
+    if (!newEvent.title || !newEvent.date) return;
+    
+    const event = {
+      id: Date.now().toString(),
+      ...newEvent,
+      userId: user?.uid,
+      tags: [],
+      completed: false,
+      createdAt: new Date().toISOString()
+    };
+    
+    setEvents([...events, event]);
+    setNewEvent({ title: "", date: "", description: "" });
+  };
+  
+  const handleDeleteEvent = (id) => {
+    setEvents(events.filter(event => event.id !== id));
+    if (selectedEvent?.id === id) {
+      setSelectedEvent(null);
+    }
+  };
+  
+  const handleAddTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag("");
+    }
+  };
+  
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+  
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    });
+  };
+  
+  // Calendar grid generation
+  const getDaysInMonth = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDay = firstDay.getDay();
+    
+    const days = [];
+    
+    // Previous month days
+    const prevMonthLastDay = new Date(year, month, 0).getDate();
+    for (let i = 0; i < startingDay; i++) {
+      days.push({
+        date: new Date(year, month - 1, prevMonthLastDay - startingDay + i + 1),
+        isCurrentMonth: false,
+        events: []
+      });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const dayDate = new Date(year, month, i);
+      const dayEvents = events.filter(event => {
+        const eventDate = new Date(event.date);
+        return eventDate.toDateString() === dayDate.toDateString();
+      });
+      
+      days.push({
+        date: dayDate,
+        isCurrentMonth: true,
+        events: dayEvents
+      });
+    }
+    
+    // Next month days to fill grid
+    const totalCells = 42; // 6 weeks * 7 days
+    const nextMonthDays = totalCells - days.length;
+    for (let i = 1; i <= nextMonthDays; i++) {
+      days.push({
+        date: new Date(year, month + 1, i),
+        isCurrentMonth: false,
+        events: []
+      });
+    }
+    
+    return days;
+  };
+  
+  const calendarDays = getDaysInMonth(currentDate);
+  const monthYear = currentDate.toLocaleDateString("en-GB", { 
+    month: "long", 
+    year: "numeric" 
+  });
+  
+  const nextMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1));
+  };
+  
+  const prevMonth = () => {
+    setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1));
+  };
+  
+  const todayEvents = events.filter(event => {
+    const eventDate = new Date(event.date);
+    const today = new Date();
+    return eventDate.toDateString() === today.toDateString();
+  });
+  
+  return (
+    <div style={{
+      minHeight: "100vh",
+      background: theme === "dark" ? "#0f172a" : "#f8fafc",
+      color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+      transition: "all 0.3s"
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: "20px 24px",
+        borderBottom: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center"
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <div style={{
+            width: 36,
+            height: 36,
+            borderRadius: 12,
+            background: theme === "dark" 
+              ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+              : "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 20,
+            color: "white",
+            fontWeight: "bold"
+          }}>
+            ⌛
+          </div>
+          <h1 style={{ 
+            fontSize: 20, 
+            fontWeight: 700,
+            background: theme === "dark" 
+              ? "linear-gradient(135deg, #60a5fa 0%, #c4b5fd 100%)" 
+              : "linear-gradient(135deg, #1d4ed8 0%, #7c3aed 100%)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            backgroundClip: "text"
+          }}>
+            Linear Calendar
+          </h1>
+        </div>
+        
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <button
+            onClick={toggleTheme}
+            style={{
+              padding: "8px 16px",
+              background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+              border: "none",
+              borderRadius: 12,
+              color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+              cursor: "pointer",
+              fontSize: 14,
+              display: "flex",
+              alignItems: "center",
+              gap: 8
+            }}
+          >
+            {theme === "light" ? "🌙" : "☀️"}
+            {theme === "light" ? "Dark" : "Light"}
+          </button>
+          
+          <div style={{
+            padding: "8px 16px",
+            background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+            borderRadius: 12,
+            fontSize: 14,
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: "#10b981"
+            }}></div>
+            {user?.displayName || "Demo User"}
+          </div>
+          
+          <button
+            onClick={() => auth.signOut()}
+            style={{
+              padding: "8px 16px",
+              background: theme === "dark" ? "rgba(239, 68, 68, 0.2)" : "rgba(239, 68, 68, 0.1)",
+              color: theme === "dark" ? "#fca5a5" : "#dc2626",
+              border: "none",
+              borderRadius: 12,
+              cursor: "pointer",
+              fontSize: 14
+            }}
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+      
+      <div style={{ 
+        display: "grid", 
+        gridTemplateColumns: "280px 1fr 320px",
+        gap: 24,
+        padding: 24,
+        maxWidth: 1600,
+        margin: "0 auto"
+      }}>
+        {/* Left Sidebar */}
+        <div>
+          <div style={{
+            background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 20,
+            padding: 24,
+            border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(10px)"
+          }}>
+            <h3 style={{ 
+              fontSize: 14, 
+              fontWeight: 600, 
+              marginBottom: 20,
+              color: theme === "dark" ? "#94a3b8" : "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: 1
+            }}>
+              Contexts
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {["Personal", "Work", "Study", "Deleted"].map((context) => (
+                <div
+                  key={context}
+                  style={{
+                    padding: "12px 16px",
+                    background: theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.2s",
+                    color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                    border: context === "Work" 
+                      ? `1px solid ${theme === "dark" ? "#3b82f6" : "#2563eb"}` 
+                      : "1px solid transparent"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = theme === "dark" 
+                      ? "rgba(255, 255, 255, 0.1)" 
+                      : "rgba(0, 0, 0, 0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = theme === "dark" 
+                      ? "rgba(255, 255, 255, 0.05)" 
+                      : "rgba(0, 0, 0, 0.03)";
+                  }}
+                >
+                  {context}
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ marginTop: 32 }}>
+              <button
+                onClick={() => setView("day")}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: theme === "dark" 
+                    ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+                    : "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600,
+                  marginBottom: 12
+                }}
+              >
+                Day View
+              </button>
+              
+              <button
+                onClick={() => {
+                  setSelectedEvent({
+                    id: "new",
+                    title: "",
+                    date: new Date().toISOString().split('T')[0],
+                    description: "",
+                    tags: []
+                  });
+                }}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  border: "none",
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                Add Event
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        {/* Main Calendar */}
+        <div>
+          <div style={{
+            background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 20,
+            padding: 24,
+            border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(10px)"
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                <button
+                  onClick={prevMonth}
+                  style={{
+                    padding: "8px 16px",
+                    background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                    border: "none",
+                    borderRadius: 12,
+                    color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                    cursor: "pointer",
+                    fontSize: 14
+                  }}
+                >
+                  ←
+                </button>
+                
+                <h2 style={{ fontSize: 24, fontWeight: 700 }}>
+                  {monthYear}
+                </h2>
+                
+                <button
+                  onClick={nextMonth}
+                  style={{
+                    padding: "8px 16px",
+                    background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                    border: "none",
+                    borderRadius: 12,
+                    color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                    cursor: "pointer",
+                    fontSize: 14
+                  }}
+                >
+                  →
+                </button>
+              </div>
+              
+              <div style={{ display: "flex", gap: 8 }}>
+                {["month", "week", "day"].map((viewType) => (
+                  <button
+                    key={viewType}
+                    onClick={() => setView(viewType)}
+                    style={{
+                      padding: "8px 16px",
+                      background: view === viewType
+                        ? (theme === "dark" 
+                            ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+                            : "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)")
+                        : (theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)"),
+                      color: view === viewType ? "white" : (theme === "dark" ? "#e2e8f0" : "#1e293b"),
+                      border: "none",
+                      borderRadius: 12,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      textTransform: "capitalize"
+                    }}
+                  >
+                    {viewType}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Day headers */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 8,
+              marginBottom: 16
+            }}>
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
+                <div
+                  key={day}
+                  style={{
+                    textAlign: "center",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: theme === "dark" ? "#94a3b8" : "#64748b",
+                    padding: "12px 0"
+                  }}
+                >
+                  {day}
+                </div>
+              ))}
+            </div>
+            
+            {/* Calendar grid */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 8
+            }}>
+              {calendarDays.map((day, index) => {
+                const isToday = new Date().toDateString() === day.date.toDateString();
+                
+                return (
+                  <div
+                    key={index}
+                    style={{
+                      minHeight: 120,
+                      background: theme === "dark" 
+                        ? day.isCurrentMonth 
+                          ? isToday
+                            ? "rgba(59, 130, 246, 0.2)"
+                            : "rgba(255, 255, 255, 0.05)"
+                          : "rgba(255, 255, 255, 0.02)"
+                        : day.isCurrentMonth
+                          ? isToday
+                            ? "rgba(59, 130, 246, 0.1)"
+                            : "rgba(255, 255, 255, 0.9)"
+                          : "rgba(0, 0, 0, 0.02)",
+                      borderRadius: 12,
+                      padding: 12,
+                      border: theme === "dark"
+                        ? `1px solid ${day.isCurrentMonth ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.05)"}`
+                        : `1px solid ${day.isCurrentMonth ? "rgba(0, 0, 0, 0.1)" : "rgba(0, 0, 0, 0.05)"}`,
+                      opacity: day.isCurrentMonth ? 1 : 0.5,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onClick={() => {
+                      setSelectedEvent({
+                        id: "new",
+                        title: "",
+                        date: day.date.toISOString().split('T')[0],
+                        description: "",
+                        tags: []
+                      });
+                    }}
+                    onMouseEnter={(e) => {
+                      e.target.style.transform = "translateY(-2px)";
+                      e.target.style.borderColor = theme === "dark" ? "#3b82f6" : "#2563eb";
+                    }}
+                    onMouseLeave={(e) => {
+                      e.target.style.transform = "translateY(0)";
+                      e.target.style.borderColor = theme === "dark"
+                        ? (day.isCurrentMonth ? "rgba(255, 255, 255, 0.1)" : "rgba(255, 255, 255, 0.05)")
+                        : (day.isCurrentMonth ? "rgba(0, 0, 0, 0.1)" : "rgba(0, 0, 0, 0.05)");
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 14,
+                      fontWeight: 600,
+                      marginBottom: 8,
+                      color: isToday 
+                        ? (theme === "dark" ? "#60a5fa" : "#2563eb")
+                        : (theme === "dark" ? "#e2e8f0" : "#1e293b")
+                    }}>
+                      {day.date.getDate()}
+                    </div>
+                    
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      {day.events.slice(0, 3).map((event) => (
+                        <div
+                          key={event.id}
+                          style={{
+                            background: theme === "dark" 
+                              ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+                              : "linear-gradient(135deg, #60a5fa 0%, #a78bfa 100%)",
+                            color: "white",
+                            padding: "4px 8px",
+                            borderRadius: 6,
+                            fontSize: 12,
+                            cursor: "pointer",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                        >
+                          {event.title}
+                        </div>
+                      ))}
+                      
+                      {day.events.length > 3 && (
+                        <div style={{
+                          color: theme === "dark" ? "#94a3b8" : "#64748b",
+                          fontSize: 12,
+                          padding: "4px 8px"
+                        }}>
+                          +{day.events.length - 3} more
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+        
+        {/* Right Sidebar */}
+        <div>
+          <div style={{
+            background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 20,
+            padding: 24,
+            border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(10px)",
+            marginBottom: 24
+          }}>
+            <h3 style={{ 
+              fontSize: 14, 
+              fontWeight: 600, 
+              marginBottom: 20,
+              color: theme === "dark" ? "#94a3b8" : "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: 1
+            }}>
+              Add Event
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <input
+                type="text"
+                placeholder="Title"
+                value={newEvent.title}
+                onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14
+                }}
+              />
+              
+              <input
+                type="date"
+                value={newEvent.date}
+                onChange={(e) => setNewEvent({ ...newEvent, date: e.target.value })}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14
+                }}
+              />
+              
+              <textarea
+                placeholder="Description"
+                value={newEvent.description}
+                onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                rows={3}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14,
+                  resize: "vertical",
+                  fontFamily: "inherit"
+                }}
+              />
+              
+              <button
+                onClick={handleAddEvent}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" 
+                    ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+                    : "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                  color: "white",
+                  border: "none",
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                Add Event
+              </button>
+            </div>
+          </div>
+          
+          <div style={{
+            background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 20,
+            padding: 24,
+            border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(10px)",
+            marginBottom: 24
+          }}>
+            <h3 style={{ 
+              fontSize: 14, 
+              fontWeight: 600, 
+              marginBottom: 20,
+              color: theme === "dark" ? "#94a3b8" : "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: 1
+            }}>
+              Upcoming
+            </h3>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {todayEvents.slice(0, 5).map((event) => (
+                <div
+                  key={event.id}
+                  style={{
+                    padding: "12px 16px",
+                    background: theme === "dark" ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.03)",
+                    borderRadius: 12,
+                    borderLeft: `4px solid ${theme === "dark" ? "#3b82f6" : "#2563eb"}`,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onClick={() => setSelectedEvent(event)}
+                  onMouseEnter={(e) => {
+                    e.target.style.background = theme === "dark" 
+                      ? "rgba(255, 255, 255, 0.1)" 
+                      : "rgba(0, 0, 0, 0.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.target.style.background = theme === "dark" 
+                      ? "rgba(255, 255, 255, 0.05)" 
+                      : "rgba(0, 0, 0, 0.03)";
+                  }}
+                >
+                  <div style={{ 
+                    fontSize: 14, 
+                    fontWeight: 600,
+                    color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                    marginBottom: 4
+                  }}>
+                    {event.title}
+                  </div>
+                  <div style={{ 
+                    fontSize: 12, 
+                    color: theme === "dark" ? "#94a3b8" : "#64748b" 
+                  }}>
+                    {formatDate(event.date)}
+                  </div>
+                </div>
+              ))}
+              
+              {todayEvents.length === 0 && (
+                <div style={{ 
+                  textAlign: "center", 
+                  padding: 20,
+                  color: theme === "dark" ? "#94a3b8" : "#64748b",
+                  fontSize: 14
+                }}>
+                  No events today
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div style={{
+            background: theme === "dark" ? "rgba(30, 41, 59, 0.8)" : "rgba(255, 255, 255, 0.9)",
+            borderRadius: 20,
+            padding: 24,
+            border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(10px)"
+          }}>
+            <div style={{ 
+              fontSize: 14, 
+              fontWeight: 600, 
+              marginBottom: 16,
+              color: theme === "dark" ? "#94a3b8" : "#64748b",
+              textTransform: "uppercase",
+              letterSpacing: 1
+            }}>
+              Tags
+            </div>
+            
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+              {tags.map((tag) => (
+                <div
+                  key={tag}
+                  style={{
+                    padding: "6px 12px",
+                    background: theme === "dark" 
+                      ? "linear-gradient(135deg, #10b981 0%, #3b82f6 100%)" 
+                      : "linear-gradient(135deg, #34d399 0%, #60a5fa 100%)",
+                    color: "white",
+                    borderRadius: 20,
+                    fontSize: 12,
+                    fontWeight: 600
+                  }}
+                >
+                  {tag}
+                </div>
+              ))}
+            </div>
+            
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                type="text"
+                placeholder="New tag"
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyPress={(e) => e.key === "Enter" && handleAddTag()}
+                style={{
+                  flex: 1,
+                  padding: "8px 12px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14
+                }}
+              />
+              
+              <button
+                onClick={handleAddTag}
+                style={{
+                  padding: "8px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  border: "none",
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 600
+                }}
+              >
+                Add
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      {/* Event Detail Modal */}
+      {selectedEvent && (
+        <div style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: theme === "dark" ? "rgba(0, 0, 0, 0.8)" : "rgba(0, 0, 0, 0.5)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          zIndex: 1000,
+          padding: 20
+        }}
+        onClick={() => setSelectedEvent(null)}
+        >
+          <div
+            style={{
+              background: theme === "dark" ? "rgba(30, 41, 59, 0.95)" : "rgba(255, 255, 255, 0.95)",
+              borderRadius: 20,
+              padding: 32,
+              maxWidth: 500,
+              width: "100%",
+              border: theme === "dark" ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)",
+              backdropFilter: "blur(20px)",
+              boxShadow: theme === "dark" 
+                ? "0 40px 80px rgba(0, 0, 0, 0.4)" 
+                : "0 40px 80px rgba(0, 0, 0, 0.2)"
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+              <h2 style={{ fontSize: 24, fontWeight: 700 }}>
+                {selectedEvent.id === "new" ? "New Event" : "Edit Event"}
+              </h2>
+              
+              <button
+                onClick={() => setSelectedEvent(null)}
+                style={{
+                  padding: "8px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  cursor: "pointer",
+                  fontSize: 20,
+                  width: 40,
+                  height: 40,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                ×
+              </button>
+            </div>
+            
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <input
+                type="text"
+                placeholder="Event Title"
+                value={selectedEvent.title}
+                onChange={(e) => setSelectedEvent({ ...selectedEvent, title: e.target.value })}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 16,
+                  fontWeight: 600
+                }}
+              />
+              
+              <input
+                type="date"
+                value={selectedEvent.date}
+                onChange={(e) => setSelectedEvent({ ...selectedEvent, date: e.target.value })}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14
+                }}
+              />
+              
+              <textarea
+                placeholder="Description"
+                value={selectedEvent.description}
+                onChange={(e) => setSelectedEvent({ ...selectedEvent, description: e.target.value })}
+                rows={4}
+                style={{
+                  padding: "12px 16px",
+                  background: theme === "dark" ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.05)",
+                  border: "none",
+                  borderRadius: 12,
+                  color: theme === "dark" ? "#e2e8f0" : "#1e293b",
+                  fontSize: 14,
+                  resize: "vertical",
+                  fontFamily: "inherit"
+                }}
+              />
+              
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                {selectedEvent.id !== "new" && (
+                  <button
+                    onClick={() => {
+                      handleDeleteEvent(selectedEvent.id);
+                      setSelectedEvent(null);
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: "12px 16px",
+                      background: theme === "dark" ? "rgba(239, 68, 68, 0.2)" : "rgba(239, 68, 68, 0.1)",
+                      color: theme === "dark" ? "#fca5a5" : "#dc2626",
+                      border: "none",
+                      borderRadius: 12,
+                      cursor: "pointer",
+                      fontSize: 14,
+                      fontWeight: 600
+                    }}
+                  >
+                    Delete
+                  </button>
+                )}
+                
+                <button
+                  onClick={() => {
+                    if (selectedEvent.id === "new") {
+                      handleAddEvent();
+                    } else {
+                      // Update existing event
+                      setEvents(events.map(e => 
+                        e.id === selectedEvent.id ? selectedEvent : e
+                      ));
+                    }
+                    setSelectedEvent(null);
+                  }}
+                  style={{
+                    flex: 2,
+                    padding: "12px 16px",
+                    background: theme === "dark" 
+                      ? "linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)" 
+                      : "linear-gradient(135deg, #2563eb 0%, #7c3aed 100%)",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    fontSize: 14,
+                    fontWeight: 600
+                  }}
+                >
+                  {selectedEvent.id === "new" ? "Create Event" : "Save Changes"}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function App() {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [theme, setTheme] = useState("light");
+  
+  useEffect(() => {
+    // Listen for auth state changes
+    const unsubscribe = auth.onAuthStateChanged((currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    
+    return unsubscribe;
+  }, []);
+  
+  const handleLogin = (userData) => {
+    setUser(userData);
+  };
+  
+  const handleLogout = () => {
+    auth.signOut();
+    setUser(null);
+  };
+  
+  if (loading) {
+    return (
+      <div style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: theme === "dark" ? "#0f172a" : "#f8fafc"
+      }}>
+        <div className="thinking-dots">
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#3b82f6", animationDelay: "0s" }}></div>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#3b82f6", animationDelay: "0.2s" }}></div>
+          <div style={{ width: 12, height: 12, borderRadius: "50%", background: "#3b82f6", animationDelay: "0.4s" }}></div>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!user) {
+    return <AuthScreen onLogin={handleLogin} theme={theme} />;
+  }
+  
+  return <Calendar />;
+}
+
+export default App;
