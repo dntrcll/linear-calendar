@@ -1,16 +1,19 @@
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, provider } from "./firebase";
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
+import { 
+  collection, query, where, getDocs, addDoc, 
+  updateDoc, deleteDoc, doc, serverTimestamp, Timestamp 
+} from "firebase/firestore";
 import { db } from "./firebase";
 
 // ==========================================
-// 1. CORE CONFIGURATION & CONSTANTS
+// 1. CORE SYSTEM CONFIGURATION
 // ==========================================
 
 const APP_META = { 
   name: "Timeline", 
-  version: "4.3.0-Roadmap",
+  version: "4.4.0-Restored",
   quoteInterval: 14400000 
 };
 
@@ -51,14 +54,14 @@ const ICONS = {
 };
 
 const PALETTE = {
-  onyx: { bg: "#27272a", text: "#f4f4f5", border: "#52525b" },
-  ceramic: { bg: "#f5f5f4", text: "#44403c", border: "#d6d3d1" },
-  gold: { bg: "#fffbeb", text: "#92400e", border: "#fcd34d" },
-  emerald: { bg: "#ecfdf5", text: "#065f46", border: "#6ee7b7" },
-  rose: { bg: "#fff1f2", text: "#9f1239", border: "#fda4af" },
-  midnight: { bg: "#eff6ff", text: "#1e3a8a", border: "#93c5fd" },
-  lavender: { bg: "#fdf4ff", text: "#86198f", border: "#f0abfc" },
-  clay: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74" }
+  onyx: { bg: "#27272a", text: "#f4f4f5", border: "#52525b", color: "#27272a", darkBg: "#18181b" },
+  ceramic: { bg: "#f5f5f4", text: "#44403c", border: "#d6d3d1", color: "#f5f5f4", darkBg: "#292524" },
+  gold: { bg: "#fffbeb", text: "#92400e", border: "#fcd34d", color: "#fffbeb", darkBg: "#78350f" },
+  emerald: { bg: "#ecfdf5", text: "#065f46", border: "#6ee7b7", color: "#ecfdf5", darkBg: "#064e3b" },
+  rose: { bg: "#fff1f2", text: "#9f1239", border: "#fda4af", color: "#fff1f2", darkBg: "#881337" },
+  midnight: { bg: "#eff6ff", text: "#1e3a8a", border: "#93c5fd", color: "#eff6ff", darkBg: "#1e3a8a" },
+  lavender: { bg: "#fdf4ff", text: "#86198f", border: "#f0abfc", color: "#fdf4ff", darkBg: "#86198f" },
+  clay: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74", color: "#fff7ed", darkBg: "#7c2d12" }
 };
 
 const THEMES = {
@@ -99,9 +102,9 @@ const THEMES = {
 };
 
 const DEFAULT_TAGS = [
-  { id: 'work',    name: "Business", ...PALETTE.onyx },
-  { id: 'health',  name: "Wellness", ...PALETTE.rose },
-  { id: 'finance', name: "Finance",  ...PALETTE.emerald },
+  { id: 'work', name: "Business", ...PALETTE.onyx },
+  { id: 'health', name: "Wellness", ...PALETTE.rose },
+  { id: 'finance', name: "Finance", ...PALETTE.emerald },
 ];
 
 const CSS = `
@@ -113,7 +116,7 @@ const CSS = `
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(120, 113, 108, 0.2); border-radius: 10px; }
-  .fade-enter { animation: fadeIn 0.5s var(--ease) forwards; }
+  .fade-enter { animation: fadeIn 0.5s var(--ease) forwards; opacity: 0; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .glass-panel { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
   .btn-reset { border: none; background: transparent; cursor: pointer; color: inherit; font-family: inherit; display: flex; align-items: center; justify-content: center; }
@@ -142,6 +145,26 @@ const CSS = `
   .life-module { padding: 16px; border-radius: 12px; background: rgba(0,0,0,0.02); margin-bottom: 16px; border: 1px solid rgba(0,0,0,0.05); }
   .progress-bar { height: 6px; border-radius: 3px; background: rgba(0,0,0,0.1); overflow: hidden; margin-top: 8px; }
   .progress-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; }
+
+  /* Settings UI */
+  .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .settings-label { font-size: 14px; font-weight: 500; }
+  .settings-sub { font-size: 12px; opacity: 0.6; margin-top: 2px; }
+  
+  /* Segmented Control - Fixed */
+  .segmented { display: flex; background: rgba(0,0,0,0.05); padding: 3px; border-radius: 8px; width: 100%; }
+  .seg-opt { flex: 1; text-align: center; padding: 8px; font-size: 13px; font-weight: 500; border-radius: 6px; cursor: pointer; transition: 0.2s; opacity: 0.6; }
+  .seg-opt.active { background: #fff; opacity: 1; font-weight: 600; box-shadow: 0 2px 8px rgba(0,0,0,0.08); color: #000; }
+  .dark .seg-opt.active { background: #3B82F6; color: #fff; }
+
+  /* Switch */
+  .switch-track { width: 44px; height: 24px; border-radius: 12px; background: rgba(0,0,0,0.1); position: relative; cursor: pointer; transition: 0.3s; }
+  .switch-track.active { background: #3B82F6; }
+  .switch-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: 0.3s var(--ease); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+  .switch-track.active .switch-thumb { transform: translateX(20px); }
+  
+  /* Mini Calendar Header */
+  .mini-cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
 `;
 
 // ==========================================
@@ -157,12 +180,17 @@ export default function TimelineOS() {
   const [context, setContext] = useState("personal");
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
-  const [tags, setTags] = useState(() => JSON.parse(localStorage.getItem('timeline_tags_v2')) || DEFAULT_TAGS);
+  const [tags, setTags] = useState(() => {
+    const saved = localStorage.getItem('timeline_tags_v2');
+    return saved ? JSON.parse(saved) : DEFAULT_TAGS;
+  });
   const [activeTagIds, setActiveTagIds] = useState(tags.map(t => t.id));
   const [quote, setQuote] = useState(QUOTES[0]);
   
-  // Roadmap: Phase 3 & 4 Data
-  const [habits, setHabits] = useState([ { id: 1, name: "Workout", streak: 12 }, { id: 2, name: "Reading", streak: 5 } ]);
+  const [habits, setHabits] = useState([
+    { id: 1, name: "Workout", streak: 12 },
+    { id: 2, name: "Reading", streak: 5 }
+  ]);
   const [budget, setBudget] = useState({ spent: 1240, limit: 3000 });
 
   const [modalOpen, setModalOpen] = useState(false);
@@ -172,19 +200,31 @@ export default function TimelineOS() {
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
   
-  const [config, setConfig] = useState(() => JSON.parse(localStorage.getItem('timeline_v4_cfg')) || {
-    darkMode: true, use24Hour: false, blurPast: true, weekStartMon: true
+  const [config, setConfig] = useState(() => {
+    const saved = localStorage.getItem('timeline_v4_cfg');
+    return saved ? JSON.parse(saved) : {
+      darkMode: true,
+      use24Hour: false,
+      blurPast: true,
+      weekStartMon: true
+    };
   });
 
   const scrollRef = useRef(null);
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
 
+  // Initialize CSS and intervals
   useEffect(() => {
-    const s = document.createElement('style'); s.textContent = CSS; document.head.appendChild(s);
-    const i = setInterval(() => setNow(new Date()), 60000);
-    const qI = setInterval(() => setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]), APP_META.quoteInterval);
-    
-    // Keyboard Shortcuts (Roadmap Phase 2)
+    const style = document.createElement('style');
+    style.textContent = CSS;
+    document.head.appendChild(style);
+
+    const timeInterval = setInterval(() => setNow(new Date()), 60000);
+    const quoteInterval = setInterval(() => {
+      setQuote(QUOTES[Math.floor(Math.random() * QUOTES.length)]);
+    }, APP_META.quoteInterval);
+
+    // Keyboard shortcuts
     const handleKey = (e) => {
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       if (e.key === 'd') setViewMode('day');
@@ -193,23 +233,45 @@ export default function TimelineOS() {
       if (e.key === 'y') setViewMode('year');
       if (e.key === 't') setCurrentDate(new Date());
     };
+
     window.addEventListener('keydown', handleKey);
 
-    return () => { s.remove(); clearInterval(i); clearInterval(qI); window.removeEventListener('keydown', handleKey); };
+    return () => {
+      document.head.removeChild(style);
+      clearInterval(timeInterval);
+      clearInterval(quoteInterval);
+      window.removeEventListener('keydown', handleKey);
+    };
   }, []);
+
+  // Auth state listener
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (u) => {
+      setUser(u);
+      if (u) {
+        await loadData(u);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  // Persist config and tags
+  useEffect(() => {
+    localStorage.setItem('timeline_v4_cfg', JSON.stringify(config));
+  }, [config]);
 
   useEffect(() => {
-    setPersistence(auth, browserLocalPersistence);
-    return auth.onAuthStateChanged(u => { setUser(u); if(u) loadData(u); else setLoading(false); });
-  }, []);
-
-  useEffect(() => localStorage.setItem('timeline_v4_cfg', JSON.stringify(config)), [config]);
-  useEffect(() => localStorage.setItem('timeline_tags_v2', JSON.stringify(tags)), [tags]);
+    localStorage.setItem('timeline_tags_v2', JSON.stringify(tags));
+  }, [tags]);
 
   // Scroll logic
   useEffect(() => {
     if ((viewMode === 'day' || viewMode === 'week') && scrollRef.current) {
-      scrollRef.current.scrollTop = 6 * 60 * LAYOUT.PIXELS_PER_MINUTE;
+      const hours = 6 * 60;
+      scrollRef.current.scrollTop = hours * LAYOUT.PIXELS_PER_MINUTE;
     }
   }, [viewMode]);
 
@@ -218,90 +280,260 @@ export default function TimelineOS() {
     try {
       const q = query(collection(db, "events"), where("uid", "==", u.uid));
       const snap = await getDocs(q);
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data(), start: d.data().startTime.toDate(), end: d.data().endTime.toDate() }));
-      setEvents(all.filter(e => !e.deleted));
-      setDeletedEvents(all.filter(e => e.deleted));
-    } catch(e) { notify("Sync failed.", "error"); }
+      const allEvents = snap.docs.map(docSnap => {
+        const data = docSnap.data();
+        return {
+          id: docSnap.id,
+          ...data,
+          start: data.startTime?.toDate() || new Date(),
+          end: data.endTime?.toDate() || new Date()
+        };
+      });
+      
+      setEvents(allEvents.filter(e => !e.deleted));
+      setDeletedEvents(allEvents.filter(e => e.deleted));
+    } catch (error) {
+      console.error("Error loading data:", error);
+      notify("Sync failed.", "error");
+    }
     setLoading(false);
   };
 
   const handleSave = async (data) => {
-    if(!user) return;
+    if (!user) return;
+
     try {
+      const startDate = data.start instanceof Date ? data.start : new Date(data.start);
+      const endDate = data.end instanceof Date ? data.end : new Date(data.end);
+
       const payload = {
-        uid: user.uid, title: data.title, category: data.category, context: context, description: data.description || "", location: data.location || "",
-        startTime: Timestamp.fromDate(data.start), endTime: Timestamp.fromDate(data.end), deleted: false, updatedAt: serverTimestamp()
+        uid: user.uid,
+        title: data.title || "Untitled",
+        category: data.category || tags[0].id,
+        context: context,
+        description: data.description || "",
+        location: data.location || "",
+        startTime: Timestamp.fromDate(startDate),
+        endTime: Timestamp.fromDate(endDate),
+        deleted: false,
+        updatedAt: serverTimestamp()
       };
-      if(data.id) await updateDoc(doc(db, "events", data.id), payload);
-      else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), payload); }
-      setModalOpen(false); loadData(user); notify("Event saved.");
-    } catch(e) { notify("Save failed.", "error"); }
+
+      if (data.id) {
+        await updateDoc(doc(db, "events", data.id), payload);
+      } else {
+        payload.createdAt = serverTimestamp();
+        await addDoc(collection(db, "events"), payload);
+      }
+
+      setModalOpen(false);
+      await loadData(user);
+      notify("Event saved.");
+    } catch (error) {
+      console.error("Error saving event:", error);
+      notify("Save failed.", "error");
+    }
   };
 
   const softDelete = async (id) => {
-    if(!window.confirm("Move to trash?")) return;
-    try { await updateDoc(doc(db, "events", id), { deleted: true, deletedAt: serverTimestamp() }); setModalOpen(false); loadData(user); notify("Moved to trash."); } 
-    catch(e) { notify("Delete failed.", "error"); }
+    if (!window.confirm("Move to trash?")) return;
+    
+    try {
+      await updateDoc(doc(db, "events", id), {
+        deleted: true,
+        deletedAt: serverTimestamp()
+      });
+      setModalOpen(false);
+      await loadData(user);
+      notify("Moved to trash.");
+    } catch (error) {
+      console.error("Error deleting event:", error);
+      notify("Delete failed.", "error");
+    }
   };
 
   const restoreEvent = async (id) => {
-    try { await updateDoc(doc(db, "events", id), { deleted: false }); loadData(user); notify("Event restored."); } catch(e) {}
+    try {
+      await updateDoc(doc(db, "events", id), { deleted: false });
+      await loadData(user);
+      notify("Event restored.");
+    } catch (error) {
+      console.error("Error restoring event:", error);
+      notify("Restore failed.", "error");
+    }
   };
 
   const hardDelete = async (id) => {
-    if(!window.confirm("Permanently destroy?")) return;
-    try { await deleteDoc(doc(db, "events", id)); loadData(user); notify("Permanently deleted."); } catch(e) {}
+    if (!window.confirm("Permanently destroy?")) return;
+    
+    try {
+      await deleteDoc(doc(db, "events", id));
+      await loadData(user);
+      notify("Permanently deleted.");
+    } catch (error) {
+      console.error("Error permanently deleting event:", error);
+      notify("Delete failed.", "error");
+    }
   };
 
-  const notify = (msg, type='neutral') => {
+  const notify = (msg, type = 'neutral') => {
     const id = Date.now();
-    setNotifications(p => [...p, {id, msg, type}]);
-    setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 4000);
+    setNotifications(prev => [...prev, { id, msg, type }]);
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
   };
 
-  const filteredEvents = useMemo(() => events.filter(e => e.context === context && activeTagIds.includes(e.category)), [events, context, activeTagIds]);
-  const upcomingEvents = useMemo(() => events.filter(e => e.context === context && e.start > now && !e.deleted).sort((a,b) => a.start - b.start).slice(0, 3), [events, now, context]);
+  const filteredEvents = useMemo(() => 
+    events.filter(e => e.context === context && activeTagIds.includes(e.category)),
+    [events, context, activeTagIds]
+  );
+
+  const upcomingEvents = useMemo(() => 
+    events
+      .filter(e => e.context === context && e.start > now && !e.deleted)
+      .sort((a, b) => a.start - b.start)
+      .slice(0, 3),
+    [events, now, context]
+  );
 
   const nav = (amt) => {
     const d = new Date(currentDate);
-    if(viewMode === 'year') d.setFullYear(d.getFullYear() + amt);
-    else if(viewMode === 'week') d.setDate(d.getDate() + (amt*7));
-    else if(viewMode === 'month') d.setMonth(d.getMonth() + amt);
+    if (viewMode === 'year') d.setFullYear(d.getFullYear() + amt);
+    else if (viewMode === 'week') d.setDate(d.getDate() + (amt * 7));
+    else if (viewMode === 'month') d.setMonth(d.getMonth() + amt);
     else d.setDate(d.getDate() + amt);
     setCurrentDate(d);
   };
 
-  if (!user) return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
+  if (loading) {
+    return (
+      <div style={{
+        height: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        background: theme.bg,
+        color: theme.text
+      }}>
+        Loading Timeline...
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
+  }
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: theme.bg, color: theme.text }}>
+    <div style={{ 
+      display: "flex", 
+      height: "100vh", 
+      background: theme.bg, 
+      color: theme.text 
+    }} className={config.darkMode ? 'dark' : 'light'}>
       
       {/* SIDEBAR */}
-      <aside style={{ width: LAYOUT.SIDEBAR_WIDTH, background: theme.sidebar, borderRight: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", padding: "28px 24px", zIndex: 50, overflowY: "auto" }}>
+      <aside style={{ 
+        width: LAYOUT.SIDEBAR_WIDTH, 
+        background: theme.sidebar, 
+        borderRight: `1px solid ${theme.border}`, 
+        display: "flex", 
+        flexDirection: "column", 
+        padding: "28px 24px", 
+        zIndex: 50, 
+        overflowY: "auto" 
+      }}>
         <div style={{ marginBottom: 32 }}>
-          <h1 className="serif" style={{ fontSize: 32, fontWeight: 700, color: theme.text, letterSpacing: "-0.5px" }}>Timeline.</h1>
-          <div style={{ fontSize: 13, color: theme.textSec, marginTop: 4 }}>Welcome back, <span style={{fontWeight:600}}>{user.displayName?.split(" ")[0]}</span></div>
+          <h1 className="serif" style={{ 
+            fontSize: 32, 
+            fontWeight: 700, 
+            color: theme.text, 
+            letterSpacing: "-0.5px" 
+          }}>
+            Timeline.
+          </h1>
+          <div style={{ 
+            fontSize: 13, 
+            color: theme.textSec, 
+            marginTop: 4 
+          }}>
+            Welcome back, <span style={{fontWeight:600}}>
+              {user.displayName?.split(" ")[0] || user.email?.split("@")[0]}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: "flex", background: "rgba(0,0,0,0.04)", padding: 4, borderRadius: 12, marginBottom: 24 }}>
-          <button onClick={() => setContext('personal')} className={`btn-reset tab-pill ${context==='personal'?'active':''}`} style={{ flex: 1, background: context==='personal' ? theme.card : 'transparent', color: context==='personal' ? theme.accent : theme.textSec }}>Personal</button>
-          <button onClick={() => setContext('family')} className={`btn-reset tab-pill ${context==='family'?'active':''}`} style={{ flex: 1, background: context==='family' ? theme.card : 'transparent', color: context==='family' ? theme.familyAccent : theme.textSec }}>Family</button>
+        {/* Context Toggle */}
+        <div style={{ 
+          display: "flex", 
+          background: "rgba(0,0,0,0.04)", 
+          padding: 4, 
+          borderRadius: 12, 
+          marginBottom: 24 
+        }}>
+          <button 
+            onClick={() => setContext('personal')} 
+            className={`btn-reset tab-pill ${context==='personal'?'active':''}`}
+            style={{ 
+              flex: 1, 
+              background: context==='personal' ? theme.card : 'transparent', 
+              color: context==='personal' ? theme.accent : theme.textSec 
+            }}
+          >
+            Personal
+          </button>
+          <button 
+            onClick={() => setContext('family')} 
+            className={`btn-reset tab-pill ${context==='family'?'active':''}`}
+            style={{ 
+              flex: 1, 
+              background: context==='family' ? theme.card : 'transparent', 
+              color: context==='family' ? theme.familyAccent : theme.textSec 
+            }}
+          >
+            Family
+          </button>
         </div>
 
-        <button onClick={() => { setEditingEvent(null); setModalOpen(true); }} className="btn-reset btn-hover" style={{ width: "100%", padding: "14px", borderRadius: 12, background: context==='family' ? theme.familyAccent : theme.accent, color: "#fff", fontSize: 14, fontWeight: 600, boxShadow: theme.shadow, marginBottom: 24, gap: 8 }}>
+        {/* New Event Button */}
+        <button 
+          onClick={() => { setEditingEvent(null); setModalOpen(true); }} 
+          className="btn-reset btn-hover"
+          style={{ 
+            width: "100%", 
+            padding: "14px", 
+            borderRadius: 12, 
+            background: context==='family' ? theme.familyAccent : theme.accent, 
+            color: "#fff", 
+            fontSize: 14, 
+            fontWeight: 600, 
+            boxShadow: theme.shadow, 
+            marginBottom: 24, 
+            gap: 8 
+          }}
+        >
           <ICONS.Plus /> New Event
         </button>
 
-        {/* Phase 2: Mini Calendar */}
+        {/* Mini Calendar */}
         <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${theme.border}` }}>
-           <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
+          <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
         </div>
 
-        {/* Phase 3 & 4: Life Modules */}
+        {/* Life Modules */}
         <div style={{ marginBottom: 24 }}>
-          <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Life OS</h4>
+          <h4 style={{ 
+            fontSize: 11, 
+            fontWeight: 700, 
+            color: theme.textMuted, 
+            textTransform: "uppercase", 
+            letterSpacing: 1, 
+            marginBottom: 12 
+          }}>
+            Life OS
+          </h4>
           
-          {/* Health Module */}
           <div className="life-module">
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
               <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.Health /> Habits</span>
@@ -315,13 +547,17 @@ export default function TimelineOS() {
             ))}
           </div>
 
-          {/* Finance Module */}
           <div className="life-module">
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, fontWeight: 600 }}>
               <span style={{display:'flex', gap:6, alignItems:'center'}}><ICONS.Finance /> Monthly Budget</span>
               <span>{Math.round((budget.spent/budget.limit)*100)}%</span>
             </div>
-            <div className="progress-bar"><div className="progress-fill" style={{ width: `${(budget.spent/budget.limit)*100}%`, background: theme.familyAccent }} /></div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ 
+                width: `${Math.min(100, (budget.spent/budget.limit)*100)}%`, 
+                background: theme.familyAccent 
+              }} />
+            </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginTop: 4, color: theme.textMuted }}>
               <span>${budget.spent} spent</span>
               <span>${budget.limit} limit</span>
@@ -332,156 +568,293 @@ export default function TimelineOS() {
         {/* Tags */}
         <div style={{ flex: 1 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-             <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Tags</h4>
-             <button onClick={() => setTagManagerOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec }}><ICONS.Settings /></button>
+            <h4 style={{ 
+              fontSize: 11, 
+              fontWeight: 700, 
+              color: theme.textMuted, 
+              textTransform: "uppercase", 
+              letterSpacing: 1 
+            }}>
+              Tags
+            </h4>
+            <button 
+              onClick={() => setTagManagerOpen(true)} 
+              className="btn-reset btn-hover" 
+              style={{ color: theme.textSec }}
+            >
+              <ICONS.Settings />
+            </button>
           </div>
           {tags.map(t => (
-            <div key={t.id} onClick={() => setActiveTagIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
+            <div 
+              key={t.id} 
+              onClick={() => setActiveTagIds(prev => 
+                prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id]
+              )}
               className="btn-hover"
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.id === 'dark' ? t.color : t.text }} />
+              style={{ 
+                display: "flex", 
+                alignItems: "center", 
+                gap: 12, 
+                padding: "8px 0", 
+                cursor: "pointer", 
+                opacity: activeTagIds.includes(t.id) ? 1 : 0.5 
+              }}
+            >
+              <div style={{ 
+                width: 10, 
+                height: 10, 
+                borderRadius: "50%", 
+                background: t.color || t.text 
+              }} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
             </div>
           ))}
         </div>
 
         {/* Footer Actions */}
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: `1px solid ${theme.border}`, display: "flex", justifyContent: "space-between" }}>
-          <button onClick={() => setTrashOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, gap: 8 }}>
+        <div style={{ 
+          marginTop: 24, 
+          paddingTop: 20, 
+          borderTop: `1px solid ${theme.border}`, 
+          display: "flex", 
+          justifyContent: "space-between" 
+        }}>
+          <button 
+            onClick={() => setTrashOpen(true)} 
+            className="btn-reset btn-hover" 
+            style={{ color: theme.textSec, fontSize: 14, gap: 8 }}
+          >
             <ICONS.Trash /> Trash
           </button>
-          <button onClick={() => setSettingsOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec, fontSize: 14, gap: 8 }}>
+          <button 
+            onClick={() => setSettingsOpen(true)} 
+            className="btn-reset btn-hover" 
+            style={{ color: theme.textSec, fontSize: 14, gap: 8 }}
+          >
             <ICONS.Settings /> Preferences
           </button>
         </div>
       </aside>
 
       {/* MAIN WORKSPACE */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
-        
+      <div style={{ 
+        flex: 1, 
+        display: "flex", 
+        flexDirection: "column", 
+        overflow: "hidden", 
+        position: "relative" 
+      }}>
         {/* Header */}
-        <header style={{ height: LAYOUT.HEADER_HEIGHT, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${theme.border}`, background: theme.bg }}>
+        <header style={{ 
+          height: LAYOUT.HEADER_HEIGHT, 
+          display: "flex", 
+          alignItems: "center", 
+          justifyContent: "space-between", 
+          padding: "0 40px", 
+          borderBottom: `1px solid ${theme.border}`, 
+          background: theme.bg 
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>
+              {viewMode === 'year' 
+                ? currentDate.getFullYear() 
+                : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+              }
+            </h2>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => nav(-1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronLeft/></button>
-              <button onClick={() => setCurrentDate(new Date())} className="btn-reset btn-hover" style={{ padding: "0 20px", height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, fontSize: 13, fontWeight: 500 }}>Today</button>
-              <button onClick={() => nav(1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronRight/></button>
+              <button 
+                onClick={() => nav(-1)} 
+                className="btn-reset btn-hover"
+                style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: 18, 
+                  border: `1px solid ${theme.border}` 
+                }}
+              >
+                <ICONS.ChevronLeft/>
+              </button>
+              <button 
+                onClick={() => setCurrentDate(new Date())} 
+                className="btn-reset btn-hover"
+                style={{ 
+                  padding: "0 20px", 
+                  height: 36, 
+                  borderRadius: 18, 
+                  border: `1px solid ${theme.border}`, 
+                  fontSize: 13, 
+                  fontWeight: 500 
+                }}
+              >
+                Today
+              </button>
+              <button 
+                onClick={() => nav(1)} 
+                className="btn-reset btn-hover"
+                style={{ 
+                  width: 36, 
+                  height: 36, 
+                  borderRadius: 18, 
+                  border: `1px solid ${theme.border}` 
+                }}
+              >
+                <ICONS.ChevronRight/>
+              </button>
             </div>
           </div>
           <div style={{ display: "flex", background: theme.sidebar, padding: 4, borderRadius: 12 }}>
             {['day', 'week', 'month', 'year'].map(m => (
-              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>{m}</button>
+              <button 
+                key={m} 
+                onClick={() => setViewMode(m)} 
+                className={`btn-reset tab-pill ${viewMode===m?'active':''}`}
+                style={{ 
+                  background: viewMode===m ? theme.card : 'transparent', 
+                  color: viewMode===m ? theme.text : theme.textMuted, 
+                  textTransform: "capitalize" 
+                }}
+              >
+                {m}
+              </button>
             ))}
           </div>
         </header>
 
+        {/* Main Content */}
         <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", position: "relative" }}>
-          
           {/* DAY VIEW */}
           {viewMode === 'day' && (
-            <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
-              <div style={{ marginBottom: 60 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
-                <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
-              </div>
-              <div style={{ position: "relative", borderLeft: `1px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
-                {Array.from({length: 24}).map((_, h) => {
-                  if (h < 5) return null;
-                  const slotEvents = filteredEvents.filter(e => e.start.toDateString() === currentDate.toDateString() && e.start.getHours() === h);
-                  return (
-                    <div key={h} style={{ minHeight: 90, position: "relative", marginBottom: 20 }}>
-                      <div className="serif" style={{ position: "absolute", left: -100, top: -8, fontSize: 18, color: theme.textMuted, width: 50, textAlign: "right" }}>{config.use24Hour ? h : (h % 12 || 12) + (h<12?' AM':' PM')}</div>
-                      <div style={{ position: "absolute", left: -46, top: 4, width: 11, height: 11, borderRadius: "50%", background: theme.bg, border: `2px solid ${theme.textSec}` }} />
-                      <div>
-                        {slotEvents.map(ev => {
-                          const tag = tags.find(t => t.id === ev.category) || tags[0];
-                          const isPast = config.blurPast && ev.end < now;
-                          return (
-                            <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`event-card-journal ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 16, cursor: "pointer", background: config.darkMode ? tag.darkBg : tag.bg, borderLeftColor: tag.color, padding: "20px 24px", borderRadius: 12 }}>
-                              <div style={{ fontSize: 22, fontWeight: 500, color: theme.text, fontFamily: 'Playfair Display', marginBottom: 4 }}>{ev.title}</div>
-                              <div style={{ display: "flex", gap: 16, fontSize: 13, color: theme.textSec, alignItems: "center" }}>
-                                <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.Clock/> {ev.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} — {ev.end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>
-                                {ev.location && <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.MapPin/> {ev.location}</span>}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {slotEvents.length === 0 && <div style={{ height: 60, cursor: "pointer" }} onClick={() => { const s = new Date(currentDate); s.setHours(h,0,0,0); setEditingEvent({ start: s, end: new Date(s.getTime()+3600000), title: "", category: tags[0].id }); setModalOpen(true); }} />}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <DayView 
+              currentDate={currentDate} 
+              now={now} 
+              filteredEvents={filteredEvents} 
+              theme={theme} 
+              config={config} 
+              tags={tags} 
+              setEditingEvent={setEditingEvent}
+              setModalOpen={setModalOpen}
+            />
           )}
 
           {/* YEAR VIEW */}
           {viewMode === 'year' && (
-            <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
-              <div style={{ minWidth: 1200 }}>
-                <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
-                  {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
-                    <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
-                  ))}
-                </div>
-                {Array.from({length: 12}).map((_, m) => {
-                  const monthStart = new Date(currentDate.getFullYear(), m, 1);
-                  const daysInMonth = new Date(currentDate.getFullYear(), m+1, 0).getDate();
-                  let offset = monthStart.getDay(); if(config.weekStartMon) offset = offset===0 ? 6 : offset-1;
-                  return (
-                    <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 8, height: 36 }}>
-                      <div className="serif" style={{ width: 100, fontSize: 14, fontWeight: 600, color: theme.textSec }}>{monthStart.toLocaleDateString('en-US',{month:'short'})}</div>
-                      <div style={{ flex: 1, display: "flex", gap: 2 }}>
-                        {Array.from({length: LAYOUT.YEAR_COLS}).map((_, col) => {
-                          const dayNum = col - offset + 1;
-                          if(dayNum < 1 || dayNum > daysInMonth) return <div key={col} style={{ flex: 1 }} />;
-                          const d = new Date(currentDate.getFullYear(), m, dayNum);
-                          const isT = d.toDateString() === now.toDateString();
-                          const hasEv = events.some(e => e.start.toDateString() === d.toDateString() && e.context === context);
-                          return (
-                            <div key={col} onClick={() => { setCurrentDate(d); setViewMode('day'); }}
-                              style={{ 
-                                flex: 1, height: 32, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, cursor: "pointer",
-                                background: isT ? theme.accent : hasEv ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
-                                color: isT ? "#fff" : hasEv ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
-                                border: isT ? `1px solid ${theme.accent}` : "none", fontWeight: isT ? 700 : 400
-                              }}>{dayNum}</div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <YearView 
+              currentDate={currentDate} 
+              events={events} 
+              context={context} 
+              theme={theme} 
+              config={config} 
+              setCurrentDate={setCurrentDate} 
+              setViewMode={setViewMode}
+              now={now}
+            />
           )}
 
-          {/* WEEK VIEW - FIXED ALIGNMENT */}
-          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={tags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: tags[0].id}); setModalOpen(true); }} />}
+          {/* WEEK VIEW */}
+          {viewMode === 'week' && (
+            <WeekView 
+              currentDate={currentDate} 
+              events={filteredEvents} 
+              theme={theme} 
+              config={config} 
+              tags={tags} 
+              onNew={(s, e) => { 
+                setEditingEvent({start: s, end: e, title: "", category: tags[0].id}); 
+                setModalOpen(true); 
+              }} 
+            />
+          )}
           
-          {/* MONTH VIEW (Phase 2 Roadmap) */}
-          {viewMode === 'month' && <MonthView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} setCurrentDate={setCurrentDate} setViewMode={setViewMode} />}
+          {/* MONTH VIEW */}
+          {viewMode === 'month' && (
+            <MonthView 
+              currentDate={currentDate} 
+              events={filteredEvents} 
+              theme={theme} 
+              config={config} 
+              setCurrentDate={setCurrentDate} 
+              setViewMode={setViewMode}
+            />
+          )}
         </div>
       </div>
 
       {/* MODALS */}
-      {settingsOpen && <SettingsModal config={config} setConfig={setConfig} theme={theme} onClose={() => setSettingsOpen(false)} />}
-      {modalOpen && <EventEditor event={editingEvent} theme={theme} tags={tags} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} />}
-      {trashOpen && <TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={(id) => restoreEvent(id)} onDelete={(id) => hardDelete(id)} />}
-      {tagManagerOpen && <TagManager tags={tags} setTags={setTags} theme={theme} onClose={() => setTagManagerOpen(false)} />}
+      {settingsOpen && (
+        <SettingsModal 
+          config={config} 
+          setConfig={setConfig} 
+          theme={theme} 
+          onClose={() => setSettingsOpen(false)} 
+        />
+      )}
+      {modalOpen && (
+        <EventEditor 
+          event={editingEvent} 
+          theme={theme} 
+          tags={tags} 
+          onSave={handleSave} 
+          onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} 
+          onCancel={() => setModalOpen(false)} 
+        />
+      )}
+      {trashOpen && (
+        <TrashModal 
+          events={deletedEvents} 
+          theme={theme} 
+          onClose={() => setTrashOpen(false)} 
+          onRestore={restoreEvent}
+          onDelete={hardDelete}
+        />
+      )}
+      {tagManagerOpen && (
+        <TagManager 
+          tags={tags} 
+          setTags={setTags} 
+          theme={theme} 
+          onClose={() => setTagManagerOpen(false)} 
+        />
+      )}
 
-      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>{notifications.map(n => (<div key={n.id} className="fade-enter" style={{ padding: "12px 24px", background: n.type==='error' ? theme.indicator : theme.card, color: n.type==='error' ? '#fff' : theme.text, borderRadius: 8, boxShadow: "0 10px 40px rgba(0,0,0,0.2)", fontSize: 13, fontWeight: 600 }}>{n.msg}</div>))}</div>
+      {/* Notifications */}
+      <div style={{ 
+        position: "fixed", 
+        bottom: 24, 
+        right: 24, 
+        zIndex: 200, 
+        display: "flex", 
+        flexDirection: "column", 
+        gap: 10 
+      }}>
+        {notifications.map(n => (
+          <div 
+            key={n.id} 
+            className="fade-enter" 
+            style={{ 
+              padding: "12px 24px", 
+              background: n.type==='error' ? theme.indicator : theme.card, 
+              color: n.type==='error' ? '#fff' : theme.text, 
+              borderRadius: 8, 
+              boxShadow: "0 10px 40px rgba(0,0,0,0.2)", 
+              fontSize: 13, 
+              fontWeight: 600 
+            }}
+          >
+            {n.msg}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
 
 // ==========================================
-// 4. SUB-COMPONENTS & UTILS
+// 4. SUB-COMPONENTS
 // ==========================================
 
 function MiniCalendar({ currentDate, setCurrentDate, theme }) {
-  const days = ["S","M","T","W","T","F","S"];
+  const days = ["S", "M", "T", "W", "T", "F", "S"];
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
   const startDay = startOfMonth.getDay();
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
@@ -489,25 +862,247 @@ function MiniCalendar({ currentDate, setCurrentDate, theme }) {
 
   return (
     <div>
-      <div className="mini-cal-header" style={{color: theme.text}}>
-        <span>{currentDate.toLocaleDateString('en-US', {month:'long', year:'numeric'})}</span>
-        <div style={{display:'flex', gap:4}}>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronLeft/></button>
-          <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronRight/></button>
+      <div className="mini-cal-header" style={{ color: theme.text }}>
+        <span>{currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</span>
+        <div style={{ display: 'flex', gap: 4 }}>
+          <button 
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} 
+            className="btn-reset" 
+            style={{ color: theme.textSec }}
+          >
+            <ICONS.ChevronLeft/>
+          </button>
+          <button 
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} 
+            className="btn-reset" 
+            style={{ color: theme.textSec }}
+          >
+            <ICONS.ChevronRight/>
+          </button>
         </div>
       </div>
       <div className="mini-cal-grid">
-        {days.map(d => <div key={d} style={{fontSize:10, color:theme.textMuted}}>{d}</div>)}
-        {Array.from({length:startDay}).map((_,i) => <div key={`e-${i}`} />)}
-        {Array.from({length:daysInMonth}).map((_,i) => {
-          const day = i+1;
-          const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth();
+        {days.map(d => (
+          <div key={d} style={{ fontSize: 10, color: theme.textMuted }}>{d}</div>
+        ))}
+        {Array.from({ length: startDay }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const isToday = today.getDate() === day && 
+                          today.getMonth() === currentDate.getMonth() && 
+                          today.getFullYear() === currentDate.getFullYear();
           const isSelected = currentDate.getDate() === day;
+          
           return (
-            <div key={day} className={`mini-cal-day ${isSelected?'active':''}`} style={isToday ? {border:`1px solid ${theme.accent}`} : {}} onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}>
+            <div 
+              key={day} 
+              className={`mini-cal-day ${isSelected ? 'active' : ''}`}
+              style={isToday ? { border: `1px solid ${theme.accent}` } : {}}
+              onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}
+            >
               {day}
             </div>
-          )
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function DayView({ currentDate, now, filteredEvents, theme, config, tags, setEditingEvent, setModalOpen }) {
+  return (
+    <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ marginBottom: 60 }}>
+        <div style={{ 
+          fontSize: 14, 
+          fontWeight: 700, 
+          color: theme.accent, 
+          textTransform: "uppercase", 
+          letterSpacing: 1.5, 
+          marginBottom: 8 
+        }}>
+          {currentDate.toLocaleDateString('en-US', { weekday: 'long' })}
+        </div>
+        <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>
+          {currentDate.toDateString() === now.toDateString() 
+            ? "Today's Agenda" 
+            : currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })
+          }
+        </h1>
+      </div>
+      <div style={{ position: "relative", borderLeft: `1px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
+        {Array.from({ length: 24 }).map((_, h) => {
+          if (h < 5) return null;
+          
+          const slotEvents = filteredEvents.filter(e => {
+            const eventDate = e.start instanceof Date ? e.start : new Date(e.start);
+            return eventDate.toDateString() === currentDate.toDateString() && 
+                   eventDate.getHours() === h;
+          });
+          
+          return (
+            <div key={h} style={{ minHeight: 90, position: "relative", marginBottom: 20 }}>
+              <div className="serif" style={{ 
+                position: "absolute", 
+                left: -100, 
+                top: -8, 
+                fontSize: 18, 
+                color: theme.textMuted, 
+                width: 50, 
+                textAlign: "right" 
+              }}>
+                {config.use24Hour ? h : (h % 12 || 12) + (h < 12 ? ' AM' : ' PM')}
+              </div>
+              <div style={{ 
+                position: "absolute", 
+                left: -46, 
+                top: 4, 
+                width: 11, 
+                height: 11, 
+                borderRadius: "50%", 
+                background: theme.bg, 
+                border: `2px solid ${theme.textSec}` 
+              }} />
+              <div>
+                {slotEvents.map(ev => {
+                  const tag = tags.find(t => t.id === ev.category) || tags[0];
+                  const isPast = config.blurPast && ev.end < now;
+                  return (
+                    <div 
+                      key={ev.id} 
+                      onClick={() => { setEditingEvent(ev); setModalOpen(true); }} 
+                      className={`event-card-journal ${isPast ? 'past-event' : ''}`} 
+                      style={{ 
+                        marginBottom: 16, 
+                        cursor: "pointer", 
+                        background: tag.bg, 
+                        borderLeftColor: tag.color, 
+                        padding: "20px 24px", 
+                        borderRadius: 12,
+                        opacity: isPast ? 0.6 : 1
+                      }}
+                    >
+                      <div style={{ 
+                        fontSize: 22, 
+                        fontWeight: 500, 
+                        color: theme.text, 
+                        fontFamily: 'Playfair Display', 
+                        marginBottom: 4 
+                      }}>
+                        {ev.title}
+                      </div>
+                      <div style={{ 
+                        display: "flex", 
+                        gap: 16, 
+                        fontSize: 13, 
+                        color: theme.textSec, 
+                        alignItems: "center" 
+                      }}>
+                        <span style={{display:'flex', alignItems:'center', gap:6}}>
+                          <ICONS.Clock/> 
+                          {ev.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} — {ev.end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}
+                        </span>
+                        {ev.location && (
+                          <span style={{display:'flex', alignItems:'center', gap:6}}>
+                            <ICONS.MapPin/> {ev.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                {slotEvents.length === 0 && (
+                  <div 
+                    style={{ height: 60, cursor: "pointer" }} 
+                    onClick={() => { 
+                      const s = new Date(currentDate); 
+                      s.setHours(h, 0, 0, 0); 
+                      setEditingEvent({ 
+                        start: s, 
+                        end: new Date(s.getTime() + 3600000), 
+                        title: "", 
+                        category: tags[0].id 
+                      }); 
+                      setModalOpen(true); 
+                    }} 
+                  />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function YearView({ currentDate, events, context, theme, config, setCurrentDate, setViewMode, now }) {
+  return (
+    <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
+      <div style={{ minWidth: 1200 }}>
+        <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
+          {Array.from({ length: LAYOUT.YEAR_COLS }).map((_, i) => (
+            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>
+              {(config.weekStartMon ? ["M", "T", "W", "T", "F", "S", "S"] : ["S", "M", "T", "W", "T", "F", "S"])[i % 7]}
+            </div>
+          ))}
+        </div>
+        {Array.from({ length: 12 }).map((_, m) => {
+          const monthStart = new Date(currentDate.getFullYear(), m, 1);
+          const daysInMonth = new Date(currentDate.getFullYear(), m + 1, 0).getDate();
+          let offset = monthStart.getDay(); 
+          if (config.weekStartMon) offset = offset === 0 ? 6 : offset - 1;
+          
+          return (
+            <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 8, height: 36 }}>
+              <div className="serif" style={{ 
+                width: 100, 
+                fontSize: 14, 
+                fontWeight: 600, 
+                color: theme.textSec 
+              }}>
+                {monthStart.toLocaleDateString('en-US', { month: 'short' })}
+              </div>
+              <div style={{ flex: 1, display: "flex", gap: 2 }}>
+                {Array.from({ length: LAYOUT.YEAR_COLS }).map((_, col) => {
+                  const dayNum = col - offset + 1;
+                  if (dayNum < 1 || dayNum > daysInMonth) return <div key={col} style={{ flex: 1 }} />;
+                  
+                  const d = new Date(currentDate.getFullYear(), m, dayNum);
+                  const isToday = d.toDateString() === now.toDateString();
+                  const hasEvent = events.some(e => {
+                    const eventDate = e.start instanceof Date ? e.start : new Date(e.start);
+                    return eventDate.toDateString() === d.toDateString() && e.context === context;
+                  });
+                  
+                  return (
+                    <div 
+                      key={col} 
+                      onClick={() => { setCurrentDate(d); setViewMode('day'); }}
+                      style={{ 
+                        flex: 1, 
+                        height: 32, 
+                        borderRadius: 4, 
+                        display: "flex", 
+                        alignItems: "center", 
+                        justifyContent: "center", 
+                        fontSize: 11, 
+                        cursor: "pointer",
+                        background: isToday ? theme.accent : hasEvent ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
+                        color: isToday ? "#fff" : hasEvent ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
+                        border: isToday ? `1px solid ${theme.accent}` : "none", 
+                        fontWeight: isToday ? 700 : 400
+                      }}
+                    >
+                      {dayNum}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
         })}
       </div>
     </div>
@@ -519,49 +1114,159 @@ function WeekView({ currentDate, events, theme, config, tags, onNew }) {
     const s = new Date(currentDate);
     const day = s.getDay();
     const diff = s.getDate() - day + (config.weekStartMon ? (day === 0 ? -6 : 1) : 0);
-    return Array.from({length:7}, (_,i) => { const d = new Date(s); d.setDate(diff + i); return d; });
+    return Array.from({ length: 7 }, (_, i) => {
+      const d = new Date(s);
+      d.setDate(diff + i);
+      return d;
+    });
   }, [currentDate, config.weekStartMon]);
 
-  // Precise Grid Alignment (height 60px per hour)
-  const HOUR_HEIGHT = 60 * LAYOUT.PIXELS_PER_MINUTE;
+  const HOUR_HEIGHT = 60;
 
   return (
     <div style={{ display: "flex", minHeight: "100%" }}>
-      <div style={{ width: 60, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.bg }}>
-        {Array.from({length:24}).map((_,h) => (
-          <div key={h} style={{ height: HOUR_HEIGHT, position:"relative" }}>
-            {/* Align text middle with grid line */}
-            <span style={{ position:"absolute", top:-6, right:8, fontSize:11, color:theme.textMuted }}>{h}:00</span>
+      {/* Time Column */}
+      <div style={{ 
+        width: 60, 
+        flexShrink: 0, 
+        borderRight: `1px solid ${theme.border}`, 
+        background: theme.bg 
+      }}>
+        {Array.from({ length: 24 }).map((_, h) => (
+          <div key={h} style={{ height: HOUR_HEIGHT, position: "relative" }}>
+            <span style={{ 
+              position: "absolute", 
+              top: -6, 
+              right: 8, 
+              fontSize: 11, 
+              color: theme.textMuted 
+            }}>
+              {h}:00
+            </span>
           </div>
         ))}
       </div>
+
+      {/* Day Columns */}
       <div style={{ flex: 1, display: "flex" }}>
         {days.map((d, i) => {
-          const isT = d.toDateString() === new Date().toDateString();
-          const dEvents = events.filter(e => e.start.toDateString() === d.toDateString());
+          const isToday = d.toDateString() === new Date().toDateString();
+          const dayEvents = events.filter(e => {
+            const eventDate = e.start instanceof Date ? e.start : new Date(e.start);
+            return eventDate.toDateString() === d.toDateString();
+          });
+          
           return (
-            <div key={i} style={{ flex: 1, borderRight: `1px solid ${theme.border}`, position: "relative", background: isT ? (config.darkMode ? "#1C1917" : "#FAFAFA") : "transparent" }}>
-              <div style={{ height: 60, borderBottom: `1px solid ${theme.border}`, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "sticky", top: 0, background: theme.sidebar, zIndex: 10 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: isT ? theme.accent : theme.textMuted }}>{d.toLocaleDateString('en-US',{weekday:'short'})}</span>
-                <span style={{ fontSize: 16, fontWeight: 600, color: isT ? theme.accent : theme.text }}>{d.getDate()}</span>
+            <div key={i} style={{ 
+              flex: 1, 
+              borderRight: `1px solid ${theme.border}`, 
+              position: "relative", 
+              background: isToday ? (config.darkMode ? "#1C1917" : "#FAFAFA") : "transparent" 
+            }}>
+              {/* Day Header */}
+              <div style={{ 
+                height: 60, 
+                borderBottom: `1px solid ${theme.border}`, 
+                display: "flex", 
+                flexDirection: "column", 
+                alignItems: "center", 
+                justifyContent: "center", 
+                position: "sticky", 
+                top: 0, 
+                background: theme.sidebar, 
+                zIndex: 10 
+              }}>
+                <span style={{ 
+                  fontSize: 11, 
+                  fontWeight: 700, 
+                  color: isToday ? theme.accent : theme.textMuted 
+                }}>
+                  {d.toLocaleDateString('en-US', { weekday: 'short' })}
+                </span>
+                <span style={{ 
+                  fontSize: 16, 
+                  fontWeight: 600, 
+                  color: isToday ? theme.accent : theme.text 
+                }}>
+                  {d.getDate()}
+                </span>
               </div>
+
+              {/* Time Grid */}
               <div style={{ position: "relative", height: 24 * HOUR_HEIGHT }}>
-                {Array.from({length:24}).map((_,h) => <div key={h} style={{ height: HOUR_HEIGHT, borderBottom: `1px solid ${theme.border}40`, boxSizing: "border-box" }} />)}
-                <div style={{position:"absolute", inset:0, zIndex:1}} onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const y = e.clientY - rect.top;
-                  const m = Math.floor(y / LAYOUT.PIXELS_PER_MINUTE / 15) * 15;
-                  const s = new Date(d); s.setHours(0, m, 0, 0);
-                  const end = new Date(s); end.setMinutes(m+60);
-                  onNew(s, end);
-                }} />
-                {dEvents.map(ev => {
-                  const top = (ev.start.getHours()*60 + ev.start.getMinutes()) * LAYOUT.PIXELS_PER_MINUTE;
-                  const h = Math.max(((ev.end - ev.start)/60000) * LAYOUT.PIXELS_PER_MINUTE, 24);
+                {/* Hour Lines */}
+                {Array.from({ length: 24 }).map((_, h) => (
+                  <div 
+                    key={h} 
+                    style={{ 
+                      height: HOUR_HEIGHT, 
+                      borderBottom: `1px solid ${theme.border}40`, 
+                      boxSizing: "border-box" 
+                    }} 
+                  />
+                ))}
+
+                {/* Clickable Background for New Events */}
+                <div 
+                  style={{ position: "absolute", inset: 0, zIndex: 1 }}
+                  onClick={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    const y = e.clientY - rect.top;
+                    const minutes = Math.floor(y / LAYOUT.PIXELS_PER_MINUTE);
+                    const hours = Math.floor(minutes / 60);
+                    const mins = minutes % 60;
+                    
+                    const start = new Date(d);
+                    start.setHours(hours, mins, 0, 0);
+                    
+                    const end = new Date(start);
+                    end.setHours(start.getHours() + 1);
+                    
+                    onNew(start, end);
+                  }}
+                />
+
+                {/* Events */}
+                {dayEvents.map(ev => {
+                  const startDate = ev.start instanceof Date ? ev.start : new Date(ev.start);
+                  const endDate = ev.end instanceof Date ? ev.end : new Date(ev.end);
+                  
+                  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+                  const durationMinutes = (endDate - startDate) / 60000;
+                  
+                  const top = startMinutes * LAYOUT.PIXELS_PER_MINUTE;
+                  const height = Math.max(durationMinutes * LAYOUT.PIXELS_PER_MINUTE, 24);
+                  
                   const tag = tags.find(t => t.id === ev.category) || tags[0];
+                  
                   return (
-                    <div key={ev.id} className="btn-hover" style={{ position: "absolute", top, height: h, left: 4, right: 4, background: config.darkMode ? tag.darkBg : tag.bg, borderLeft: `3px solid ${tag.color}`, borderRadius: 4, padding: 4, fontSize: 11, color: theme.text, cursor: "pointer", zIndex: 5, overflow: "hidden", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
-                      <div style={{ fontWeight: 600 }}>{ev.title}</div>
+                    <div 
+                      key={ev.id} 
+                      className="btn-hover"
+                      style={{ 
+                        position: "absolute", 
+                        top, 
+                        height, 
+                        left: 4, 
+                        right: 4, 
+                        background: tag.bg, 
+                        borderLeft: `3px solid ${tag.color}`, 
+                        borderRadius: 4, 
+                        padding: 4, 
+                        fontSize: 11, 
+                        color: theme.text, 
+                        cursor: "pointer", 
+                        zIndex: 5, 
+                        overflow: "hidden", 
+                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)" 
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {ev.title}
+                      </div>
+                      <div style={{ fontSize: 10, color: theme.textSec }}>
+                        {startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                      </div>
                     </div>
                   );
                 })}
@@ -583,28 +1288,69 @@ function MonthView({ currentDate, events, theme, config, setCurrentDate, setView
   return (
     <div className="fade-enter" style={{ padding: 40, height: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%', gap: 8 }}>
-        {(config.weekStartMon ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]).map(d => (
-          <div key={d} style={{ textAlign: 'center', fontWeight: 600, color: theme.textMuted, paddingBottom: 10 }}>{d}</div>
+        {(config.weekStartMon 
+          ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+          : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+        ).map(d => (
+          <div key={d} style={{ textAlign: 'center', fontWeight: 600, color: theme.textMuted, paddingBottom: 10 }}>
+            {d}
+          </div>
         ))}
-        {Array.from({length: offset}).map((_, i) => <div key={`empty-${i}`} />)}
-        {Array.from({length: daysInMonth}).map((_, i) => {
+        
+        {Array.from({ length: offset }).map((_, i) => <div key={`empty-${i}`} />)}
+        
+        {Array.from({ length: daysInMonth }).map((_, i) => {
           const day = i + 1;
           const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
-          const dayEvents = events.filter(e => e.start.toDateString() === d.toDateString());
+          const dayEvents = events.filter(e => {
+            const eventDate = e.start instanceof Date ? e.start : new Date(e.start);
+            return eventDate.toDateString() === d.toDateString();
+          });
           const isToday = d.toDateString() === new Date().toDateString();
           
           return (
-            <div key={day} onClick={() => { setCurrentDate(d); setViewMode('day'); }} 
-              style={{ border: `1px solid ${theme.border}`, borderRadius: 8, padding: 8, minHeight: 100, cursor: 'pointer', background: isToday ? (config.darkMode ? '#1C1917' : '#FAFAFA') : 'transparent' }}
-              className="btn-hover">
-              <div style={{ fontWeight: isToday ? 700 : 500, color: isToday ? theme.accent : theme.text, marginBottom: 4 }}>{day}</div>
+            <div 
+              key={day} 
+              onClick={() => { setCurrentDate(d); setViewMode('day'); }} 
+              style={{ 
+                border: `1px solid ${theme.border}`, 
+                borderRadius: 8, 
+                padding: 8, 
+                minHeight: 100, 
+                cursor: 'pointer', 
+                background: isToday ? (config.darkMode ? '#1C1917' : '#FAFAFA') : 'transparent' 
+              }}
+              className="btn-hover"
+            >
+              <div style={{ 
+                fontWeight: isToday ? 700 : 500, 
+                color: isToday ? theme.accent : theme.text, 
+                marginBottom: 4 
+              }}>
+                {day}
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                {dayEvents.slice(0,3).map(ev => (
-                  <div key={ev.id} style={{ fontSize: 10, padding: "2px 4px", borderRadius: 3, background: config.darkMode ? "#292524" : "#E7E5E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {dayEvents.slice(0, 3).map(ev => (
+                  <div 
+                    key={ev.id} 
+                    style={{ 
+                      fontSize: 10, 
+                      padding: "2px 4px", 
+                      borderRadius: 3, 
+                      background: config.darkMode ? "#292524" : "#E7E5E4", 
+                      whiteSpace: "nowrap", 
+                      overflow: "hidden", 
+                      textOverflow: "ellipsis" 
+                    }}
+                  >
                     {ev.title}
                   </div>
                 ))}
-                {dayEvents.length > 3 && <div style={{ fontSize: 10, color: theme.textMuted }}>+{dayEvents.length - 3} more</div>}
+                {dayEvents.length > 3 && (
+                  <div style={{ fontSize: 10, color: theme.textMuted }}>
+                    +{dayEvents.length - 3} more
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -616,24 +1362,111 @@ function MonthView({ currentDate, events, theme, config, setCurrentDate, setView
 
 function SettingsModal({ config, setConfig, theme, onClose }) {
   return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 24, borderRadius: 20, boxShadow: theme.shadow }}>
+    <div 
+      className="glass-panel fade-enter" 
+      style={{ 
+        position: "fixed", 
+        inset: 0, 
+        zIndex: 100, 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        background: "rgba(0,0,0,0.5)" 
+      }} 
+      onClick={onClose}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: 400, 
+          background: theme.card, 
+          padding: 24, 
+          borderRadius: 20, 
+          boxShadow: theme.shadow 
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
           <h3 className="serif" style={{ fontSize: 20 }}>Settings</h3>
-          <button onClick={onClose} className="btn-reset" style={{ fontSize: 20 }}><ICONS.Close/></button>
+          <button onClick={onClose} className="btn-reset" style={{ fontSize: 20 }}>
+            <ICONS.Close/>
+          </button>
         </div>
+        
         <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Theme</label>
+          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+            Theme
+          </label>
           <div className={`segmented ${!config.darkMode ? 'light-mode' : ''}`}>
-            <div onClick={() => setConfig({...config, darkMode: false})} className={`seg-opt ${!config.darkMode?'active':''}`}>☀ Light</div>
-            <div onClick={() => setConfig({...config, darkMode: true})} className={`seg-opt ${config.darkMode?'active':''}`}>☾ Dark</div>
+            <div 
+              onClick={() => setConfig({...config, darkMode: false})} 
+              className={`seg-opt ${!config.darkMode ? 'active' : ''}`}
+            >
+              ☀ Light
+            </div>
+            <div 
+              onClick={() => setConfig({...config, darkMode: true})} 
+              className={`seg-opt ${config.darkMode ? 'active' : ''}`}
+            >
+              ☾ Dark
+            </div>
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <div><div style={{fontSize:14, fontWeight:500}}>Blur Past Dates</div><div style={{fontSize:11, color:theme.textMuted}}>Fade old days</div></div>
-          <div className={`switch-container ${config.blurPast?'active':''}`} onClick={() => setConfig({...config, blurPast:!config.blurPast})}><div className="switch-knob"/></div>
+        
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Blur Past Dates</div>
+            <div className="settings-sub">Fade old days</div>
+          </div>
+          <div 
+            className={`switch-track ${config.blurPast ? 'active' : ''}`} 
+            onClick={() => setConfig({...config, blurPast: !config.blurPast})}
+          >
+            <div className="switch-thumb"/>
+          </div>
         </div>
-        <button onClick={() => signOut(auth)} style={{ width: "100%", padding: "12px", borderRadius: 8, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", fontWeight: 600, cursor: "pointer" }}>Sign Out</button>
+        
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">Week Starts Monday</div>
+            <div className="settings-sub">Align calendar</div>
+          </div>
+          <div 
+            className={`switch-track ${config.weekStartMon ? 'active' : ''}`} 
+            onClick={() => setConfig({...config, weekStartMon: !config.weekStartMon})}
+          >
+            <div className="switch-thumb"/>
+          </div>
+        </div>
+        
+        <div className="settings-row">
+          <div>
+            <div className="settings-label">24-Hour Format</div>
+            <div className="settings-sub">Show 24-hour time</div>
+          </div>
+          <div 
+            className={`switch-track ${config.use24Hour ? 'active' : ''}`} 
+            onClick={() => setConfig({...config, use24Hour: !config.use24Hour})}
+          >
+            <div className="switch-thumb"/>
+          </div>
+        </div>
+        
+        <button 
+          onClick={() => signOut(auth)} 
+          style={{ 
+            width: "100%", 
+            padding: "12px", 
+            borderRadius: 8, 
+            border: `1px solid ${theme.indicator}`, 
+            color: theme.indicator, 
+            background: "transparent", 
+            fontWeight: 600, 
+            cursor: "pointer",
+            marginTop: 24
+          }}
+        >
+          Sign Out
+        </button>
       </div>
     </div>
   );
@@ -641,42 +1474,127 @@ function SettingsModal({ config, setConfig, theme, onClose }) {
 
 function TagManager({ tags, setTags, theme, onClose }) {
   const [newTag, setNewTag] = useState("");
-  const [color, setColor] = useState("onyx");
+  const [selectedColor, setSelectedColor] = useState("onyx");
 
   const addTag = () => {
-    if(!newTag.trim()) return;
-    const palette = PALETTE[color];
-    const id = newTag.toLowerCase().replace(/\s+/g,'-') + Date.now();
+    if (!newTag.trim()) return;
+    const palette = PALETTE[selectedColor];
+    const id = `${newTag.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
     setTags([...tags, { id, name: newTag, ...palette }]);
     setNewTag("");
   };
 
+  const removeTag = (id) => {
+    setTags(tags.filter(tag => tag.id !== id));
+  };
+
   return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 24, borderRadius: 20, boxShadow: theme.shadow }}>
+    <div 
+      className="glass-panel fade-enter" 
+      style={{ 
+        position: "fixed", 
+        inset: 0, 
+        zIndex: 100, 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        background: "rgba(0,0,0,0.5)" 
+      }} 
+      onClick={onClose}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: 400, 
+          background: theme.card, 
+          padding: 24, 
+          borderRadius: 20, 
+          boxShadow: theme.shadow 
+        }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
           <h3 className="serif" style={{ fontSize: 20 }}>Manage Tags</h3>
-          <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
+          <button onClick={onClose} className="btn-reset">
+            <ICONS.Close/>
+          </button>
         </div>
+        
+        {/* New Tag Form */}
         <div style={{ marginBottom: 16 }}>
-          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Tag name..." className="input-luxe" style={{ color: theme.text, marginBottom: 12 }} />
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+          <input 
+            value={newTag} 
+            onChange={e => setNewTag(e.target.value)} 
+            placeholder="Tag name..." 
+            className="input-luxe" 
+            style={{ color: theme.text, marginBottom: 12 }} 
+            onKeyPress={(e) => e.key === 'Enter' && addTag()}
+          />
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             {Object.keys(PALETTE).map(key => (
-              <div key={key} className={`color-swatch ${color === key ? 'active' : ''}`} style={{ background: PALETTE[key].bg, borderColor: PALETTE[key].border }} onClick={() => setColor(key)} />
+              <div 
+                key={key} 
+                className={`color-swatch ${selectedColor === key ? 'active' : ''}`} 
+                style={{ background: PALETTE[key].bg, borderColor: PALETTE[key].border }} 
+                onClick={() => setSelectedColor(key)} 
+                title={key}
+              />
             ))}
           </div>
-          <button onClick={addTag} style={{ width: "100%", padding: "12px", background: theme.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Create Tag</button>
+          <button 
+            onClick={addTag} 
+            style={{ 
+              width: "100%", 
+              padding: "12px", 
+              background: theme.accent, 
+              color: "#fff", 
+              borderRadius: 8, 
+              border: "none", 
+              cursor: "pointer", 
+              fontWeight: 600 
+            }}
+          >
+            Create Tag
+          </button>
         </div>
+
+        {/* Existing Tags List */}
         <div style={{ maxHeight: 300, overflowY: "auto" }}>
-          {tags.map((t, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 12, height: 12, borderRadius: "50%", background: t.color || t.text }} />
-                <span>{t.name}</span>
-              </div>
-              <button onClick={() => setTags(tags.filter(tg => tg.id !== t.id))} className="btn-reset" style={{ color: theme.indicator }}><ICONS.Trash/></button>
+          {tags.length === 0 ? (
+            <div style={{ textAlign: "center", color: theme.textMuted, padding: 20 }}>
+              No tags yet. Create your first tag above.
             </div>
-          ))}
+          ) : (
+            tags.map((tag) => (
+              <div 
+                key={tag.id} 
+                style={{ 
+                  display: "flex", 
+                  justifyContent: "space-between", 
+                  alignItems: "center", 
+                  padding: "10px 0", 
+                  borderBottom: `1px solid ${theme.border}` 
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ 
+                    width: 12, 
+                    height: 12, 
+                    borderRadius: "50%", 
+                    background: tag.bg,
+                    border: `1px solid ${tag.border}`
+                  }} />
+                  <span style={{ color: theme.text }}>{tag.name}</span>
+                </div>
+                <button 
+                  onClick={() => removeTag(tag.id)} 
+                  className="btn-reset" 
+                  style={{ color: theme.indicator }}
+                >
+                  <ICONS.Trash/>
+                </button>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
@@ -684,40 +1602,168 @@ function TagManager({ tags, setTags, theme, onClose }) {
 }
 
 function EventEditor({ event, theme, tags, onSave, onDelete, onCancel }) {
-  const [data, setData] = useState({ 
-    title: event?.title || "", category: event?.category || tags[0].id,
-    start: event?.start ? event.start.toTimeString().slice(0,5) : "09:00",
-    end: event?.end ? event.end.toTimeString().slice(0,5) : "10:00",
-    description: event?.description || "", location: event?.location || ""
+  const [data, setData] = useState(() => {
+    const startDate = event?.start ? new Date(event.start) : new Date();
+    const endDate = event?.end ? new Date(event.end) : new Date(startDate.getTime() + 3600000);
+    
+    return { 
+      title: event?.title || "", 
+      category: event?.category || (tags[0]?.id || ""),
+      start: startDate.toTimeString().slice(0, 5),
+      end: endDate.toTimeString().slice(0, 5),
+      description: event?.description || "", 
+      location: event?.location || ""
+    };
   });
 
   const submit = () => {
-    const s = new Date(event?.start || new Date()); const [sh, sm] = data.start.split(':'); s.setHours(sh, sm);
-    const e = new Date(s); const [eh, em] = data.end.split(':'); e.setHours(eh, em);
-    onSave({ ...data, id: event?.id, start: s, end: e });
+    const startDate = event?.start ? new Date(event.start) : new Date();
+    const [startHours, startMinutes] = data.start.split(':').map(Number);
+    startDate.setHours(startHours, startMinutes, 0, 0);
+
+    const endDate = new Date(startDate);
+    const [endHours, endMinutes] = data.end.split(':').map(Number);
+    endDate.setHours(endHours, endMinutes, 0, 0);
+
+    if (endDate <= startDate) {
+      endDate.setHours(startDate.getHours() + 1);
+    }
+
+    onSave({ 
+      ...data, 
+      id: event?.id, 
+      start: startDate, 
+      end: endDate 
+    });
+  };
+
+  const handleTimeChange = (field, value) => {
+    setData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
-    <div onClick={e => e.stopPropagation()} style={{ width: 440, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
-      <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>{event?.id ? "Edit Event" : "Create Event"}</h3>
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <input autoFocus value={data.title} onChange={e => setData({...data, title: e.target.value})} placeholder="Title" className="input-luxe" style={{ fontSize: 18, fontWeight: 600, background: theme.bg, color: theme.text }} />
-        <div style={{ display: "flex", gap: 12 }}>
-          <input type="time" value={data.start} onChange={e => setData({...data, start: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
-          <input type="time" value={data.end} onChange={e => setData({...data, end: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {tags.map(t => (
-            <button key={t.id} onClick={() => setData({...data, category: t.id})} className="btn-reset" style={{ padding: "6px 12px", borderRadius: 20, fontSize: 12, border: `1px solid ${data.category===t.id ? t.color : theme.border}`, background: data.category===t.id ? t.bg : "transparent", color: t.color }}>{t.name}</button>
-          ))}
-        </div>
-        <input value={data.location} onChange={e => setData({...data, location: e.target.value})} placeholder="Location..." className="input-luxe" style={{ color: theme.text }} />
-        <textarea value={data.description} onChange={e => setData({...data, description: e.target.value})} placeholder="Notes..." className="input-luxe" style={{ minHeight: 80, resize: "none", color: theme.text }} />
-        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
-          {onDelete ? <button onClick={onDelete} className="btn-reset" style={{ color: theme.indicator, fontWeight: 600 }}>Delete</button> : <div/>}
+    <div 
+      className="glass-panel fade-enter"
+      style={{ 
+        position: "fixed", 
+        inset: 0, 
+        zIndex: 100, 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        background: "rgba(0,0,0,0.5)" 
+      }} 
+      onClick={onCancel}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: 440, 
+          background: theme.card, 
+          padding: 32, 
+          borderRadius: 24, 
+          boxShadow: theme.shadow 
+        }}
+      >
+        <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>
+          {event?.id ? "Edit Event" : "Create Event"}
+        </h3>
+        
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <input 
+            autoFocus 
+            value={data.title} 
+            onChange={e => setData({...data, title: e.target.value})} 
+            placeholder="Title" 
+            className="input-luxe" 
+            style={{ fontSize: 18, fontWeight: 600, background: theme.bg, color: theme.text }} 
+          />
+          
           <div style={{ display: "flex", gap: 12 }}>
-            <button onClick={onCancel} className="btn-reset" style={{ color: theme.textSec }}>Cancel</button>
-            <button onClick={submit} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, background: theme.accent, color: "#fff", fontWeight: 600 }}>Save</button>
+            <input 
+              type="time" 
+              value={data.start} 
+              onChange={e => handleTimeChange('start', e.target.value)} 
+              className="input-luxe" 
+              style={{ color: theme.text, flex: 1 }} 
+            />
+            <input 
+              type="time" 
+              value={data.end} 
+              onChange={e => handleTimeChange('end', e.target.value)} 
+              className="input-luxe" 
+              style={{ color: theme.text, flex: 1 }} 
+            />
+          </div>
+          
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            {tags.map(t => (
+              <button 
+                key={t.id} 
+                onClick={() => setData({...data, category: t.id})} 
+                className="btn-reset"
+                style={{ 
+                  padding: "6px 12px", 
+                  borderRadius: 20, 
+                  fontSize: 12, 
+                  border: `1px solid ${data.category === t.id ? t.color : theme.border}`, 
+                  background: data.category === t.id ? t.bg : "transparent", 
+                  color: data.category === t.id ? t.text : theme.textSec 
+                }}
+              >
+                {t.name}
+              </button>
+            ))}
+          </div>
+          
+          <input 
+            value={data.location} 
+            onChange={e => setData({...data, location: e.target.value})} 
+            placeholder="Location (optional)" 
+            className="input-luxe" 
+            style={{ color: theme.text }} 
+          />
+          
+          <textarea 
+            value={data.description} 
+            onChange={e => setData({...data, description: e.target.value})} 
+            placeholder="Notes (optional)" 
+            className="input-luxe" 
+            style={{ minHeight: 80, resize: "none", color: theme.text }} 
+          />
+          
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
+            {onDelete ? (
+              <button 
+                onClick={onDelete} 
+                className="btn-reset" 
+                style={{ color: theme.indicator, fontWeight: 600 }}
+              >
+                Delete
+              </button>
+            ) : <div/>}
+            <div style={{ display: "flex", gap: 12 }}>
+              <button 
+                onClick={onCancel} 
+                className="btn-reset" 
+                style={{ color: theme.textSec }}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={submit} 
+                className="btn-reset" 
+                style={{ 
+                  padding: "10px 24px", 
+                  borderRadius: 8, 
+                  background: theme.accent, 
+                  color: "#fff", 
+                  fontWeight: 600 
+                }}
+              >
+                {event?.id ? "Update" : "Create"}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -727,23 +1773,98 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel }) {
 
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
   return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 500, height: "70vh", background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow, display: "flex", flexDirection: "column" }}>
-        <div style={{display:'flex', justifyContent:'space-between', marginBottom:24}}>
+    <div 
+      className="glass-panel fade-enter" 
+      style={{ 
+        position: "fixed", 
+        inset: 0, 
+        zIndex: 100, 
+        display: "flex", 
+        alignItems: "center", 
+        justifyContent: "center", 
+        background: "rgba(0,0,0,0.5)" 
+      }} 
+      onClick={onClose}
+    >
+      <div 
+        onClick={e => e.stopPropagation()} 
+        style={{ 
+          width: 500, 
+          height: "70vh", 
+          background: theme.card, 
+          padding: 32, 
+          borderRadius: 24, 
+          boxShadow: theme.shadow, 
+          display: "flex", 
+          flexDirection: "column" 
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 24 }}>
           <h3 className="serif" style={{ fontSize: 24 }}>Trash</h3>
-          <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
+          <button onClick={onClose} className="btn-reset">
+            <ICONS.Close/>
+          </button>
         </div>
+        
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {events.length === 0 && <div style={{textAlign:'center', color:theme.textMuted, marginTop:40}}>Empty</div>}
-          {events.map(ev => (
-            <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottom: `1px solid ${theme.border}` }}>
-              <div><div style={{fontWeight:600}}>{ev.title}</div><div style={{fontSize:12, color:theme.textMuted}}>{ev.start.toLocaleDateString()}</div></div>
-              <div style={{display:'flex', gap:8}}>
-                <button onClick={() => onRestore(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer" }}>Restore</button>
-                <button onClick={() => onDelete(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", cursor: "pointer" }}>Purge</button>
-              </div>
+          {events.length === 0 ? (
+            <div style={{ textAlign: 'center', color: theme.textMuted, marginTop: 40 }}>
+              Trash is empty
             </div>
-          ))}
+          ) : (
+            events.map(ev => {
+              const startDate = ev.start instanceof Date ? ev.start : new Date(ev.start);
+              return (
+                <div 
+                  key={ev.id} 
+                  style={{ 
+                    display: "flex", 
+                    justifyContent: "space-between", 
+                    alignItems: "center", 
+                    padding: 16, 
+                    borderBottom: `1px solid ${theme.border}` 
+                  }}
+                >
+                  <div>
+                    <div style={{ fontWeight: 600, color: theme.text }}>{ev.title}</div>
+                    <div style={{ fontSize: 12, color: theme.textMuted }}>
+                      {startDate.toLocaleDateString()} • {startDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button 
+                      onClick={() => onRestore(ev.id)} 
+                      style={{ 
+                        padding: "6px 12px", 
+                        borderRadius: 6, 
+                        background: theme.accent, 
+                        color: "#fff", 
+                        border: "none", 
+                        cursor: "pointer",
+                        fontSize: 12
+                      }}
+                    >
+                      Restore
+                    </button>
+                    <button 
+                      onClick={() => onDelete(ev.id)} 
+                      style={{ 
+                        padding: "6px 12px", 
+                        borderRadius: 6, 
+                        border: `1px solid ${theme.indicator}`, 
+                        color: theme.indicator, 
+                        background: "transparent", 
+                        cursor: "pointer",
+                        fontSize: 12
+                      }}
+                    >
+                      Purge
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -752,10 +1873,49 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
 
 function AuthScreen({ onLogin, theme }) {
   return (
-    <div style={{ height: "100vh", background: "#0B0E11", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
-      <h1 className="serif" style={{ fontSize: 64, color: "#F5F5F4", marginBottom: 24 }}>Timeline.</h1>
-      <p style={{ color: "#A8A29E", marginBottom: 40, fontSize: 18, fontFamily: "serif", fontStyle: "italic" }}>"Time is the luxury you cannot buy."</p>
-      <button onClick={onLogin} style={{ padding: "16px 40px", borderRadius: 4, background: "#D97706", color: "#fff", border: "none", fontSize: 14, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 600 }}>Enter System</button>
+    <div style={{ 
+      height: "100vh", 
+      background: "#0B0E11", 
+      display: "flex", 
+      alignItems: "center", 
+      justifyContent: "center", 
+      flexDirection: "column" 
+    }}>
+      <h1 className="serif" style={{ fontSize: 64, color: "#F5F5F4", marginBottom: 24 }}>
+        Timeline.
+      </h1>
+      <p style={{ 
+        color: "#A8A29E", 
+        marginBottom: 40, 
+        fontSize: 18, 
+        fontFamily: "serif", 
+        fontStyle: "italic",
+        textAlign: "center",
+        maxWidth: 500,
+        padding: "0 20px"
+      }}>
+        "Time is the luxury you cannot buy."
+      </p>
+      <button 
+        onClick={onLogin} 
+        style={{ 
+          padding: "16px 40px", 
+          borderRadius: 4, 
+          background: "#D97706", 
+          color: "#fff", 
+          border: "none", 
+          fontSize: 14, 
+          textTransform: "uppercase", 
+          letterSpacing: 2, 
+          cursor: "pointer", 
+          fontWeight: 600,
+          transition: "background 0.3s"
+        }}
+        onMouseEnter={(e) => e.target.style.background = "#B45309"}
+        onMouseLeave={(e) => e.target.style.background = "#D97706"}
+      >
+        Enter System
+      </button>
     </div>
   );
 }
