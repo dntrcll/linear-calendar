@@ -2841,32 +2841,7 @@ function isSameDay(a, b) {
 
 // THEME TOKENS
 // ----------------------------------------------------------------------------
-const THEMES = {
-  dark: {
-    id: "dark",
-    bg: "#0B0E11",
-    panel: "#111418",
-    card: "#181B21",
-    text: "#F5F5F4",
-    muted: "#A8A29E",
-    border: "#292524",
-    accent: "#3B82F6",
-    danger: "#F43F5E",
-    shadow: "0 24px 60px rgba(0,0,0,0.8)"
-  },
-  light: {
-    id: "light",
-    bg: "#FAFAF9",
-    panel: "#F5F5F4",
-    card: "#FFFFFF",
-    text: "#1C1917",
-    muted: "#57534E",
-    border: "#E7E5E4",
-    accent: "#D97706",
-    danger: "#BE123C",
-    shadow: "0 24px 60px rgba(0,0,0,0.12)"
-  }
-};
+
 
 // ----------------------------------------------------------------------------
 // SETTINGS STORE
@@ -3407,13 +3382,6 @@ export * from "./utils";
 // LAYOUT CONSTANTS
 // ---------------------------------------------------------------------------
 
-const LAYOUT = {
-  PIXELS_PER_MINUTE: 2.4,
-  SNAP_MINUTES: 15,
-  YEAR_COLS: 38
-};
-
-export { LAYOUT };
 
 
 // ---------------------------------------------------------------------------
