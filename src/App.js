@@ -368,9 +368,13 @@ const CSS = `
   /* Year View Event Dots */
   .year-event-dot { 
     position: absolute; width: 5px; height: 5px; 
-    border-radius: 50%; cursor: pointer; 
+    border-radius: 50%; cursor: grab; 
     transition: all 0.2s var(--ease-spring); 
     box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+  }
+  
+  .year-event-dot:active {
+    cursor: grabbing;
   }
   
   .year-event-dot:hover { 
@@ -381,6 +385,11 @@ const CSS = `
   
   .year-day-cell { 
     position: relative; 
+  }
+  
+  .year-day-cell.drag-over {
+    background: rgba(234, 88, 12, 0.1) !important;
+    border-color: #EA580C !important;
   }
   
   /* Tag Pills */
@@ -627,16 +636,16 @@ export default function TimelineOS() {
         {/* Header */}
         <header style={{ height: LAYOUT.HEADER_HEIGHT, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${theme.border}`, background: theme.bg }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+            <h2 className="serif" style={{ fontSize: 32, fontWeight: 600, letterSpacing: '-0.02em' }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
             <div style={{ display: "flex", gap: 8 }}>
-              <button onClick={() => nav(-1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronLeft/></button>
-              <button onClick={() => setCurrentDate(new Date())} className="btn-reset btn-hover" style={{ padding: "0 20px", height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, fontSize: 13, fontWeight: 500 }}>Today</button>
-              <button onClick={() => nav(1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronRight/></button>
+              <button onClick={() => nav(-1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, background: theme.hoverBg, color: theme.text }} onMouseEnter={e => e.currentTarget.style.background = theme.activeBg} onMouseLeave={e => e.currentTarget.style.background = theme.hoverBg}><ICONS.ChevronLeft/></button>
+              <button onClick={() => setCurrentDate(new Date())} className="btn-reset btn-hover" style={{ padding: "0 20px", height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, fontSize: 13, fontWeight: 600, background: theme.hoverBg, color: theme.text, fontFamily: 'Inter' }} onMouseEnter={e => e.currentTarget.style.background = theme.activeBg} onMouseLeave={e => e.currentTarget.style.background = theme.hoverBg}>Today</button>
+              <button onClick={() => nav(1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, background: theme.hoverBg, color: theme.text }} onMouseEnter={e => e.currentTarget.style.background = theme.activeBg} onMouseLeave={e => e.currentTarget.style.background = theme.hoverBg}><ICONS.ChevronRight/></button>
             </div>
           </div>
-          <div style={{ display: "flex", background: theme.sidebar, padding: 4, borderRadius: 12 }}>
+          <div style={{ display: "flex", background: theme.borderLight, padding: 4, borderRadius: 12, gap: 2 }}>
             {['day', 'week', 'month', 'year'].map(m => (
-              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>{m}</button>
+              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize", fontFamily: 'Inter', fontWeight: 600, boxShadow: viewMode===m ? theme.shadow : 'none' }}>{m}</button>
             ))}
           </div>
         </header>
@@ -647,8 +656,8 @@ export default function TimelineOS() {
           {viewMode === 'day' && (
             <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
               <div style={{ marginBottom: 60 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: context === 'family' ? theme.familyAccent : theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
-                <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
+                <div style={{ fontSize: 14, fontWeight: 700, color: context === 'family' ? theme.familyAccent : theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8, fontFamily: 'Inter' }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
+                <h1 className="serif" style={{ fontSize: 64, fontWeight: 600, color: theme.text, letterSpacing: '-0.02em' }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
               </div>
               <div style={{ position: "relative", borderLeft: `2px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
                 {Array.from({length: 24}).map((_, h) => {
@@ -656,7 +665,7 @@ export default function TimelineOS() {
                   const slotEvents = filteredEvents.filter(e => e.start.toDateString() === currentDate.toDateString() && e.start.getHours() === h);
                   return (
                     <div key={h} style={{ minHeight: 90, position: "relative", marginBottom: 20 }}>
-                      <div className="serif" style={{ position: "absolute", left: -100, top: -8, fontSize: 18, color: theme.textMuted, width: 50, textAlign: "right", fontWeight: 500 }}>{config.use24Hour ? h : (h % 12 || 12) + (h<12?' AM':' PM')}</div>
+                      <div className="serif" style={{ position: "absolute", left: -100, top: -8, fontSize: 18, color: theme.textMuted, width: 50, textAlign: "right", fontWeight: 600, letterSpacing: '-0.01em' }}>{config.use24Hour ? h : (h % 12 || 12) + (h<12?' AM':' PM')}</div>
                       <div style={{ position: "absolute", left: -44, top: 4, width: 9, height: 9, borderRadius: "50%", background: theme.sidebar, border: `3px solid ${theme.textMuted}` }} />
                       <div>
                         {slotEvents.map(ev => {
@@ -664,8 +673,8 @@ export default function TimelineOS() {
                           const isPast = config.blurPast && ev.end < now;
                           return (
                             <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`event-card-journal ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 16, cursor: "pointer", background: config.darkMode ? tag.bgDark : tag.bg, borderLeftColor: config.darkMode ? tag.colorLight : tag.color, padding: "20px 24px", borderRadius: 12, opacity: isPast ? 0.5 : 1, boxShadow: theme.shadow }}>
-                              <div style={{ fontSize: 22, fontWeight: 600, color: theme.text, fontFamily: 'Playfair Display', marginBottom: 6, letterSpacing: '-0.02em' }}>{ev.title}</div>
-                              <div style={{ display: "flex", gap: 16, fontSize: 13, color: theme.textSec, alignItems: "center", fontWeight: 500 }}>
+                              <div style={{ fontSize: 22, fontWeight: 600, color: config.darkMode ? '#FAFAFA' : tag.text, fontFamily: 'Playfair Display', marginBottom: 6, letterSpacing: '-0.02em' }}>{ev.title}</div>
+                              <div style={{ display: "flex", gap: 16, fontSize: 13, color: config.darkMode ? theme.textSec : tag.text, alignItems: "center", fontWeight: 500, fontFamily: 'Inter', opacity: 0.8 }}>
                                 <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.Clock/> {ev.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} — {ev.end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>
                                 {ev.location && <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.MapPin/> {ev.location}</span>}
                               </div>
@@ -712,7 +721,7 @@ export default function TimelineOS() {
       {trashOpen && <TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={(id) => restoreEvent(id)} onDelete={(id) => hardDelete(id)} />}
       {tagManagerOpen && <TagManager tags={tags} setTags={setTags} theme={theme} context={context} onClose={() => setTagManagerOpen(false)} />}
 
-      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>{notifications.map(n => (<div key={n.id} className="fade-enter" style={{ padding: "12px 24px", background: n.type==='error' ? theme.indicator : theme.card, color: n.type==='error' ? '#fff' : theme.text, borderRadius: 8, boxShadow: "0 10px 40px rgba(0,0,0,0.2)", fontSize: 13, fontWeight: 600 }}>{n.msg}</div>))}</div>
+      <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>{notifications.map(n => (<div key={n.id} className="fade-enter" style={{ padding: "14px 24px", background: n.type==='error' ? theme.indicator : theme.card, color: n.type==='error' ? '#fff' : theme.text, borderRadius: 12, boxShadow: theme.shadowLg, fontSize: 14, fontWeight: 600, fontFamily: 'Inter', border: `1px solid ${n.type==='error' ? theme.indicator : theme.border}` }}>{n.msg}</div>))}</div>
     </div>
   );
 }
@@ -764,18 +773,25 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
   const handleDragStart = (e, event) => {
     e.stopPropagation();
     setDraggedEvent(event);
+    e.dataTransfer.effectAllowed = 'move';
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
   };
 
   const handleDrop = (e, date) => {
     e.preventDefault();
+    e.stopPropagation();
     if (draggedEvent) {
       onEventDrag(draggedEvent.id, date);
       setDraggedEvent(null);
     }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedEvent(null);
   };
 
   return (
@@ -783,7 +799,7 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
       <div style={{ minWidth: 1200 }}>
         <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
           {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted, letterSpacing: '0.5px' }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
+            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted, letterSpacing: '0.5px', fontFamily: 'Inter' }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
           ))}
         </div>
         {Array.from({length: 12}).map((_, m) => {
@@ -803,12 +819,13 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
                   const d = new Date(currentDate.getFullYear(), m, dayNum);
                   const isT = d.toDateString() === now.toDateString();
                   const dayEvents = events.filter(e => e.start.toDateString() === d.toDateString());
+                  const isDragTarget = draggedEvent !== null;
                   
                   return (
                     <div 
                       key={col} 
                       className="year-day-cell"
-                      onClick={() => onDayClick(d)}
+                      onClick={() => !isDragTarget && onDayClick(d)}
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, d)}
                       style={{ 
@@ -819,14 +836,17 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
                         alignItems: "center", 
                         justifyContent: "center", 
                         fontSize: 12, 
-                        cursor: "pointer",
+                        fontWeight: 600,
+                        fontFamily: 'Inter',
+                        cursor: isDragTarget ? "copy" : "pointer",
                         background: isT ? accentColor : dayEvents.length > 0 ? theme.hoverBg : "transparent",
                         color: isT ? "#fff" : dayEvents.length > 0 ? theme.text : theme.textSec,
                         border: isT ? `2px solid ${accentColor}` : `1px solid ${theme.borderLight}`, 
-                        fontWeight: isT ? 700 : dayEvents.length > 0 ? 600 : 500,
                         position: "relative",
                         transition: 'all 0.2s',
-                        boxShadow: isT ? `0 0 0 3px ${theme.selection}` : 'none'
+                        boxShadow: isT ? `0 0 0 3px ${theme.selection}` : 'none',
+                        outline: isDragTarget ? `2px dashed ${accentColor}` : 'none',
+                        outlineOffset: isDragTarget ? '2px' : '0'
                       }}
                       onMouseEnter={e => !isT && (e.currentTarget.style.background = theme.activeBg)}
                       onMouseLeave={e => !isT && (e.currentTarget.style.background = dayEvents.length > 0 ? theme.hoverBg : 'transparent')}
@@ -836,15 +856,21 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
                         <div style={{ position: "absolute", bottom: 4, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 3 }}>
                           {dayEvents.slice(0, 3).map(ev => {
                             const tag = tags.find(t => t.id === ev.category) || tags[0];
+                            const isDragging = draggedEvent?.id === ev.id;
                             return (
                               <div
                                 key={ev.id}
                                 className="year-event-dot"
-                                draggable
+                                draggable={true}
                                 onDragStart={(e) => handleDragStart(e, ev)}
-                                onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
-                                style={{ background: config.darkMode ? tag.colorLight : tag.color }}
-                                title={ev.title}
+                                onDragEnd={handleDragEnd}
+                                onClick={(e) => { e.stopPropagation(); if (!isDragTarget) onEventClick(ev); }}
+                                style={{ 
+                                  background: config.darkMode ? tag.colorLight : tag.color,
+                                  opacity: isDragging ? 0.3 : 1,
+                                  cursor: 'grab'
+                                }}
+                                title={`${ev.title} (drag to move)`}
                               />
                             );
                           })}
@@ -953,7 +979,7 @@ function MonthView({ currentDate, events, theme, config, setCurrentDate, setView
     <div className="fade-enter" style={{ padding: 40, height: '100%' }}>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', height: '100%', gap: 8 }}>
         {(config.weekStartMon ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]).map(d => (
-          <div key={d} style={{ textAlign: 'center', fontWeight: 600, color: theme.textMuted, paddingBottom: 10 }}>{d}</div>
+          <div key={d} style={{ textAlign: 'center', fontWeight: 700, color: theme.textMuted, paddingBottom: 10, fontSize: 12, fontFamily: 'Inter', letterSpacing: '0.5px' }}>{d}</div>
         ))}
         {Array.from({length: startDay}).map((_, i) => <div key={`empty-${i}`} />)}
         {Array.from({length: daysInMonth}).map((_, i) => {
@@ -964,16 +990,18 @@ function MonthView({ currentDate, events, theme, config, setCurrentDate, setView
           
           return (
             <div key={day} onClick={() => { setCurrentDate(d); setViewMode('day'); }} 
-              style={{ border: `1px solid ${theme.border}`, borderRadius: 8, padding: 8, minHeight: 100, cursor: 'pointer', background: isToday ? (config.darkMode ? '#1C1917' : '#FAFAFA') : 'transparent' }}
-              className="btn-hover">
-              <div style={{ fontWeight: isToday ? 700 : 500, color: isToday ? theme.accent : theme.text, marginBottom: 4 }}>{day}</div>
+              style={{ border: `1px solid ${theme.border}`, borderRadius: 10, padding: 10, minHeight: 100, cursor: 'pointer', background: isToday ? theme.selection : 'transparent', transition: 'all 0.2s' }}
+              className="btn-hover"
+              onMouseEnter={e => !isToday && (e.currentTarget.style.background = theme.hoverBg)}
+              onMouseLeave={e => !isToday && (e.currentTarget.style.background = 'transparent')}>
+              <div style={{ fontWeight: isToday ? 700 : 600, color: isToday ? theme.accent : theme.text, marginBottom: 6, fontSize: 14, fontFamily: 'Inter' }}>{day}</div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                 {dayEvents.slice(0,3).map(ev => (
-                  <div key={ev.id} style={{ fontSize: 10, padding: "2px 4px", borderRadius: 3, background: config.darkMode ? "#292524" : "#E7E5E4", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  <div key={ev.id} style={{ fontSize: 11, padding: "4px 6px", borderRadius: 4, background: theme.borderLight, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", fontWeight: 600, fontFamily: 'Inter' }}>
                     {ev.title}
                   </div>
                 ))}
-                {dayEvents.length > 3 && <div style={{ fontSize: 10, color: theme.textMuted }}>+{dayEvents.length - 3} more</div>}
+                {dayEvents.length > 3 && <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 600, fontFamily: 'Inter' }}>+{dayEvents.length - 3} more</div>}
               </div>
             </div>
           );
