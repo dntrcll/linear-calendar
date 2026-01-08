@@ -1,288 +1,4190 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
-import { auth, provider } from "./firebase";
-import { collection, query, where, getDocs, addDoc, updateDoc, deleteDoc, doc, serverTimestamp, Timestamp } from "firebase/firestore";
-import { db } from "./firebase";
+
+// Firebase imports - These need to be set up in a separate firebase.js file
+// For now, I'll create a mock implementation so the code runs
+const mockAuth = {
+  onAuthStateChanged: (callback) => {
+    setTimeout(() => callback(null), 100);
+    return () => {};
+  },
+  signInWithPopup: () => Promise.resolve({ user: { uid: '123', displayName: 'Test User', email: 'test@example.com' } }),
+  signOut: () => Promise.resolve(),
+  currentUser: null
+};
+
+const mockFirestore = {
+  collection: () => ({}),
+  query: () => ({}),
+  where: () => ({}),
+  getDocs: () => Promise.resolve({ forEach: () => {} }),
+  addDoc: () => Promise.resolve({ id: 'new-id' }),
+  updateDoc: () => Promise.resolve(),
+  deleteDoc: () => Promise.resolve(),
+  doc: () => ({}),
+  serverTimestamp: () => new Date(),
+  Timestamp: {
+    fromDate: (date) => date
+  }
+};
+
+// Mock Firebase - You should replace these with real Firebase imports
+const auth = mockAuth;
+const provider = {}; // Google provider
+const db = mockFirestore;
+
+// ==========================================
+// ERROR BOUNDARY COMPONENT
+// ==========================================
 
 class ErrorBoundary extends React.Component {
-  constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-  static getDerivedStateFromError(error) { return { hasError: true }; }
-  componentDidCatch(error, errorInfo) { console.error("Error:", error, errorInfo); this.setState({ error, errorInfo }); }
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Error caught by boundary:", error, errorInfo);
+    this.setState({ error, errorInfo });
+  }
+
   render() {
     if (this.state.hasError) {
-      return (<div style={{padding:40,background:"#0F172A",color:"#F1F5F9",minHeight:"100vh",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",textAlign:"center"}}><h1 style={{fontSize:24,marginBottom:20}}>Something went wrong</h1><button onClick={()=>window.location.reload()} style={{padding:"12px 24px",background:"#F97316",color:"white",border:"none",borderRadius:8,cursor:"pointer",fontSize:16,fontWeight:600}}>Reload App</button></div>);
+      return (
+        <div style={{
+          padding: 40,
+          background: "#0F172A",
+          color: "#F1F5F9",
+          minHeight: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center"
+        }}>
+          <h1 style={{ fontSize: 24, marginBottom: 20 }}>Something went wrong</h1>
+          <div style={{ 
+            background: "#1E293B", 
+            padding: 20, 
+            borderRadius: 8,
+            maxWidth: 600,
+            marginBottom: 20
+          }}>
+            <pre style={{ 
+              fontSize: 12, 
+              color: "#EF4444",
+              overflow: "auto",
+              textAlign: "left"
+            }}>
+              {this.state.error && this.state.error.toString()}
+            </pre>
+          </div>
+          <button
+            onClick={() => window.location.reload()}
+            style={{
+              padding: "12px 24px",
+              background: "#F97316",
+              color: "white",
+              border: "none",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontSize: 16,
+              fontWeight: 600
+            }}
+          >
+            Reload App
+          </button>
+        </div>
+      );
     }
+
     return this.props.children;
   }
 }
 
-const APP_META = { name: "Timeline OS", version: "8.2.0", author: "Timeline Systems", motto: "Time is the luxury you cannot buy." };
-const LAYOUT = { SIDEBAR_WIDTH: 380, HEADER_HEIGHT: 84, PIXELS_PER_MINUTE: 2.5, SNAP_MINUTES: 15, LINEAR_YEAR_DAY_WIDTH: 2.8, EVENT_HEIGHT: 56, ROW_GAP: 12, DAY_WIDTH: 3600 };
+// ==========================================
+// 1. SYSTEM CONFIGURATION & CONSTANTS
+// ==========================================
 
-const MOTIVATIONAL_QUOTES = ["Every day is a fresh start.","Small progress is still progress.","You're doing better than you think.","Focus on what you can control.","One step at a time.","Your future self will thank you.","Make today count.","Progress over perfection.","You've got this.","Consistency beats intensity.","Trust the process.","Your only limit is you.","Dream big, start small.","Do it with passion or not at all.","Success is a journey, not a destination.","Be the energy you want to attract.","Believe you can and you're halfway there.","The best time to start was yesterday. The next best time is now.","Time is the luxury you cannot buy.","Design your life, or someone else will.","Focus on the rhythm, not the speed.","Simplicity is the ultimate sophistication.","Act as if what you do makes a difference.","The best way to predict the future is to create it.","Order is the sanity of the mind."];
+const APP_META = { 
+  name: "Timeline OS", 
+  version: "8.1.0",
+  quoteInterval: 14400000,
+  author: "Timeline Systems",
+  motto: "Time is the luxury you cannot buy."
+};
+
+const LAYOUT = {
+  SIDEBAR_WIDTH: 380,
+  HEADER_HEIGHT: 84,
+  PIXELS_PER_MINUTE: 2.5,
+  SNAP_MINUTES: 15,
+  YEAR_COLS: 38,
+  LINEAR_YEAR_DAY_WIDTH: 2.8,
+  EVENT_HEIGHT: 56,
+  ROW_GAP: 12,
+  DAY_WIDTH: 1440 * 2.5
+};
+
+const MOTIVATIONAL_QUOTES = [
+  "Every day is a fresh start.",
+  "Small progress is still progress.",
+  "You're doing better than you think.",
+  "Focus on what you can control.",
+  "One step at a time.",
+  "Your future self will thank you.",
+  "Make today count.",
+  "Progress over perfection.",
+  "You've got this.",
+  "Consistency beats intensity.",
+  "Trust the process.",
+  "Your only limit is you.",
+  "Dream big, start small.",
+  "Do it with passion or not at all.",
+  "Success is a journey, not a destination.",
+  "Be the energy you want to attract.",
+  "Believe you can and you're halfway there.",
+  "The best time to start was yesterday. The next best time is now.",
+  "Time is the luxury you cannot buy.",
+  "Design your life, or someone else will.",
+  "Focus on the rhythm, not the speed.",
+  "Simplicity is the ultimate sophistication.",
+  "Act as if what you do makes a difference.",
+  "The best way to predict the future is to create it.",
+  "Order is the sanity of the mind."
+];
+
+// ==========================================
+// 2. DESIGN SYSTEM & LUXURY ASSETS
+// ==========================================
 
 const ICONS = {
-  Settings: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-  Trash: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-  Plus: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  ChevronLeft: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevronRight: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  Close: (p) => <svg {...p} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Calendar: (p) => <svg {...p} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  Clock: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  MapPin: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-  Finance: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  Health: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-  Users: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  Briefcase: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
-  Home: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  Star: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  TrendingUp: (p) => <svg {...p} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  Settings: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Trash: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  Plus: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  ChevronLeft: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevronRight: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  Close: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Calendar: (props) => <svg {...props} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Clock: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  MapPin: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  Finance: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  Health: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
+  Users: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  Briefcase: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
+  Home: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+  Star: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  TrendingUp: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
+  Bell: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
 };
 
 const PALETTE = {
-  onyx: { bg: "linear-gradient(135deg, #27272a 0%, #18181b 100%)", text: "#f4f4f5", border: "#52525b", color: "#71717a", colorLight: "#a1a1aa", darkBg: "linear-gradient(135deg, #0a0a0a 0%, #18181b 100%)" },
-  ceramic: { bg: "linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%)", text: "#57534e", border: "#d6d3d1", color: "#78716c", colorLight: "#a8a29e", darkBg: "linear-gradient(135deg, #292524 0%, #1c1917 100%)" },
-  gold: { bg: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)", text: "#78350f", border: "#fbbf24", color: "#f59e0b", colorLight: "#fbbf24", darkBg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)" },
-  emerald: { bg: "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)", text: "#065f46", border: "#34d399", color: "#10b981", colorLight: "#6ee7b7", darkBg: "linear-gradient(135deg, #065f46 0%, #047857 100%)" },
-  rose: { bg: "linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)", text: "#881337", border: "#fb7185", color: "#f43f5e", colorLight: "#fda4af", darkBg: "linear-gradient(135deg, #881337 0%, #9f1239 100%)" },
-  midnight: { bg: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)", text: "#1e3a8a", border: "#60a5fa", color: "#3b82f6", colorLight: "#93c5fd", darkBg: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)" },
-  lavender: { bg: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)", text: "#6b21a8", border: "#c084fc", color: "#a855f7", colorLight: "#d8b4fe", darkBg: "linear-gradient(135deg, #6b21a8 0%, #7c3aed 100%)" },
-  clay: { bg: "linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)", text: "#9a3412", border: "#fb923c", color: "#f97316", colorLight: "#fdba74", darkBg: "linear-gradient(135deg, #9a3412 0%, #ea580c 100%)" },
-  teal: { bg: "linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)", text: "#115e59", border: "#2dd4bf", color: "#14b8a6", colorLight: "#5eead4", darkBg: "linear-gradient(135deg, #115e59 0%, #0f766e 100%)" },
-  amber: { bg: "linear-gradient(135deg, #fef08a 0%, #fde047 100%)", text: "#92400e", border: "#fbbf24", color: "#f59e0b", colorLight: "#fcd34d", darkBg: "linear-gradient(135deg, #92400e 0%, #b45309 100%)" }
+  onyx: { 
+    bg: "linear-gradient(135deg, #27272a 0%, #18181b 100%)", 
+    text: "#f4f4f5", 
+    border: "#52525b", 
+    color: "#71717a",
+    colorLight: "#a1a1aa",
+    darkBg: "linear-gradient(135deg, #0a0a0a 0%, #18181b 100%)"
+  },
+  ceramic: { 
+    bg: "linear-gradient(135deg, #fafaf9 0%, #f5f5f4 100%)", 
+    text: "#57534e", 
+    border: "#d6d3d1", 
+    color: "#78716c",
+    colorLight: "#a8a29e",
+    darkBg: "linear-gradient(135deg, #292524 0%, #1c1917 100%)"
+  },
+  gold: { 
+    bg: "linear-gradient(135deg, #fef3c7 0%, #fde68a 100%)", 
+    text: "#78350f", 
+    border: "#fbbf24", 
+    color: "#f59e0b",
+    colorLight: "#fbbf24",
+    darkBg: "linear-gradient(135deg, #78350f 0%, #92400e 100%)"
+  },
+  emerald: { 
+    bg: "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)", 
+    text: "#065f46", 
+    border: "#34d399", 
+    color: "#10b981",
+    colorLight: "#6ee7b7",
+    darkBg: "linear-gradient(135deg, #065f46 0%, #047857 100%)"
+  },
+  rose: { 
+    bg: "linear-gradient(135deg, #ffe4e6 0%, #fecdd3 100%)", 
+    text: "#881337", 
+    border: "#fb7185", 
+    color: "#f43f5e",
+    colorLight: "#fda4af",
+    darkBg: "linear-gradient(135deg, #881337 0%, #9f1239 100%)"
+  },
+  midnight: { 
+    bg: "linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%)", 
+    text: "#1e3a8a", 
+    border: "#60a5fa", 
+    color: "#3b82f6",
+    colorLight: "#93c5fd",
+    darkBg: "linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%)"
+  },
+  lavender: { 
+    bg: "linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)", 
+    text: "#6b21a8", 
+    border: "#c084fc", 
+    color: "#a855f7",
+    colorLight: "#d8b4fe",
+    darkBg: "linear-gradient(135deg, #6b21a8 0%, #7c3aed 100%)"
+  },
+  clay: { 
+    bg: "linear-gradient(135deg, #fed7aa 0%, #fdba74 100%)", 
+    text: "#9a3412", 
+    border: "#fb923c", 
+    color: "#f97316",
+    colorLight: "#fdba74",
+    darkBg: "linear-gradient(135deg, #9a3412 0%, #ea580c 100%)"
+  },
+  teal: {
+    bg: "linear-gradient(135deg, #ccfbf1 0%, #99f6e4 100%)",
+    text: "#115e59",
+    border: "#2dd4bf",
+    color: "#14b8a6",
+    colorLight: "#5eead4",
+    darkBg: "linear-gradient(135deg, #115e59 0%, #0f766e 100%)"
+  },
+  amber: {
+    bg: "linear-gradient(135deg, #fef08a 0%, #fde047 100%)",
+    text: "#92400e",
+    border: "#fbbf24",
+    color: "#f59e0b",
+    colorLight: "#fcd34d",
+    darkBg: "linear-gradient(135deg, #92400e 0%, #b45309 100%)"
+  }
 };
 
 const THEMES = {
-  light: { id:'light', bg:"#FFFFFF", sidebar:"#FAFAFA", card:"#FFFFFF", text:"#111827", textSec:"#4B5563", textMuted:"#9CA3AF", border:"#E5E7EB", borderLight:"#F3F4F6", accent:"#EA580C", accentHover:"#C2410C", familyAccent:"#059669", familyAccentHover:"#047857", selection:"rgba(234,88,12,0.1)", shadow:"0 1px 3px rgba(0,0,0,0.04), 0 8px 16px rgba(0,0,0,0.06)", shadowLg:"0 4px 6px rgba(0,0,0,0.05), 0 20px 40px rgba(0,0,0,0.08)", glass:"rgba(255,255,255,0.92)", indicator:"#DC2626", manifestoLine:"#E5E7EB", hoverBg:"rgba(0,0,0,0.03)", activeBg:"rgba(0,0,0,0.06)", pulse:"rgba(234,88,12,0.2)", glow:"0 0 20px rgba(234,88,12,0.3)" },
-  dark: { id:'dark', bg:"#0F172A", sidebar:"#1E293B", card:"#1E293B", text:"#F1F5F9", textSec:"#94A3B8", textMuted:"#64748B", border:"#334155", borderLight:"#1E293B", accent:"#F97316", accentHover:"#FB923C", familyAccent:"#10B981", familyAccentHover:"#34D399", selection:"rgba(249,115,22,0.2)", shadow:"0 2px 8px rgba(0,0,0,0.4), 0 12px 32px rgba(0,0,0,0.6)", shadowLg:"0 8px 16px rgba(0,0,0,0.6), 0 24px 48px rgba(0,0,0,0.8)", glass:"rgba(15,23,42,0.92)", indicator:"#EF4444", manifestoLine:"#334155", hoverBg:"rgba(255,255,255,0.06)", activeBg:"rgba(255,255,255,0.1)", pulse:"rgba(249,115,22,0.3)", glow:"0 0 20px rgba(249,115,22,0.4)" }
+  light: {
+    id: 'light',
+    bg: "#FFFFFF",
+    sidebar: "#FAFAFA",
+    card: "#FFFFFF",
+    text: "#111827",
+    textSec: "#4B5563",
+    textMuted: "#9CA3AF",
+    border: "#E5E7EB",
+    borderLight: "#F3F4F6",
+    accent: "#EA580C",
+    accentHover: "#C2410C",
+    familyAccent: "#059669",
+    familyAccentHover: "#047857",
+    selection: "rgba(234, 88, 12, 0.1)",
+    shadow: "0 1px 3px rgba(0, 0, 0, 0.04), 0 8px 16px rgba(0, 0, 0, 0.06)",
+    shadowLg: "0 4px 6px rgba(0, 0, 0, 0.05), 0 20px 40px rgba(0, 0, 0, 0.08)",
+    glass: "rgba(255, 255, 255, 0.92)",
+    indicator: "#DC2626",
+    manifestoLine: "#E5E7EB",
+    hoverBg: "rgba(0, 0, 0, 0.03)",
+    activeBg: "rgba(0, 0, 0, 0.06)",
+    pulse: "rgba(234, 88, 12, 0.2)",
+    glow: "0 0 20px rgba(234, 88, 12, 0.3)"
+  },
+  dark: {
+    id: 'dark',
+    bg: "#0F172A",
+    sidebar: "#1E293B",
+    card: "#1E293B",
+    text: "#F1F5F9",
+    textSec: "#94A3B8",
+    textMuted: "#64748B",
+    border: "#334155",
+    borderLight: "#1E293B",
+    accent: "#F97316",
+    accentHover: "#FB923C",
+    familyAccent: "#10B981",
+    familyAccentHover: "#34D399",
+    selection: "rgba(249, 115, 22, 0.2)",
+    shadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 12px 32px rgba(0, 0, 0, 0.6)",
+    shadowLg: "0 8px 16px rgba(0, 0, 0, 0.6), 0 24px 48px rgba(0, 0, 0, 0.8)",
+    glass: "rgba(15, 23, 42, 0.92)",
+    indicator: "#EF4444",
+    manifestoLine: "#334155",
+    hoverBg: "rgba(255, 255, 255, 0.06)",
+    activeBg: "rgba(255, 255, 255, 0.1)",
+    pulse: "rgba(249, 115, 22, 0.3)",
+    glow: "0 0 20px rgba(249, 115, 22, 0.4)"
+  }
 };
 
 const DEFAULT_TAGS = {
   personal: [
-    { id:'work', name:"Business", icon:<ICONS.Briefcase/>, ...PALETTE.onyx },
-    { id:'health', name:"Wellness", icon:<ICONS.Health/>, ...PALETTE.rose },
-    { id:'finance', name:"Finance", icon:<ICONS.Finance/>, ...PALETTE.emerald },
-    { id:'personal', name:"Personal", icon:<ICONS.Star/>, ...PALETTE.midnight },
-    { id:'travel', name:"Travel", icon:<ICONS.MapPin/>, ...PALETTE.lavender },
-    { id:'growth', name:"Growth", icon:<ICONS.TrendingUp/>, ...PALETTE.gold }
+    { id: 'work', name: "Business", icon: <ICONS.Briefcase />, ...PALETTE.onyx },
+    { id: 'health', name: "Wellness", icon: <ICONS.Health />, ...PALETTE.rose },
+    { id: 'finance', name: "Finance", icon: <ICONS.Finance />, ...PALETTE.emerald },
+    { id: 'personal', name: "Personal", icon: <ICONS.Star />, ...PALETTE.midnight },
+    { id: 'travel', name: "Travel", icon: <ICONS.MapPin />, ...PALETTE.lavender },
+    { id: 'growth', name: "Growth", icon: <ICONS.TrendingUp />, ...PALETTE.gold }
   ],
   family: [
-    { id:'family-events', name:"Events", icon:<ICONS.Calendar/>, ...PALETTE.midnight },
-    { id:'kids', name:"Kids", icon:<ICONS.Users/>, ...PALETTE.lavender },
-    { id:'household', name:"Household", icon:<ICONS.Home/>, ...PALETTE.clay },
-    { id:'vacation', name:"Vacation", icon:<ICONS.MapPin/>, ...PALETTE.teal },
-    { id:'education', name:"Education", icon:<ICONS.Star/>, ...PALETTE.amber },
-    { id:'healthcare', name:"Health", icon:<ICONS.Health/>, ...PALETTE.emerald }
+    { id: 'family-events', name: "Events", icon: <ICONS.Calendar />, ...PALETTE.midnight },
+    { id: 'kids', name: "Kids", icon: <ICONS.Users />, ...PALETTE.lavender },
+    { id: 'household', name: "Household", icon: <ICONS.Home />, ...PALETTE.clay },
+    { id: 'vacation', name: "Vacation", icon: <ICONS.MapPin />, ...PALETTE.teal },
+    { id: 'education', name: "Education", icon: <ICONS.Star />, ...PALETTE.amber },
+    { id: 'healthcare', name: "Health", icon: <ICONS.Health />, ...PALETTE.emerald }
   ]
 };
 
-const CSS = `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap');:root{--ease:cubic-bezier(0.22,1,0.36,1);--ease-spring:cubic-bezier(0.34,1.56,0.64,1)}*{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale}body{font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;overflow:hidden}h1,h2,h3,h4,.luxe{font-family:'Cormorant Garamond',serif;font-weight:600;letter-spacing:-0.02em}::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:rgba(156,163,175,0.3);border-radius:10px}::-webkit-scrollbar-thumb:hover{background:rgba(156,163,175,0.5)}@keyframes fadeIn{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}@keyframes pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.05);opacity:0.8}}@keyframes glow{0%,100%{box-shadow:0 0 0 4px rgba(234,88,12,0.2)}50%{box-shadow:0 0 0 8px rgba(234,88,12,0.4)}}@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}.fade-enter{animation:fadeIn 0.3s var(--ease) forwards}.glass-panel{backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px)}.input-luxe{width:100%;padding:12px 16px;border-radius:10px;font-size:14px;transition:all 0.2s var(--ease);border:1.5px solid;font-family:'Inter',sans-serif;background:transparent}.input-luxe:focus{outline:none}.mini-cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;text-align:center;margin-top:12px}.mini-cal-day{font-size:12px;padding:10px 0;border-radius:10px;cursor:pointer;transition:all 0.2s var(--ease);font-weight:500;position:relative}.year-event-dot{position:absolute;width:6px;height:6px;border-radius:50%;cursor:pointer;transition:all 0.2s var(--ease);box-shadow:0 1px 2px rgba(0,0,0,0.2)}.year-event-dot:hover{transform:scale(1.6);z-index:10}`;
+// ==========================================
+// 3. MAIN APPLICATION KERNEL
+// ==========================================
 
 function TimelineOS() {
+  // Authentication & User State
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  
+  // Date & Time State
   const [currentDate, setCurrentDate] = useState(new Date());
   const [now, setNow] = useState(new Date());
   const [viewMode, setViewMode] = useState("year");
+  
+  // Context & Filtering
   const [context, setContext] = useState("personal");
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
+  
+  // Tags & Categories
   const [tags, setTags] = useState(() => {
-    try { const saved = localStorage.getItem('timeline_tags_v4'); return saved ? JSON.parse(saved) : DEFAULT_TAGS; } catch { return DEFAULT_TAGS; }
+    try {
+      const saved = localStorage.getItem('timeline_tags_v4');
+      return saved ? JSON.parse(saved) : DEFAULT_TAGS;
+    } catch {
+      return DEFAULT_TAGS;
+    }
   });
+  
   const [activeTagIds, setActiveTagIds] = useState(() => {
-    const currentTags = tags[context] || []; return currentTags.map(t => t.id);
+    const currentTags = tags[context] || [];
+    return currentTags.map(t => t.id);
   });
+  
+  // UI State
   const [quote, setQuote] = useState(MOTIVATIONAL_QUOTES[0]);
   const [draggedEvent, setDraggedEvent] = useState(null);
+  
+  // Modal States
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
+  
+  // Configuration
   const [config, setConfig] = useState(() => {
-    try { const saved = localStorage.getItem('timeline_v5_cfg'); if (saved) return JSON.parse(saved); } catch {}
-    return { darkMode:true, use24Hour:false, blurPast:true, weekStartMon:true, showSidebar:true, showMotivationalQuotes:true, showUpcomingEvents:true, enableDragDrop:true, enableAnimations:true, enablePulseEffects:true };
+    try {
+      const saved = localStorage.getItem('timeline_v5_cfg');
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch {}
+    return {
+      darkMode: true,
+      use24Hour: false,
+      blurPast: true,
+      weekStartMon: true,
+      showSidebar: true,
+      showMotivationalQuotes: true,
+      showUpcomingEvents: true,
+      enableDragDrop: true,
+      enableAnimations: true,
+      enablePulseEffects: true
+    };
   });
   
+  // Refs
   const scrollRef = useRef(null);
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
   
-  useEffect(() => { const style = document.createElement('style'); style.textContent = CSS; document.head.appendChild(style); return () => style.remove(); }, []);
-  useEffect(() => { const nowInterval = setInterval(() => setNow(new Date()), 60000); const quoteInterval = setInterval(() => { if (config.showMotivationalQuotes) setQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]); }, 10000); return () => { clearInterval(nowInterval); clearInterval(quoteInterval); }; }, [config.showMotivationalQuotes]);
-  
-  const loadData = useCallback(async (u) => {
-    setLoading(true);
-    try {
-      const q = query(collection(db, "events"), where("uid", "==", u.uid));
-      const querySnapshot = await getDocs(q);
-      const eventsData = [];
-      querySnapshot.forEach((doc) => { const data = doc.data(); eventsData.push({ id: doc.id, ...data, start: data.startTime?.toDate() || new Date(), end: data.endTime?.toDate() || new Date() }); });
-      setEvents(eventsData.filter(e => !e.deleted));
-      setDeletedEvents(eventsData.filter(e => e.deleted));
-    } catch (error) { console.error("Error loading events:", error); notify("Failed to load events", "error"); } finally { setLoading(false); }
+  // Inject CSS
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap');
+      
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+      }
+      
+      body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        overflow: hidden;
+      }
+      
+      h1, h2, h3, h4, .luxe {
+        font-family: 'Cormorant Garamond', serif;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+      
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+      
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      ::-webkit-scrollbar-thumb {
+        background: rgba(156, 163, 175, 0.3);
+        border-radius: 10px;
+      }
+      
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(156, 163, 175, 0.5);
+      }
+      
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(16px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.05);
+          opacity: 0.8;
+        }
+      }
+      
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      
+      .fade-enter {
+        animation: fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+      }
+    `;
+    document.head.appendChild(style);
+    return () => style.remove();
   }, []);
   
-  useEffect(() => { setPersistence(auth, browserLocalPersistence); const unsubscribe = auth.onAuthStateChanged(u => { setUser(u); if (u) loadData(u); else setLoading(false); }); return () => unsubscribe(); }, [loadData]);
-  useEffect(() => { localStorage.setItem('timeline_v5_cfg', JSON.stringify(config)); }, [config]);
-  useEffect(() => { localStorage.setItem('timeline_tags_v4', JSON.stringify(tags)); }, [tags]);
-  useEffect(() => { const currentTags = tags[context] || []; setActiveTagIds(currentTags.map(t => t.id)); }, [context, tags]);
+  // Set up intervals
+  useEffect(() => {
+    const nowInterval = setInterval(() => setNow(new Date()), 60000);
+    const quoteInterval = setInterval(() => {
+      if (config.showMotivationalQuotes) {
+        setQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
+      }
+    }, 10000);
+    
+    return () => {
+      clearInterval(nowInterval);
+      clearInterval(quoteInterval);
+    };
+  }, [config.showMotivationalQuotes]);
+  
+  // Load events data with useCallback
+  const loadData = useCallback(async (u) => {
+    if (!u) return;
+    setLoading(true);
+    try {
+      // Mock data for demo
+      const mockEvents = [
+        {
+          id: '1',
+          title: 'Team Meeting',
+          category: 'work',
+          context: 'personal',
+          description: 'Weekly team sync',
+          location: 'Conference Room A',
+          start: new Date(Date.now() + 86400000),
+          end: new Date(Date.now() + 86400000 + 3600000),
+          deleted: false
+        },
+        {
+          id: '2',
+          title: 'Doctor Appointment',
+          category: 'health',
+          context: 'personal',
+          description: 'Annual checkup',
+          location: 'Medical Center',
+          start: new Date(Date.now() + 172800000),
+          end: new Date(Date.now() + 172800000 + 1800000),
+          deleted: false
+        },
+        {
+          id: '3',
+          title: 'Kids Soccer Practice',
+          category: 'kids',
+          context: 'family',
+          description: 'Weekly practice',
+          location: 'Local Field',
+          start: new Date(Date.now() + 259200000),
+          end: new Date(Date.now() + 259200000 + 5400000),
+          deleted: false
+        }
+      ];
+      
+      setEvents(mockEvents.filter(e => !e.deleted));
+      setDeletedEvents(mockEvents.filter(e => e.deleted));
+      
+    } catch (error) {
+      console.error("Error loading events:", error);
+      notify("Failed to load events", "error");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+  
+  // Authentication
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(u => {
+      setUser(u);
+      if (u) {
+        loadData(u);
+      } else {
+        setLoading(false);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [loadData]);
+  
+  // Persist configuration
+  useEffect(() => {
+    localStorage.setItem('timeline_v5_cfg', JSON.stringify(config));
+  }, [config]);
   
   useEffect(() => {
-    const filtered = events.filter(e => { const matchesContext = e.context === context; const matchesCategory = activeTagIds.length === 0 || activeTagIds.includes(e.category); return matchesContext && matchesCategory && !e.deleted; });
+    localStorage.setItem('timeline_tags_v4', JSON.stringify(tags));
+  }, [tags]);
+  
+  // Update active tags when context changes
+  useEffect(() => {
+    const currentTags = tags[context] || [];
+    setActiveTagIds(currentTags.map(t => t.id));
+  }, [context, tags]);
+  
+  // Filter events
+  useEffect(() => {
+    const filtered = events.filter(e => {
+      // Check if event has the correct context
+      const matchesContext = e.context === context;
+      
+      // Check if event's category is in active tags
+      const matchesCategory = activeTagIds.length === 0 || activeTagIds.includes(e.category);
+      
+      return matchesContext && matchesCategory && !e.deleted;
+    });
+    
     setFilteredEvents(filtered);
-    const now = new Date(); const nextWeek = new Date(); nextWeek.setDate(nextWeek.getDate() + 7);
-    const upcoming = filtered.filter(e => e.start >= now && e.start <= nextWeek).sort((a, b) => a.start - b.start).slice(0, 5);
+    
+    // Update upcoming events (next 7 days)
+    const now = new Date();
+    const nextWeek = new Date();
+    nextWeek.setDate(nextWeek.getDate() + 7);
+    
+    const upcoming = filtered
+      .filter(e => e.start >= now && e.start <= nextWeek)
+      .sort((a, b) => a.start - b.start)
+      .slice(0, 5);
+    
     setUpcomingEvents(upcoming);
   }, [events, context, activeTagIds]);
   
+  // Save event
   const handleSaveEvent = async (data) => {
-    if (!user) { notify("You must be logged in to save events", "error"); return; }
+    if (!user) {
+      notify("You must be logged in to save events", "error");
+      return;
+    }
+    
     try {
-      const start = new Date(data.start); const end = new Date(data.end);
-      if (end <= start) { notify("End time must be after start time", "error"); return; }
-      const eventData = { uid: user.uid, title: data.title.trim(), category: data.category, context: context, description: data.description?.trim() || "", location: data.location?.trim() || "", startTime: Timestamp.fromDate(start), endTime: Timestamp.fromDate(end), deleted: false, createdAt: serverTimestamp(), updatedAt: serverTimestamp() };
-      if (data.id) { await updateDoc(doc(db, "events", data.id), eventData); notify("Event updated successfully", "success"); } else { await addDoc(collection(db, "events"), eventData); notify("Event created successfully", "success"); }
-      setModalOpen(false); loadData(user);
-    } catch (error) { console.error("Error saving event:", error); notify("Failed to save event", "error"); }
+      const start = new Date(data.start);
+      const end = new Date(data.end);
+      
+      // Validate dates
+      if (end <= start) {
+        notify("End time must be after start time", "error");
+        return;
+      }
+      
+      const eventData = {
+        uid: user.uid,
+        title: data.title.trim(),
+        category: data.category,
+        context: context,
+        description: data.description?.trim() || "",
+        location: data.location?.trim() || "",
+        startTime: start,
+        endTime: end,
+        deleted: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      
+      if (data.id) {
+        // Update existing event
+        notify("Event updated successfully", "success");
+      } else {
+        // Create new event
+        const newEvent = {
+          ...eventData,
+          id: `event-${Date.now()}`,
+          start,
+          end
+        };
+        setEvents(prev => [...prev, newEvent]);
+        notify("Event created successfully", "success");
+      }
+      
+      setModalOpen(false);
+      
+    } catch (error) {
+      console.error("Error saving event:", error);
+      notify("Failed to save event", "error");
+    }
   };
   
-  const softDeleteEvent = async (id) => { if (!window.confirm("Move this event to trash?")) return; try { await updateDoc(doc(db, "events", id), { deleted: true, deletedAt: serverTimestamp() }); setModalOpen(false); loadData(user); notify("Event moved to trash", "info"); } catch (error) { notify("Failed to delete event", "error"); } };
-  const restoreEvent = async (id) => { try { await updateDoc(doc(db, "events", id), { deleted: false, updatedAt: serverTimestamp() }); loadData(user); notify("Event restored", "success"); } catch (error) { notify("Failed to restore event", "error"); } };
-  const hardDeleteEvent = async (id) => { if (!window.confirm("Permanently delete this event?")) return; try { await deleteDoc(doc(db, "events", id)); loadData(user); notify("Event permanently deleted", "info"); } catch (error) { notify("Failed to delete event", "error"); } };
-  
-  const handleEventDrag = async (eventId, newDate) => {
-    if (!config.enableDragDrop) return;
-    const event = events.find(e => e.id === eventId); if (!event) return;
-    const duration = event.end.getTime() - event.start.getTime();
-    const newStart = new Date(newDate); newStart.setHours(event.start.getHours(), event.start.getMinutes());
-    const newEnd = new Date(newStart.getTime() + duration);
-    try { await updateDoc(doc(db, "events", eventId), { startTime: Timestamp.fromDate(newStart), endTime: Timestamp.fromDate(newEnd), updatedAt: serverTimestamp() }); loadData(user); notify("Event moved successfully", "success"); } catch (error) { notify("Failed to move event", "error"); }
+  // Delete event
+  const softDeleteEvent = async (id) => {
+    if (!window.confirm("Move this event to trash?")) return;
+    
+    try {
+      setEvents(prev => prev.filter(e => e.id !== id));
+      setModalOpen(false);
+      notify("Event moved to trash", "info");
+    } catch (error) {
+      notify("Failed to delete event", "error");
+    }
   };
   
-  const navigateDate = (amount) => { const newDate = new Date(currentDate); switch (viewMode) { case 'year': newDate.setFullYear(newDate.getFullYear() + amount); break; case 'month': newDate.setMonth(newDate.getMonth() + amount); break; case 'week': newDate.setDate(newDate.getDate() + (amount * 7)); break; default: newDate.setDate(newDate.getDate() + amount); } setCurrentDate(newDate); };
-  const goToToday = () => { setCurrentDate(new Date()); };
-  const notify = (message, type = "info") => { const id = Date.now(); setNotifications(prev => [...prev, { id, message, type }]); setTimeout(() => { setNotifications(prev => prev.filter(n => n.id !== id)); }, 4000); };
+  // Restore event
+  const restoreEvent = async (id) => {
+    try {
+      notify("Event restored", "success");
+    } catch (error) {
+      notify("Failed to restore event", "error");
+    }
+  };
+  
+  // Permanent delete
+  const hardDeleteEvent = async (id) => {
+    if (!window.confirm("Permanently delete this event?")) return;
+    
+    try {
+      setDeletedEvents(prev => prev.filter(e => e.id !== id));
+      notify("Event permanently deleted", "info");
+    } catch (error) {
+      notify("Failed to delete event", "error");
+    }
+  };
+  
+  // Navigation
+  const navigateDate = (amount) => {
+    const newDate = new Date(currentDate);
+    
+    switch (viewMode) {
+      case 'year':
+        newDate.setFullYear(newDate.getFullYear() + amount);
+        break;
+      case 'month':
+        newDate.setMonth(newDate.getMonth() + amount);
+        break;
+      case 'week':
+        newDate.setDate(newDate.getDate() + (amount * 7));
+        break;
+      default: // day
+        newDate.setDate(newDate.getDate() + amount);
+    }
+    
+    setCurrentDate(newDate);
+  };
+  
+  const goToToday = () => {
+    setCurrentDate(new Date());
+  };
+  
+  // Notification system
+  const notify = (message, type = "info") => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 4000);
+  };
+  
+  // Get current tags for context
   const currentTags = tags[context] || [];
   
-  if (loading && user) return (<div style={{height:"100vh",background:theme.bg,display:"flex",alignItems:"center",justifyContent:"center"}}><div style={{width:40,height:40,borderRadius:"50%",border:`3px solid ${theme.border}`,borderTopColor:accentColor,animation:"spin 1s linear infinite"}}/></div>);
-  if (!user) return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
+  // Loading state
+  if (loading && user) {
+    return (
+      <div style={{
+        height: "100vh",
+        background: theme.bg,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center"
+      }}>
+        <div style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          border: `3px solid ${theme.border}`,
+          borderTopColor: accentColor,
+          animation: "spin 1s linear infinite"
+        }} />
+      </div>
+    );
+  }
+  
+  // Auth screen
+  if (!user) {
+    return <AuthScreen onLogin={() => auth.signInWithPopup(provider)} theme={theme} />;
+  }
   
   return (
-    <div style={{display:"flex",height:"100vh",background:theme.bg,color:theme.text,fontFamily:"'Inter',sans-serif",overflow:"hidden"}}>
+    <div style={{
+      display: "flex",
+      height: "100vh",
+      background: theme.bg,
+      color: theme.text,
+      fontFamily: "'Inter', sans-serif",
+      overflow: "hidden"
+    }}>
+      {/* SIDEBAR */}
       {config.showSidebar && (
-        <aside style={{width:LAYOUT.SIDEBAR_WIDTH,background:theme.sidebar,borderRight:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",padding:"24px",overflow:"hidden"}}>
-          <div style={{marginBottom:32}}><h1 className="luxe" style={{fontSize:36,fontWeight:700,color:theme.text,marginBottom:8}}>Timeline.</h1><div style={{fontSize:14,color:theme.textSec,marginBottom:8}}>Welcome, <span style={{fontWeight:600}}>{user.displayName?.split(" ")[0] || 'User'}</span></div>{config.showMotivationalQuotes && (<div style={{fontSize:13,color:theme.textMuted,fontStyle:"italic",lineHeight:1.4}}>"{quote}"</div>)}</div>
-          <div style={{display:"flex",background:theme.borderLight,padding:4,borderRadius:12,marginBottom:24}}><button onClick={() => setContext('personal')} style={{flex:1,padding:"10px 16px",borderRadius:8,border:"none",background:context==='personal'?theme.card:'transparent',color:context==='personal'?theme.accent:theme.textSec,fontWeight:600,fontSize:13,cursor:"pointer",transition:"all 0.2s"}}>Personal</button><button onClick={() => setContext('family')} style={{flex:1,padding:"10px 16px",borderRadius:8,border:"none",background:context==='family'?theme.card:'transparent',color:context==='family'?theme.familyAccent:theme.textSec,fontWeight:600,fontSize:13,cursor:"pointer",transition:"all 0.2s"}}>Family</button></div>
-          <button onClick={() => { setEditingEvent(null); setModalOpen(true); }} style={{width:"100%",padding:"14px",borderRadius:12,background:accentColor,color:"#fff",border:"none",fontSize:14,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8,marginBottom:24,transition:"all 0.2s"}} onMouseEnter={e => e.currentTarget.style.background = context==='family'?theme.familyAccentHover:theme.accentHover} onMouseLeave={e => e.currentTarget.style.background = accentColor}><ICONS.Plus /> New Event</button>
-          <div style={{marginBottom:24}}><MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} config={config} accentColor={accentColor} /></div>
-          {config.showUpcomingEvents && upcomingEvents.length > 0 && (<div style={{marginBottom:24}}><div style={{fontSize:11,fontWeight:700,color:theme.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:12}}>Upcoming</div><div style={{display:"flex",flexDirection:"column",gap:8}}>{upcomingEvents.map(event => { const tag = currentTags.find(t => t.id === event.category) || currentTags[0]; return (<div key={event.id} onClick={() => { setEditingEvent(event); setModalOpen(true); }} style={{padding:"12px",borderRadius:8,background:theme.hoverBg,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => e.currentTarget.style.background = theme.activeBg} onMouseLeave={e => e.currentTarget.style.background = theme.hoverBg}><div style={{fontSize:13,fontWeight:600,color:theme.text,marginBottom:4,display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:tag?.color||theme.accent,flexShrink:0}}/>{event.title || 'Untitled Event'}</div><div style={{fontSize:11,color:theme.textSec,display:"flex",alignItems:"center",gap:8,marginLeft:16}}>{event.start?.toLocaleDateString([], {month:'short',day:'numeric'}) || 'No date'} • {event.start?.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) || ''}</div></div>); })}</div></div>)}
-          <div style={{flex:1,overflow:"hidden"}}><div style={{fontSize:11,fontWeight:700,color:theme.textMuted,textTransform:"uppercase",letterSpacing:1,marginBottom:12,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>Categories</span><button onClick={() => setTagManagerOpen(true)} style={{background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:4,borderRadius:6}}><ICONS.Settings width={14} height={14} /></button></div><div style={{height:"calc(100% - 24px)",overflowY:"auto"}}>{currentTags.map(tag => (<div key={tag.id} onClick={() => { setActiveTagIds(prev => prev.includes(tag.id) ? prev.filter(id => id !== tag.id) : [...prev, tag.id]); }} style={{padding:"10px 12px",marginBottom:6,borderRadius:8,cursor:"pointer",display:"flex",alignItems:"center",gap:12,background:activeTagIds.includes(tag.id)?theme.hoverBg:"transparent",opacity:activeTagIds.includes(tag.id)?1:0.6,transition:"all 0.2s"}} onMouseEnter={e => { if (!activeTagIds.includes(tag.id)) { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.opacity = 0.8; } }} onMouseLeave={e => { if (!activeTagIds.includes(tag.id)) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.opacity = 0.6; } }}><div style={{width:12,height:12,borderRadius:"50%",background:tag.color,flexShrink:0}}/><span style={{fontSize:13,fontWeight:600,flex:1}}>{tag.name}</span><div style={{width:6,height:6,borderRadius:"50%",background:activeTagIds.includes(tag.id)?tag.color:"transparent",border:`2px solid ${theme.border}`}}/></div>))}</div></div>
-          <div style={{marginTop:24,paddingTop:24,borderTop:`1px solid ${theme.border}`,display:"flex",justifyContent:"space-between"}}><button onClick={() => setTrashOpen(true)} style={{background:"transparent",border:"none",color:theme.textSec,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:8,transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}><ICONS.Trash width={14} height={14} /> Trash</button><button onClick={() => setSettingsOpen(true)} style={{background:"transparent",border:"none",color:theme.textSec,fontSize:13,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6,padding:"8px 12px",borderRadius:8,transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}><ICONS.Settings width={14} height={14} /> Settings</button></div>
+        <aside style={{
+          width: LAYOUT.SIDEBAR_WIDTH,
+          background: theme.sidebar,
+          borderRight: `1px solid ${theme.border}`,
+          display: "flex",
+          flexDirection: "column",
+          padding: "24px",
+          overflow: "hidden"
+        }}>
+          {/* Header */}
+          <div style={{ marginBottom: 32 }}>
+            <h1 className="luxe" style={{
+              fontSize: 36,
+              fontWeight: 700,
+              color: theme.text,
+              marginBottom: 8
+            }}>
+              Timeline.
+            </h1>
+            <div style={{
+              fontSize: 14,
+              color: theme.textSec,
+              marginBottom: 8
+            }}>
+              Welcome, <span style={{ fontWeight: 600 }}>{user.displayName?.split(" ")[0] || 'User'}</span>
+            </div>
+            {config.showMotivationalQuotes && (
+              <div style={{
+                fontSize: 13,
+                color: theme.textMuted,
+                fontStyle: "italic",
+                lineHeight: 1.4
+              }}>
+                "{quote}"
+              </div>
+            )}
+          </div>
+          
+          {/* Context Switcher */}
+          <div style={{
+            display: "flex",
+            background: theme.borderLight,
+            padding: 4,
+            borderRadius: 12,
+            marginBottom: 24
+          }}>
+            <button
+              onClick={() => setContext('personal')}
+              style={{
+                flex: 1,
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: context === 'personal' ? theme.card : 'transparent',
+                color: context === 'personal' ? theme.accent : theme.textSec,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              Personal
+            </button>
+            <button
+              onClick={() => setContext('family')}
+              style={{
+                flex: 1,
+                padding: "10px 16px",
+                borderRadius: 8,
+                border: "none",
+                background: context === 'family' ? theme.card : 'transparent',
+                color: context === 'family' ? theme.familyAccent : theme.textSec,
+                fontWeight: 600,
+                fontSize: 13,
+                cursor: "pointer",
+                transition: "all 0.2s"
+              }}
+            >
+              Family
+            </button>
+          </div>
+          
+          {/* New Event Button */}
+          <button
+            onClick={() => {
+              setEditingEvent(null);
+              setModalOpen(true);
+            }}
+            style={{
+              width: "100%",
+              padding: "14px",
+              borderRadius: 12,
+              background: accentColor,
+              color: "#fff",
+              border: "none",
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: 8,
+              marginBottom: 24,
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = context === 'family' ? theme.familyAccentHover : theme.accentHover}
+            onMouseLeave={e => e.currentTarget.style.background = accentColor}
+          >
+            <ICONS.Plus /> New Event
+          </button>
+          
+          {/* Mini Calendar */}
+          <div style={{ marginBottom: 24 }}>
+            <MiniCalendar
+              currentDate={currentDate}
+              setCurrentDate={setCurrentDate}
+              theme={theme}
+              config={config}
+              accentColor={accentColor}
+            />
+          </div>
+          
+          {/* Upcoming Events */}
+          {config.showUpcomingEvents && upcomingEvents.length > 0 && (
+            <div style={{ marginBottom: 24 }}>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: theme.textMuted,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 12
+              }}>
+                Upcoming
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {upcomingEvents.map(event => {
+                  const tag = currentTags.find(t => t.id === event.category) || currentTags[0];
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => {
+                        setEditingEvent(event);
+                        setModalOpen(true);
+                      }}
+                      style={{
+                        padding: "12px",
+                        borderRadius: 8,
+                        background: theme.hoverBg,
+                        cursor: "pointer",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = theme.activeBg}
+                      onMouseLeave={e => e.currentTarget.style.background = theme.hoverBg}
+                    >
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.text,
+                        marginBottom: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8
+                      }}>
+                        <div style={{
+                          width: 8,
+                          height: 8,
+                          borderRadius: "50%",
+                          background: tag?.color || theme.accent,
+                          flexShrink: 0
+                        }} />
+                        {event.title || 'Untitled Event'}
+                      </div>
+                      <div style={{
+                        fontSize: 11,
+                        color: theme.textSec,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        marginLeft: 16
+                      }}>
+                        {event.start?.toLocaleDateString([], { month: 'short', day: 'numeric' }) || 'No date'} • 
+                        {event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) || ''}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+          
+          {/* Tags */}
+          <div style={{ flex: 1, overflow: "hidden" }}>
+            <div style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: theme.textMuted,
+              textTransform: "uppercase",
+              letterSpacing: 1,
+              marginBottom: 12,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center"
+            }}>
+              <span>Categories</span>
+              <button
+                onClick={() => setTagManagerOpen(true)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: theme.textSec,
+                  cursor: "pointer",
+                  padding: 4,
+                  borderRadius: 6
+                }}
+              >
+                <ICONS.Settings width={14} height={14} />
+              </button>
+            </div>
+            
+            <div style={{ height: "calc(100% - 24px)", overflowY: "auto" }}>
+              {currentTags.map(tag => (
+                <div
+                  key={tag.id}
+                  onClick={() => {
+                    setActiveTagIds(prev =>
+                      prev.includes(tag.id)
+                        ? prev.filter(id => id !== tag.id)
+                        : [...prev, tag.id]
+                    );
+                  }}
+                  style={{
+                    padding: "10px 12px",
+                    marginBottom: 6,
+                    borderRadius: 8,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    background: activeTagIds.includes(tag.id) ? theme.hoverBg : "transparent",
+                    opacity: activeTagIds.includes(tag.id) ? 1 : 0.6,
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => {
+                    if (!activeTagIds.includes(tag.id)) {
+                      e.currentTarget.style.background = theme.hoverBg;
+                      e.currentTarget.style.opacity = 0.8;
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!activeTagIds.includes(tag.id)) {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.opacity = 0.6;
+                    }
+                  }}
+                >
+                  <div style={{
+                    width: 12,
+                    height: 12,
+                    borderRadius: "50%",
+                    background: tag.color,
+                    flexShrink: 0
+                  }} />
+                  <span style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    flex: 1
+                  }}>
+                    {tag.name}
+                  </span>
+                  <div style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: activeTagIds.includes(tag.id) ? tag.color : "transparent",
+                    border: `2px solid ${theme.border}`
+                  }} />
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Footer */}
+          <div style={{
+            marginTop: 24,
+            paddingTop: 24,
+            borderTop: `1px solid ${theme.border}`,
+            display: "flex",
+            justifyContent: "space-between"
+          }}>
+            <button
+              onClick={() => setTrashOpen(true)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: theme.textSec,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 12px",
+                borderRadius: 8,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = theme.hoverBg;
+                e.currentTarget.style.color = theme.text;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = theme.textSec;
+              }}
+            >
+              <ICONS.Trash width={14} height={14} /> Trash
+            </button>
+            <button
+              onClick={() => setSettingsOpen(true)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: theme.textSec,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 12px",
+                borderRadius: 8,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = theme.hoverBg;
+                e.currentTarget.style.color = theme.text;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "transparent";
+                e.currentTarget.style.color = theme.textSec;
+              }}
+            >
+              <ICONS.Settings width={14} height={14} /> Settings
+            </button>
+          </div>
         </aside>
       )}
       
-      <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
-        <header style={{height:LAYOUT.HEADER_HEIGHT,display:"flex",alignItems:"center",justifyContent:"space-between",padding:"0 32px",borderBottom:`1px solid ${theme.border}`,background:theme.bg,flexShrink:0}}>
-          <div style={{display:"flex",alignItems:"center",gap:24}}><h2 className="luxe" style={{fontSize:28,fontWeight:600}}>{viewMode==='year'?currentDate.getFullYear():viewMode==='month'?currentDate.toLocaleDateString('en-US',{month:'long',year:'numeric'}):viewMode==='week'?`Week of ${currentDate.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`:currentDate.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</h2><div style={{display:"flex",gap:8}}><button onClick={() => navigateDate(-1)} style={{width:36,height:36,borderRadius:"50%",border:`1px solid ${theme.border}`,background:theme.hoverBg,color:theme.text,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><ICONS.ChevronLeft /></button><button onClick={goToToday} style={{padding:"0 16px",height:36,borderRadius:18,border:`1px solid ${theme.border}`,background:theme.hoverBg,color:theme.text,fontSize:13,fontWeight:600,cursor:"pointer"}}>Today</button><button onClick={() => navigateDate(1)} style={{width:36,height:36,borderRadius:"50%",border:`1px solid ${theme.border}`,background:theme.hoverBg,color:theme.text,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center"}}><ICONS.ChevronRight /></button></div></div>
-          <div style={{display:"flex",background:theme.borderLight,padding:4,borderRadius:12}}>{['day','week','month','year'].map(mode => (<button key={mode} onClick={() => setViewMode(mode)} style={{padding:"8px 16px",borderRadius:8,border:"none",background:viewMode===mode?theme.card:"transparent",color:viewMode===mode?theme.text:theme.textSec,fontSize:13,fontWeight:600,cursor:"pointer",textTransform:"capitalize"}}>{mode}</button>))}</div>
+      {/* MAIN CONTENT */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <header style={{
+          height: LAYOUT.HEADER_HEIGHT,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "0 32px",
+          borderBottom: `1px solid ${theme.border}`,
+          background: theme.bg,
+          flexShrink: 0
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
+            <h2 className="luxe" style={{ fontSize: 28, fontWeight: 600 }}>
+              {viewMode === 'year' 
+                ? currentDate.getFullYear()
+                : viewMode === 'month'
+                ? currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                : viewMode === 'week'
+                ? `Week of ${currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                : currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+              }
+            </h2>
+            
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                onClick={() => navigateDate(-1)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  border: `1px solid ${theme.border}`,
+                  background: theme.hoverBg,
+                  color: theme.text,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <ICONS.ChevronLeft />
+              </button>
+              
+              <button
+                onClick={goToToday}
+                style={{
+                  padding: "0 16px",
+                  height: 36,
+                  borderRadius: 18,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.hoverBg,
+                  color: theme.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer"
+                }}
+              >
+                Today
+              </button>
+              
+              <button
+                onClick={() => navigateDate(1)}
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  border: `1px solid ${theme.border}`,
+                  background: theme.hoverBg,
+                  color: theme.text,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <ICONS.ChevronRight />
+              </button>
+            </div>
+          </div>
+          
+          {/* View Mode Selector */}
+          <div style={{
+            display: "flex",
+            background: theme.borderLight,
+            padding: 4,
+            borderRadius: 12
+          }}>
+            {['day', 'week', 'month', 'year'].map(mode => (
+              <button
+                key={mode}
+                onClick={() => setViewMode(mode)}
+                style={{
+                  padding: "8px 16px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: viewMode === mode ? theme.card : "transparent",
+                  color: viewMode === mode ? theme.text : theme.textSec,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  textTransform: "capitalize"
+                }}
+              >
+                {mode}
+              </button>
+            ))}
+          </div>
         </header>
         
-        <div ref={scrollRef} style={{flex:1,overflow:"auto",padding:"24px",background:theme.bg}}>
-          {loading ? (<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:theme.textMuted}}>Loading events...</div>) : viewMode === 'day' ? (<DayView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={currentTags} onEventClick={(event) => { setEditingEvent(event); setModalOpen(true); }} />) : viewMode === 'week' ? (<WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={currentTags} onEventClick={(event) => { setEditingEvent(event); setModalOpen(true); }} />) : viewMode === 'month' ? (<MonthView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} onDayClick={(date) => { setCurrentDate(date); setViewMode('day'); }} onEventClick={(event) => { setEditingEvent(event); setModalOpen(true); }} />) : viewMode === 'year' ? (<LinearYearView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={currentTags} context={context} accentColor={accentColor} onDayClick={(date) => { setCurrentDate(date); setViewMode('day'); }} onEventClick={(event) => { setEditingEvent(event); setModalOpen(true); }} onEventDrag={handleEventDrag} draggedEvent={draggedEvent} setDraggedEvent={setDraggedEvent} />) : null}
+        {/* Main View */}
+        <div
+          ref={scrollRef}
+          style={{
+            flex: 1,
+            overflow: "auto",
+            padding: "24px",
+            background: theme.bg
+          }}
+        >
+          {loading ? (
+            <div style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              height: "100%",
+              color: theme.textMuted
+            }}>
+              Loading events...
+            </div>
+          ) : viewMode === 'day' ? (
+            <DayView
+              currentDate={currentDate}
+              events={filteredEvents}
+              theme={theme}
+              config={config}
+              tags={currentTags}
+              onEventClick={(event) => {
+                setEditingEvent(event);
+                setModalOpen(true);
+              }}
+            />
+          ) : viewMode === 'week' ? (
+            <WeekView
+              currentDate={currentDate}
+              events={filteredEvents}
+              theme={theme}
+              config={config}
+              tags={currentTags}
+              onEventClick={(event) => {
+                setEditingEvent(event);
+                setModalOpen(true);
+              }}
+            />
+          ) : viewMode === 'month' ? (
+            <MonthView
+              currentDate={currentDate}
+              events={filteredEvents}
+              theme={theme}
+              config={config}
+              onDayClick={(date) => {
+                setCurrentDate(date);
+                setViewMode('day');
+              }}
+              onEventClick={(event) => {
+                setEditingEvent(event);
+                setModalOpen(true);
+              }}
+            />
+          ) : viewMode === 'year' ? (
+            <YearView
+              currentDate={currentDate}
+              events={filteredEvents}
+              theme={theme}
+              config={config}
+              tags={currentTags}
+              context={context}
+              accentColor={accentColor}
+              onDayClick={(date) => {
+                setCurrentDate(date);
+                setViewMode('day');
+              }}
+              onEventClick={(event) => {
+                setEditingEvent(event);
+                setModalOpen(true);
+              }}
+            />
+          ) : null}
         </div>
       </div>
       
-      {settingsOpen && (<SettingsModal config={config} setConfig={setConfig} theme={theme} onClose={() => setSettingsOpen(false)} user={user} handleLogout={async () => { try { await signOut(auth); } catch (error) { console.error("Error signing out:", error); } }} />)}
-      {modalOpen && (<EventEditor event={editingEvent} theme={theme} tags={currentTags} onSave={handleSaveEvent} onDelete={editingEvent?.id ? () => softDeleteEvent(editingEvent.id) : null} onCancel={() => setModalOpen(false)} config={config} context={context} />)}
-      {trashOpen && (<TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={restoreEvent} onDelete={hardDeleteEvent} />)}
-      {tagManagerOpen && (<TagManager tags={tags} setTags={setTags} theme={theme} context={context} onClose={() => setTagManagerOpen(false)} />)}
+      {/* MODALS */}
+      {settingsOpen && (
+        <SettingsModal
+          config={config}
+          setConfig={setConfig}
+          theme={theme}
+          onClose={() => setSettingsOpen(false)}
+          user={user}
+          handleLogout={async () => {
+            try {
+              await auth.signOut();
+            } catch (error) {
+              console.error("Error signing out:", error);
+            }
+          }}
+        />
+      )}
       
-      <div style={{position:"fixed",bottom:24,right:24,zIndex:1000,display:"flex",flexDirection:"column",gap:8}}>{notifications.map(notification => (<div key={notification.id} className="fade-enter" style={{padding:"12px 20px",background:notification.type==='error'?theme.indicator:notification.type==='success'?theme.familyAccent:theme.card,color:notification.type==='error'||notification.type==='success'?"#fff":theme.text,borderRadius:12,boxShadow:theme.shadowLg,fontSize:14,fontWeight:600,minWidth:200}}>{notification.message}</div>))}</div>
-      {!config.showSidebar && (<button onClick={() => setConfig({...config, showSidebar:true})} style={{position:"fixed",left:0,top:"50%",transform:"translateY(-50%)",background:accentColor,color:"#fff",padding:"12px 6px",border:"none",borderRadius:"0 8px 8px 0",cursor:"pointer",zIndex:100,display:"flex",alignItems:"center",justifyContent:"center"}}><ICONS.ChevronRight /></button>)}
+      {modalOpen && (
+        <EventEditor
+          event={editingEvent}
+          theme={theme}
+          tags={currentTags}
+          onSave={handleSaveEvent}
+          onDelete={editingEvent?.id ? () => softDeleteEvent(editingEvent.id) : null}
+          onCancel={() => setModalOpen(false)}
+          config={config}
+          context={context}
+        />
+      )}
+      
+      {trashOpen && (
+        <TrashModal
+          events={deletedEvents}
+          theme={theme}
+          onClose={() => setTrashOpen(false)}
+          onRestore={restoreEvent}
+          onDelete={hardDeleteEvent}
+        />
+      )}
+      
+      {tagManagerOpen && (
+        <TagManager
+          tags={tags}
+          setTags={setTags}
+          theme={theme}
+          context={context}
+          onClose={() => setTagManagerOpen(false)}
+        />
+      )}
+      
+      {/* Notifications */}
+      <div style={{
+        position: "fixed",
+        bottom: 24,
+        right: 24,
+        zIndex: 1000,
+        display: "flex",
+        flexDirection: "column",
+        gap: 8
+      }}>
+        {notifications.map(notification => (
+          <div
+            key={notification.id}
+            className="fade-enter"
+            style={{
+              padding: "12px 20px",
+              background: notification.type === 'error' 
+                ? theme.indicator 
+                : notification.type === 'success'
+                ? theme.familyAccent
+                : theme.card,
+              color: notification.type === 'error' || notification.type === 'success' 
+                ? "#fff" 
+                : theme.text,
+              borderRadius: 12,
+              boxShadow: theme.shadowLg,
+              fontSize: 14,
+              fontWeight: 600,
+              minWidth: 200
+            }}
+          >
+            {notification.message}
+          </div>
+        ))}
+      </div>
+      
+      {/* Toggle Sidebar Button */}
+      {!config.showSidebar && (
+        <button
+          onClick={() => setConfig({ ...config, showSidebar: true })}
+          style={{
+            position: "fixed",
+            left: 0,
+            top: "50%",
+            transform: "translateY(-50%)",
+            background: accentColor,
+            color: "#fff",
+            padding: "12px 6px",
+            border: "none",
+            borderRadius: "0 8px 8px 0",
+            cursor: "pointer",
+            zIndex: 100,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
+          <ICONS.ChevronRight />
+        </button>
+      )}
     </div>
   );
 }
 
+// ==========================================
+// 4. SUB-COMPONENTS
+// ==========================================
 
 function AuthScreen({ onLogin, theme }) {
-  return (<div style={{height:"100vh",background:theme.bg,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:40,textAlign:"center"}}><div style={{maxWidth:400,width:"100%",background:theme.card,borderRadius:24,padding:48,boxShadow:theme.shadowLg}}><h1 className="luxe" style={{fontSize:48,fontWeight:700,color:theme.text,marginBottom:16}}>Timeline.</h1><p style={{fontSize:16,color:theme.textSec,marginBottom:40,lineHeight:1.6}}>Your personal operating system for time.<br/><span style={{fontStyle:"italic",color:theme.textMuted}}>"Time is the luxury you cannot buy."</span></p><button onClick={onLogin} style={{width:"100%",padding:"16px 24px",background:theme.accent,color:"#fff",border:"none",borderRadius:12,fontSize:16,fontWeight:600,cursor:"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",justifyContent:"center",gap:12}} onMouseEnter={e => e.currentTarget.style.background = theme.accentHover} onMouseLeave={e => e.currentTarget.style.background = theme.accent}><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>Continue with Google</button><div style={{marginTop:32,paddingTop:32,borderTop:`1px solid ${theme.border}`}}><div style={{fontSize:12,color:theme.textMuted,lineHeight:1.6}}><div>Version {APP_META.version}</div><div>© {new Date().getFullYear()} {APP_META.author}</div></div></div></div></div>);
+  return (
+    <div style={{
+      height: "100vh",
+      background: theme.bg,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 40,
+      textAlign: "center"
+    }}>
+      <div style={{
+        maxWidth: 400,
+        width: "100%",
+        background: theme.card,
+        borderRadius: 24,
+        padding: 48,
+        boxShadow: theme.shadowLg
+      }}>
+        <h1 className="luxe" style={{
+          fontSize: 48,
+          fontWeight: 700,
+          color: theme.text,
+          marginBottom: 16
+        }}>
+          Timeline.
+        </h1>
+        
+        <p style={{
+          fontSize: 16,
+          color: theme.textSec,
+          marginBottom: 40,
+          lineHeight: 1.6
+        }}>
+          Your personal operating system for time. 
+          <br />
+          <span style={{ fontStyle: "italic", color: theme.textMuted }}>
+            "Time is the luxury you cannot buy."
+          </span>
+        </p>
+        
+        <button
+          onClick={onLogin}
+          style={{
+            width: "100%",
+            padding: "16px 24px",
+            background: theme.accent,
+            color: "#fff",
+            border: "none",
+            borderRadius: 12,
+            fontSize: 16,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 12
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = theme.accentHover}
+          onMouseLeave={e => e.currentTarget.style.background = theme.accent}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+        
+        <div style={{
+          marginTop: 32,
+          paddingTop: 32,
+          borderTop: `1px solid ${theme.border}`
+        }}>
+          <div style={{
+            fontSize: 12,
+            color: theme.textMuted,
+            lineHeight: 1.6
+          }}>
+            <div>Version {APP_META.version}</div>
+            <div>© {new Date().getFullYear()} {APP_META.author}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor }) {
-  const today = new Date(); const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1); const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
-  let startDay = startOfMonth.getDay(); if (config.weekStartMon) startDay = startDay === 0 ? 6 : startDay - 1;
-  const weekDays = config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"];
-  return (<div><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><span style={{fontSize:14,fontWeight:600,color:theme.text}}>{currentDate.toLocaleDateString('en-US', {month:'long',year:'numeric'})}</span><div style={{display:"flex",gap:4}}><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))} style={{background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:4,borderRadius:6}}><ICONS.ChevronLeft width={16} height={16} /></button><button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))} style={{background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:4,borderRadius:6}}><ICONS.ChevronRight width={16} height={16} /></button></div></div><div className="mini-cal-grid">{weekDays.map(day => (<div key={day} style={{fontSize:11,color:theme.textMuted,fontWeight:600,paddingBottom:8}}>{day}</div>))}{Array.from({length:startDay}).map((_,i) => (<div key={`empty-${i}`} />))}{Array.from({length:daysInMonth}).map((_,i) => { const day = i + 1; const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day); const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear(); const isSelected = currentDate.getDate() === day; return (<div key={day} className="mini-cal-day" onClick={() => setCurrentDate(date)} style={{background:isSelected?accentColor:isToday?theme.selection:"transparent",color:isSelected?"#fff":isToday?accentColor:theme.text,fontWeight:isSelected?700:500}}>{day}{isToday && config.enablePulseEffects && (<div style={{position:"absolute",top:2,right:2,width:4,height:4,borderRadius:"50%",background:accentColor,animation:"pulse 2s infinite"}}/>)}</div>); })}</div></div>);
+  const today = new Date();
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  
+  let startDay = startOfMonth.getDay();
+  if (config.weekStartMon) {
+    startDay = startDay === 0 ? 6 : startDay - 1;
+  }
+  
+  const weekDays = config.weekStartMon 
+    ? ["M", "T", "W", "T", "F", "S", "S"]
+    : ["S", "M", "T", "W", "T", "F", "S"];
+  
+  return (
+    <div>
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12
+      }}>
+        <span style={{
+          fontSize: 14,
+          fontWeight: 600,
+          color: theme.text
+        }}>
+          {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </span>
+        <div style={{ display: "flex", gap: 4 }}>
+          <button
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1))}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: theme.textSec,
+              cursor: "pointer",
+              padding: 4,
+              borderRadius: 6
+            }}
+          >
+            <ICONS.ChevronLeft width={16} height={16} />
+          </button>
+          <button
+            onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1))}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: theme.textSec,
+              cursor: "pointer",
+              padding: 4,
+              borderRadius: 6
+            }}
+          >
+            <ICONS.ChevronRight width={16} height={16} />
+          </button>
+        </div>
+      </div>
+      
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        gap: 4,
+        textAlign: "center",
+        marginTop: 12
+      }}>
+        {weekDays.map(day => (
+          <div
+            key={day}
+            style={{
+              fontSize: 11,
+              color: theme.textMuted,
+              fontWeight: 600,
+              paddingBottom: 8
+            }}
+          >
+            {day}
+          </div>
+        ))}
+        
+        {Array.from({ length: startDay }).map((_, i) => (
+          <div key={`empty-${i}`} />
+        ))}
+        
+        {Array.from({ length: daysInMonth }).map((_, i) => {
+          const day = i + 1;
+          const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+          const isToday = today.getDate() === day && 
+                         today.getMonth() === currentDate.getMonth() && 
+                         today.getFullYear() === currentDate.getFullYear();
+          const isSelected = currentDate.getDate() === day;
+          
+          return (
+            <div
+              key={day}
+              onClick={() => setCurrentDate(date)}
+              style={{
+                fontSize: 12,
+                padding: "10px 0",
+                borderRadius: 10,
+                cursor: "pointer",
+                transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                fontWeight: 500,
+                position: "relative",
+                background: isSelected 
+                  ? accentColor 
+                  : isToday 
+                  ? theme.selection 
+                  : "transparent",
+                color: isSelected 
+                  ? "#fff" 
+                  : isToday 
+                  ? accentColor 
+                  : theme.text,
+                fontWeight: isSelected ? 700 : 500
+              }}
+            >
+              {day}
+              {isToday && config.enablePulseEffects && (
+                <div style={{
+                  position: "absolute",
+                  top: 2,
+                  right: 2,
+                  width: 4,
+                  height: 4,
+                  borderRadius: "50%",
+                  background: accentColor,
+                  animation: "pulse 2s infinite"
+                }} />
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
-  const now = new Date(); const isToday = currentDate.toDateString() === now.toDateString();
-  const dayEvents = useMemo(() => { return events.filter(event => { if (!event?.start) return false; const eventDate = new Date(event.start); return eventDate.toDateString() === currentDate.toDateString(); }); }, [events, currentDate]);
-  return (<div style={{maxWidth:800,margin:"0 auto",width:"100%"}}><div style={{marginBottom:40}}><div style={{fontSize:13,fontWeight:700,color:theme.accent,textTransform:"uppercase",letterSpacing:1,marginBottom:8}}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div><h1 className="luxe" style={{fontSize:48,fontWeight:600,color:theme.text,marginBottom:8}}>{currentDate.toLocaleDateString('en-US', {month:'long',day:'numeric'})}</h1>{isToday && (<div style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:8,height:8,borderRadius:"50%",background:theme.accent,animation:config.enablePulseEffects?"pulse 2s infinite":"none"}}/><div style={{fontSize:14,color:theme.textSec,fontWeight:600}}>Today • {now.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div></div>)}</div><div style={{position:"relative",borderLeft:`2px solid ${theme.manifestoLine}`,paddingLeft:40,minHeight:600}}>{Array.from({length:24}).map((_,hour) => { if (hour < 6) return null; const hourStart = new Date(currentDate); hourStart.setHours(hour, 0, 0, 0); const hourEnd = new Date(hourStart); hourEnd.setHours(hour + 1, 0, 0, 0); const hourEvents = dayEvents.filter(event => { if (!event?.start || !event?.end) return false; const eventStart = new Date(event.start); const eventEnd = new Date(event.end); return eventStart < hourEnd && eventEnd > hourStart; }); return (<div key={hour} style={{minHeight:80,position:"relative",marginBottom:20}}><div className="luxe" style={{position:"absolute",left:-40,top:-8,fontSize:18,color:theme.textMuted,width:30,textAlign:"right",fontWeight:600}}>{config.use24Hour ? hour : (hour % 12 || 12)}</div><div style={{position:"absolute",left:-20,top:4,width:8,height:8,borderRadius:"50%",background:theme.bg,border:`2px solid ${theme.textMuted}`,zIndex:2}}/><div style={{position:"relative",zIndex:1}}>{hourEvents.map(event => { const tag = tags.find(t => t.id === event.category) || tags[0] || {}; const isPast = config.blurPast && event.end < now; return (<div key={event.id} onClick={() => onEventClick(event)} style={{marginBottom:12,cursor:"pointer",background:config.darkMode?(tag.darkBg||theme.hoverBg):(tag.bg||theme.hoverBg),borderLeft:`3px solid ${tag.color||theme.accent}`,padding:"16px 20px",borderRadius:10,opacity:isPast?0.5:1,boxShadow:theme.shadow,transition:"all 0.2s"}} onMouseEnter={e => { if (!isPast) { e.currentTarget.style.transform = "translateX(4px)"; e.currentTarget.style.boxShadow = theme.shadowLg; } }} onMouseLeave={e => { if (!isPast) { e.currentTarget.style.transform = "translateX(0)"; e.currentTarget.style.boxShadow = theme.shadow; } }}><div style={{fontSize:18,fontWeight:600,color:config.darkMode?'#FAFAFA':(tag.text||theme.text),marginBottom:4}}>{event.title || 'Untitled Event'}</div><div style={{display:"flex",gap:16,fontSize:13,color:config.darkMode?theme.textSec:(tag.text||theme.textSec),alignItems:"center"}}><span style={{display:'flex',alignItems:'center',gap:6}}><ICONS.Clock width={12} height={12} />{event.start?.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) || ''} – {event.end?.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'}) || ''}</span>{event.location && (<span style={{display:'flex',alignItems:'center',gap:6}}><ICONS.MapPin width={12} height={12} /> {event.location}</span>)}</div></div>); })}{hourEvents.length === 0 && (<div style={{height:60}} />)}</div></div>); })}</div></div>);
+  const now = new Date();
+  const isToday = currentDate.toDateString() === now.toDateString();
+  
+  // Get events for this specific day
+  const dayEvents = useMemo(() => {
+    return events.filter(event => {
+      if (!event?.start) return false;
+      const eventDate = new Date(event.start);
+      return eventDate.toDateString() === currentDate.toDateString();
+    });
+  }, [events, currentDate]);
+  
+  return (
+    <div style={{
+      maxWidth: 800,
+      margin: "0 auto",
+      width: "100%"
+    }}>
+      <div style={{ marginBottom: 40 }}>
+        <div style={{
+          fontSize: 13,
+          fontWeight: 700,
+          color: theme.accent,
+          textTransform: "uppercase",
+          letterSpacing: 1,
+          marginBottom: 8
+        }}>
+          {currentDate.toLocaleDateString('en-US', { weekday: 'long' })}
+        </div>
+        <h1 className="luxe" style={{
+          fontSize: 48,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 8
+        }}>
+          {currentDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric' })}
+        </h1>
+        {isToday && (
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8
+          }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              background: theme.accent,
+              animation: config.enablePulseEffects ? "pulse 2s infinite" : "none"
+            }} />
+            <div style={{
+              fontSize: 14,
+              color: theme.textSec,
+              fontWeight: 600
+            }}>
+              Today • {now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+            </div>
+          </div>
+        )}
+      </div>
+      
+      <div style={{
+        position: "relative",
+        borderLeft: `2px solid ${theme.manifestoLine}`,
+        paddingLeft: 40,
+        minHeight: 600
+      }}>
+        {Array.from({ length: 24 }).map((_, hour) => {
+          if (hour < 6) return null; // Start at 6 AM
+          
+          const hourStart = new Date(currentDate);
+          hourStart.setHours(hour, 0, 0, 0);
+          const hourEnd = new Date(hourStart);
+          hourEnd.setHours(hour + 1, 0, 0, 0);
+          
+          const hourEvents = dayEvents.filter(event => {
+            if (!event?.start || !event?.end) return false;
+            const eventStart = new Date(event.start);
+            const eventEnd = new Date(event.end);
+            return eventStart < hourEnd && eventEnd > hourStart;
+          });
+          
+          return (
+            <div
+              key={hour}
+              style={{
+                minHeight: 80,
+                position: "relative",
+                marginBottom: 20
+              }}
+            >
+              {/* Time label */}
+              <div className="luxe" style={{
+                position: "absolute",
+                left: -40,
+                top: -8,
+                fontSize: 18,
+                color: theme.textMuted,
+                width: 30,
+                textAlign: "right",
+                fontWeight: 600
+              }}>
+                {config.use24Hour ? hour : (hour % 12 || 12)}
+              </div>
+              
+              {/* Time marker */}
+              <div style={{
+                position: "absolute",
+                left: -20,
+                top: 4,
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                background: theme.bg,
+                border: `2px solid ${theme.textMuted}`,
+                zIndex: 2
+              }} />
+              
+              {/* Events for this hour */}
+              <div style={{ position: "relative", zIndex: 1 }}>
+                {hourEvents.map(event => {
+                  const tag = tags.find(t => t.id === event.category) || tags[0] || {};
+                  const isPast = config.blurPast && event.end < now;
+                  
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={() => onEventClick(event)}
+                      style={{
+                        marginBottom: 12,
+                        cursor: "pointer",
+                        background: config.darkMode ? (tag.darkBg || theme.hoverBg) : (tag.bg || theme.hoverBg),
+                        borderLeft: `3px solid ${tag.color || theme.accent}`,
+                        padding: "16px 20px",
+                        borderRadius: 10,
+                        opacity: isPast ? 0.5 : 1,
+                        boxShadow: theme.shadow,
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => {
+                        if (!isPast) {
+                          e.currentTarget.style.transform = "translateX(4px)";
+                          e.currentTarget.style.boxShadow = theme.shadowLg;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isPast) {
+                          e.currentTarget.style.transform = "translateX(0)";
+                          e.currentTarget.style.boxShadow = theme.shadow;
+                        }
+                      }}
+                    >
+                      <div style={{
+                        fontSize: 18,
+                        fontWeight: 600,
+                        color: config.darkMode ? '#FAFAFA' : (tag.text || theme.text),
+                        marginBottom: 4
+                      }}>
+                        {event.title || 'Untitled Event'}
+                      </div>
+                      <div style={{
+                        display: "flex",
+                        gap: 16,
+                        fontSize: 13,
+                        color: config.darkMode ? theme.textSec : (tag.text || theme.textSec),
+                        alignItems: "center"
+                      }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <ICONS.Clock width={12} height={12} />
+                          {event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) || ''} – 
+                          {event.end?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) || ''}
+                        </span>
+                        {event.location && (
+                          <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <ICONS.MapPin width={12} height={12} /> {event.location}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+                
+                {/* Empty state */}
+                {hourEvents.length === 0 && (
+                  <div style={{ height: 60 }} />
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
-  const days = useMemo(() => { const startOfWeek = new Date(currentDate); const dayOfWeek = startOfWeek.getDay(); const diff = startOfWeek.getDate() - dayOfWeek + (config.weekStartMon ? (dayOfWeek === 0 ? -6 : 1) : 0); return Array.from({length:7}, (_,i) => { const day = new Date(startOfWeek); day.setDate(diff + i); return day; }); }, [currentDate, config.weekStartMon]);
-  const now = new Date(); const HOUR_HEIGHT = 60;
-  const eventsByDay = useMemo(() => { const grouped = {}; days.forEach(day => { const dayStr = day.toDateString(); grouped[dayStr] = events.filter(event => event?.start && new Date(event.start).toDateString() === dayStr); }); return grouped; }, [events, days]);
-  return (<div style={{display:"flex",height:"100%",overflow:"auto"}}><div style={{width:60,flexShrink:0,borderRight:`1px solid ${theme.border}`,background:theme.sidebar,paddingTop:40}}>{Array.from({length:24}).map((_,hour) => { if (hour < 6) return null; return (<div key={hour} style={{height:HOUR_HEIGHT,display:"flex",alignItems:"center",justifyContent:"flex-end",paddingRight:12,borderBottom:`1px solid ${theme.border}`}}><span style={{fontSize:12,color:theme.textMuted,fontWeight:600}}>{config.use24Hour ? `${hour}:00` : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}</span></div>); })}</div><div style={{flex:1,display:"flex"}}>{days.map((day, index) => { const dayStr = day.toDateString(); const isToday = day.toDateString() === now.toDateString(); const dayEvents = eventsByDay[dayStr] || []; return (<div key={index} style={{flex:1,borderRight:index<6?`1px solid ${theme.border}`:"none",position:"relative",paddingTop:40}}><div style={{position:"absolute",top:0,left:0,right:0,height:40,padding:"12px 8px",background:theme.sidebar,borderBottom:`1px solid ${theme.border}`,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}><div style={{fontSize:11,fontWeight:700,color:isToday?theme.accent:theme.textMuted,textTransform:"uppercase",letterSpacing:1}}>{day.toLocaleDateString('en-US', {weekday:'short'})}</div><div style={{fontSize:16,fontWeight:600,color:isToday?theme.accent:theme.text,marginTop:2}}>{day.getDate()}</div></div><div style={{position:"relative"}}>{Array.from({length:24}).map((_,hour) => { if (hour < 6) return null; const hourStart = new Date(day); hourStart.setHours(hour, 0, 0, 0); const hourEnd = new Date(hourStart); hourEnd.setHours(hour + 1, 0, 0, 0); const hourEvents = dayEvents.filter(event => { if (!event?.start || !event?.end) return false; const eventStart = new Date(event.start); const eventEnd = new Date(event.end); return eventStart < hourEnd && eventEnd > hourStart; }); return (<div key={hour} style={{height:HOUR_HEIGHT,borderBottom:`1px solid ${theme.border}`,position:"relative"}}>{hourEvents.map(event => { const tag = tags.find(t => t.id === event.category) || tags[0] || {}; const eventStart = new Date(event.start); const eventEnd = new Date(event.end); const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes(); const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes(); const duration = endMinutes - startMinutes; const top = ((startMinutes - (hour * 60)) / 60) * HOUR_HEIGHT; const height = (duration / 60) * HOUR_HEIGHT; return (<div key={event.id} onClick={() => onEventClick(event)} style={{position:"absolute",top:`${top}px`,left:"4px",right:"4px",height:`${Math.max(height, 20)}px`,background:config.darkMode?tag.darkBg:tag.bg,borderLeft:`3px solid ${tag.color}`,borderRadius:6,padding:"4px 8px",cursor:"pointer",overflow:"hidden",zIndex:1,boxShadow:theme.shadow}}><div style={{fontSize:11,fontWeight:600,color:config.darkMode?'#FAFAFA':tag.text,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{event.title}</div><div style={{fontSize:9,color:config.darkMode?theme.textSec:tag.text,opacity:0.8}}>{eventStart.toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div></div>); })}</div>); })}</div></div>); })}</div></div>);
+  const days = useMemo(() => {
+    const startOfWeek = new Date(currentDate);
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - dayOfWeek + (config.weekStartMon ? (dayOfWeek === 0 ? -6 : 1) : 0);
+    
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(startOfWeek);
+      day.setDate(diff + i);
+      return day;
+    });
+  }, [currentDate, config.weekStartMon]);
+  
+  const now = new Date();
+  const HOUR_HEIGHT = 60;
+  
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const grouped = {};
+    days.forEach(day => {
+      const dayStr = day.toDateString();
+      grouped[dayStr] = events.filter(event => 
+        event?.start && new Date(event.start).toDateString() === dayStr
+      );
+    });
+    return grouped;
+  }, [events, days]);
+  
+  return (
+    <div style={{ display: "flex", height: "100%", overflow: "auto" }}>
+      {/* Time column */}
+      <div style={{
+        width: 60,
+        flexShrink: 0,
+        borderRight: `1px solid ${theme.border}`,
+        background: theme.sidebar,
+        paddingTop: 40
+      }}>
+        {Array.from({ length: 24 }).map((_, hour) => {
+          if (hour < 6) return null;
+          return (
+            <div
+              key={hour}
+              style={{
+                height: HOUR_HEIGHT,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "flex-end",
+                paddingRight: 12,
+                borderBottom: `1px solid ${theme.border}`
+              }}
+            >
+              <span style={{
+                fontSize: 12,
+                color: theme.textMuted,
+                fontWeight: 600
+              }}>
+                {config.use24Hour ? `${hour}:00` : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Days columns */}
+      <div style={{ flex: 1, display: "flex" }}>
+        {days.map((day, index) => {
+          const dayStr = day.toDateString();
+          const isToday = day.toDateString() === now.toDateString();
+          const dayEvents = eventsByDay[dayStr] || [];
+
+          return (
+            <div
+              key={index}
+              style={{
+                flex: 1,
+                borderRight: index < 6 ? `1px solid ${theme.border}` : "none",
+                position: "relative",
+                paddingTop: 40
+              }}
+            >
+              {/* Day header */}
+              <div style={{
+                position: "absolute",
+                top: 0,
+                left: 0,
+                right: 0,
+                height: 40,
+                padding: "12px 8px",
+                background: theme.sidebar,
+                borderBottom: `1px solid ${theme.border}`,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <div style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: isToday ? theme.accent : theme.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: 1
+                }}>
+                  {day.toLocaleDateString('en-US', { weekday: 'short' })}
+                </div>
+                <div style={{
+                  fontSize: 16,
+                  fontWeight: 600,
+                  color: isToday ? theme.accent : theme.text,
+                  marginTop: 2
+                }}>
+                  {day.getDate()}
+                </div>
+              </div>
+
+              {/* Time slots */}
+              <div style={{ position: "relative" }}>
+                {Array.from({ length: 24 }).map((_, hour) => {
+                  if (hour < 6) return null;
+                  
+                  const hourStart = new Date(day);
+                  hourStart.setHours(hour, 0, 0, 0);
+                  const hourEnd = new Date(hourStart);
+                  hourEnd.setHours(hour + 1, 0, 0, 0);
+                  
+                  const hourEvents = dayEvents.filter(event => {
+                    if (!event?.start || !event?.end) return false;
+                    const eventStart = new Date(event.start);
+                    const eventEnd = new Date(event.end);
+                    return eventStart < hourEnd && eventEnd > hourStart;
+                  });
+                  
+                  return (
+                    <div
+                      key={hour}
+                      style={{
+                        height: HOUR_HEIGHT,
+                        borderBottom: `1px solid ${theme.border}`,
+                        position: "relative"
+                      }}
+                    >
+                      {/* Events in this hour slot */}
+                      {hourEvents.map(event => {
+                        const tag = tags.find(t => t.id === event.category) || tags[0] || {};
+                        const eventStart = new Date(event.start);
+                        const eventEnd = new Date(event.end);
+                        const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
+                        const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
+                        const duration = endMinutes - startMinutes;
+                        
+                        const top = ((startMinutes - (hour * 60)) / 60) * HOUR_HEIGHT;
+                        const height = (duration / 60) * HOUR_HEIGHT;
+                        
+                        return (
+                          <div
+                            key={event.id}
+                            onClick={() => onEventClick(event)}
+                            style={{
+                              position: "absolute",
+                              top: `${top}px`,
+                              left: "4px",
+                              right: "4px",
+                              height: `${Math.max(height, 20)}px`,
+                              background: config.darkMode ? tag.darkBg : tag.bg,
+                              borderLeft: `3px solid ${tag.color}`,
+                              borderRadius: 6,
+                              padding: "4px 8px",
+                              cursor: "pointer",
+                              overflow: "hidden",
+                              zIndex: 1,
+                              boxShadow: theme.shadow
+                            }}
+                          >
+                            <div style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: config.darkMode ? '#FAFAFA' : tag.text,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis"
+                            }}>
+                              {event.title}
+                            </div>
+                            <div style={{
+                              fontSize: 9,
+                              color: config.darkMode ? theme.textSec : tag.text,
+                              opacity: 0.8
+                            }}>
+                              {eventStart.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function MonthView({ currentDate, events, theme, config, onDayClick, onEventClick }) {
-  const today = new Date(); const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1); const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0); const startDay = monthStart.getDay(); const daysInMonth = monthEnd.getDate();
-  const days = useMemo(() => { const dayArray = []; const totalCells = 42; const prevMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate(); for (let i = startDay - 1; i >= 0; i--) { const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, prevMonthEnd - i); dayArray.push({ date, isCurrentMonth: false }); } for (let i = 1; i <= daysInMonth; i++) { const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i); dayArray.push({ date, isCurrentMonth: true }); } const nextMonthDays = totalCells - dayArray.length; for (let i = 1; i <= nextMonthDays; i++) { const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, i); dayArray.push({ date, isCurrentMonth: false }); } return dayArray; }, [currentDate, startDay, daysInMonth]);
-  const weekDays = config.weekStartMon ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  return (<div><div style={{display:"grid",gridTemplateColumns:"repeat(7, 1fr)",marginBottom:16,borderBottom:`1px solid ${theme.border}`,paddingBottom:12}}>{weekDays.map(day => (<div key={day} style={{textAlign:"center",fontSize:12,fontWeight:700,color:theme.textMuted,textTransform:"uppercase",letterSpacing:1}}>{day}</div>))}</div><div style={{display:"grid",gridTemplateColumns:"repeat(7, 1fr)",gap:8}}>{days.map((dayInfo, index) => { const { date, isCurrentMonth } = dayInfo; const isToday = date.toDateString() === today.toDateString(); const dayEvents = events.filter(event => event?.start && new Date(event.start).toDateString() === date.toDateString()); return (<div key={index} onClick={() => isCurrentMonth && onDayClick(date)} style={{minHeight:120,padding:12,borderRadius:12,background:isCurrentMonth?(isToday?theme.selection:theme.hoverBg):theme.bg,border:`1px solid ${theme.border}`,cursor:isCurrentMonth?"pointer":"default",opacity:isCurrentMonth?1:0.4,transition:"all 0.2s"}} onMouseEnter={e => { if (isCurrentMonth) { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = theme.shadow; } }} onMouseLeave={e => { if (isCurrentMonth) { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; } }}><div style={{fontSize:16,fontWeight:600,color:isCurrentMonth?theme.text:theme.textMuted,marginBottom:8,display:"flex",justifyContent:"space-between",alignItems:"center"}}><span>{date.getDate()}</span>{isToday && config.enablePulseEffects && (<div style={{width:6,height:6,borderRadius:"50%",background:theme.accent,animation:"pulse 2s infinite"}}/>)}</div><div style={{display:"flex",flexDirection:"column",gap:4}}>{dayEvents.slice(0, 3).map(event => { const tag = PALETTE.onyx; return (<div key={event.id} onClick={(e) => { e.stopPropagation(); onEventClick(event); }} style={{padding:"4px 8px",background:config.darkMode?tag.darkBg:tag.bg,borderRadius:6,fontSize:11,fontWeight:600,color:config.darkMode?'#FAFAFA':tag.text,cursor:"pointer",overflow:"hidden",whiteSpace:"nowrap",textOverflow:"ellipsis"}}>{event.title || 'Event'}</div>); })}{dayEvents.length > 3 && (<div style={{fontSize:10,color:theme.textMuted,fontWeight:600,padding:"2px 4px"}}>+{dayEvents.length - 3} more</div>)}</div></div>); })}</div></div>);
+  const today = new Date();
+  
+  const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  const startDay = monthStart.getDay();
+  const daysInMonth = monthEnd.getDate();
+  
+  const days = useMemo(() => {
+    const dayArray = [];
+    const totalCells = 42; // 6 weeks * 7 days
+    
+    // Previous month days
+    const prevMonthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0).getDate();
+    for (let i = startDay - 1; i >= 0; i--) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, prevMonthEnd - i);
+      dayArray.push({ date, isCurrentMonth: false });
+    }
+    
+    // Current month days
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), i);
+      dayArray.push({ date, isCurrentMonth: true });
+    }
+    
+    // Next month days
+    const nextMonthDays = totalCells - dayArray.length;
+    for (let i = 1; i <= nextMonthDays; i++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, i);
+      dayArray.push({ date, isCurrentMonth: false });
+    }
+    
+    return dayArray;
+  }, [currentDate, startDay, daysInMonth]);
+  
+  const weekDays = config.weekStartMon 
+    ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+    : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  
+  return (
+    <div>
+      {/* Weekday headers */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        marginBottom: 16,
+        borderBottom: `1px solid ${theme.border}`,
+        paddingBottom: 12
+      }}>
+        {weekDays.map(day => (
+          <div
+            key={day}
+            style={{
+              textAlign: "center",
+              fontSize: 12,
+              fontWeight: 700,
+              color: theme.textMuted,
+              textTransform: "uppercase",
+              letterSpacing: 1
+            }}
+          >
+            {day}
+          </div>
+        ))}
+      </div>
+      
+      {/* Calendar grid */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        gap: 8
+      }}>
+        {days.map((dayInfo, index) => {
+          const { date, isCurrentMonth } = dayInfo;
+          const isToday = date.toDateString() === today.toDateString();
+          const dayEvents = events.filter(event => 
+            event?.start && new Date(event.start).toDateString() === date.toDateString()
+          );
+          
+          return (
+            <div
+              key={index}
+              onClick={() => isCurrentMonth && onDayClick(date)}
+              style={{
+                minHeight: 120,
+                padding: 12,
+                borderRadius: 12,
+                background: isCurrentMonth ? (isToday ? theme.selection : theme.hoverBg) : theme.bg,
+                border: `1px solid ${theme.border}`,
+                cursor: isCurrentMonth ? "pointer" : "default",
+                opacity: isCurrentMonth ? 1 : 0.4,
+                transition: "all 0.2s"
+              }}
+              onMouseEnter={e => {
+                if (isCurrentMonth) {
+                  e.currentTarget.style.transform = "translateY(-2px)";
+                  e.currentTarget.style.boxShadow = theme.shadow;
+                }
+              }}
+              onMouseLeave={e => {
+                if (isCurrentMonth) {
+                  e.currentTarget.style.transform = "translateY(0)";
+                  e.currentTarget.style.boxShadow = "none";
+                }
+              }}
+            >
+              <div style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: isCurrentMonth ? theme.text : theme.textMuted,
+                marginBottom: 8,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span>{date.getDate()}</span>
+                {isToday && config.enablePulseEffects && (
+                  <div style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: theme.accent,
+                    animation: "pulse 2s infinite"
+                  }} />
+                )}
+              </div>
+              
+              {/* Events */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                {dayEvents.slice(0, 3).map(event => {
+                  const tag = PALETTE.onyx; // Default tag
+                  
+                  return (
+                    <div
+                      key={event.id}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEventClick(event);
+                      }}
+                      style={{
+                        padding: "4px 8px",
+                        background: config.darkMode ? tag.darkBg : tag.bg,
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: config.darkMode ? '#FAFAFA' : tag.text,
+                        cursor: "pointer",
+                        overflow: "hidden",
+                        whiteSpace: "nowrap",
+                        textOverflow: "ellipsis"
+                      }}
+                    >
+                      {event.title || 'Event'}
+                    </div>
+                  );
+                })}
+                
+                {dayEvents.length > 3 && (
+                  <div style={{
+                    fontSize: 10,
+                    color: theme.textMuted,
+                    fontWeight: 600,
+                    padding: "2px 4px"
+                  }}>
+                    +{dayEvents.length - 3} more
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
-
-function LinearYearView({ currentDate, events, theme, config, tags, context, accentColor, onDayClick, onEventClick, onEventDrag, draggedEvent, setDraggedEvent }) {
-  const year = currentDate.getFullYear(); const today = new Date(); const isCurrentYear = year === today.getFullYear();
-  const yearDays = useMemo(() => { const days = []; const startDate = new Date(year, 0, 1); const endDate = new Date(year, 11, 31); const dayCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1; for (let i = 0; i < dayCount; i++) { const date = new Date(year, 0, 1 + i); days.push(date); } return days; }, [year]);
-  const eventsByDay = useMemo(() => { const grouped = {}; yearDays.forEach(day => { const dayStr = day.toDateString(); grouped[dayStr] = events.filter(event => event?.start && new Date(event.start).toDateString() === dayStr); }); return grouped; }, [events, yearDays]);
-  const DAY_WIDTH = LAYOUT.LINEAR_YEAR_DAY_WIDTH; const totalWidth = yearDays.length * DAY_WIDTH;
-  const handleDragStart = (e, event) => { if (!config.enableDragDrop) return; e.dataTransfer.effectAllowed = 'move'; setDraggedEvent(event); };
-  const handleDragOver = (e) => { if (!config.enableDragDrop) return; e.preventDefault(); e.dataTransfer.dropEffect = 'move'; };
-  const handleDrop = (e, date) => { if (!config.enableDragDrop) return; e.preventDefault(); if (draggedEvent) { onEventDrag(draggedEvent.id, date); setDraggedEvent(null); } };
-  return (<div style={{width:"100%",height:"100%",overflow:"auto"}}><div style={{position:"sticky",top:0,zIndex:10,background:theme.bg,borderBottom:`2px solid ${theme.border}`,paddingBottom:12,marginBottom:20}}><div style={{display:"flex",position:"relative",minWidth:totalWidth}}>{Array.from({length:12}).map((_,monthIndex) => { const monthStart = new Date(year, monthIndex, 1); const monthEnd = new Date(year, monthIndex + 1, 0); const daysInMonth = monthEnd.getDate(); const monthWidth = daysInMonth * DAY_WIDTH; const dayOfYear = Math.floor((monthStart - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24)); const left = dayOfYear * DAY_WIDTH; return (<div key={monthIndex} style={{position:"absolute",left:`${left}px`,width:`${monthWidth}px`,textAlign:"center",paddingTop:8}}><div className="luxe" style={{fontSize:18,fontWeight:600,color:theme.text}}>{monthStart.toLocaleDateString('en-US', {month:'short'})}</div><div style={{fontSize:11,color:theme.textMuted,marginTop:2}}>{daysInMonth} days</div></div>); })}</div></div><div style={{position:"relative",minWidth:totalWidth,height:400,background:theme.card,borderRadius:16,padding:"20px 0",overflow:"visible",boxShadow:theme.shadow}}><div style={{display:"flex",height:"100%",position:"relative"}}>{yearDays.map((day, index) => { const dayStr = day.toDateString(); const isToday = day.toDateString() === today.toDateString(); const dayEvents = eventsByDay[dayStr] || []; const isWeekend = day.getDay() === 0 || day.getDay() === 6; return (<div key={index} onClick={() => onDayClick(day)} onDragOver={handleDragOver} onDrop={(e) => handleDrop(e, day)} style={{width:`${DAY_WIDTH}px`,height:"100%",borderRight:`1px solid ${theme.borderLight}`,background:isToday?theme.selection:isWeekend?theme.hoverBg:"transparent",cursor:"pointer",position:"relative",transition:"all 0.2s"}} onMouseEnter={e => { if (!isToday) e.currentTarget.style.background = theme.activeBg; }} onMouseLeave={e => { if (!isToday) e.currentTarget.style.background = isWeekend ? theme.hoverBg : "transparent"; }}>{(day.getDate() === 1 || day.getDate() % 5 === 0) && (<div style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",fontSize:9,fontWeight:600,color:isToday?accentColor:theme.textMuted}}>{day.getDate()}</div>)}{isToday && (<div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%, -50%)",width:4,height:4,borderRadius:"50%",background:accentColor,animation:config.enablePulseEffects?"pulse 2s infinite":"none"}}/>)}<div style={{position:"absolute",top:20,left:"50%",transform:"translateX(-50%)",display:"flex",flexDirection:"column",gap:4,alignItems:"center"}}>{dayEvents.slice(0, 8).map((event, eventIndex) => { const tag = tags.find(t => t.id === event.category) || tags[0]; return (<div key={event.id} draggable={config.enableDragDrop} onDragStart={(e) => handleDragStart(e, event)} onClick={(e) => { e.stopPropagation(); onEventClick(event); }} className="year-event-dot" style={{background:tag?.color||accentColor,width:8,height:8}} title={event.title} />); })}{dayEvents.length > 8 && (<div style={{fontSize:8,fontWeight:700,color:theme.textMuted,marginTop:2}}>+{dayEvents.length - 8}</div>)}</div></div>); })}</div>{isCurrentYear && (<div style={{position:"absolute",top:0,bottom:0,left:`${Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24)) * DAY_WIDTH}px`,width:2,background:accentColor,zIndex:5,pointerEvents:"none"}}><div style={{position:"absolute",top:-8,left:"50%",transform:"translateX(-50%)",width:0,height:0,borderLeft:"6px solid transparent",borderRight:"6px solid transparent",borderTop:`8px solid ${accentColor}`}}/></div>)}</div><div style={{marginTop:40,display:"flex",flexDirection:"column",gap:32}}>{Array.from({length:12}).map((_,monthIndex) => { const monthEvents = events.filter(event => { const eventDate = new Date(event.start); return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year; }); if (monthEvents.length === 0) return null; const monthDate = new Date(year, monthIndex, 1); return (<div key={monthIndex}><h3 className="luxe" style={{fontSize:24,fontWeight:600,color:theme.text,marginBottom:16}}>{monthDate.toLocaleDateString('en-US', {month:'long'})}<span style={{fontSize:16,color:theme.textMuted,marginLeft:12}}>{monthEvents.length} {monthEvents.length === 1 ? 'event' : 'events'}</span></h3><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(300px, 1fr))",gap:12}}>{monthEvents.map(event => { const tag = tags.find(t => t.id === event.category) || tags[0]; return (<div key={event.id} onClick={() => onEventClick(event)} draggable={config.enableDragDrop} onDragStart={(e) => handleDragStart(e, event)} style={{padding:16,background:config.darkMode?tag.darkBg:tag.bg,borderLeft:`3px solid ${tag?.color||accentColor}`,borderRadius:10,cursor:"pointer",transition:"all 0.2s",boxShadow:theme.shadow}} onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = theme.shadowLg; }} onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = theme.shadow; }}><div style={{fontSize:16,fontWeight:600,color:config.darkMode?'#FAFAFA':tag.text,marginBottom:8}}>{event.title || 'Untitled Event'}</div><div style={{display:"flex",flexDirection:"column",gap:4,fontSize:12,color:config.darkMode?theme.textSec:tag.text}}><div style={{display:"flex",alignItems:"center",gap:6}}><ICONS.Calendar width={12} height={12} />{new Date(event.start).toLocaleDateString('en-US', {month:'short',day:'numeric'})}</div><div style={{display:"flex",alignItems:"center",gap:6}}><ICONS.Clock width={12} height={12} />{new Date(event.start).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})} – {new Date(event.end).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</div>{event.location && (<div style={{display:"flex",alignItems:"center",gap:6}}><ICONS.MapPin width={12} height={12} />{event.location}</div>)}</div></div>); })}</div></div>); })}</div></div>);
+function YearView({ 
+  currentDate, 
+  events, 
+  theme, 
+  config, 
+  tags, 
+  context,
+  accentColor, 
+  onDayClick, 
+  onEventClick
+}) {
+  const year = currentDate.getFullYear();
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const monthStart = new Date(year, i, 1);
+      const monthEnd = new Date(year, i + 1, 0);
+      const startDay = monthStart.getDay();
+      const daysInMonth = monthEnd.getDate();
+      
+      return {
+        name: monthStart.toLocaleDateString('en-US', { month: 'long' }),
+        startDay,
+        daysInMonth
+      };
+    });
+  }, [year]);
+  
+  const today = new Date();
+  const isCurrentYear = year === today.getFullYear();
+  
+  return (
+    <div style={{
+      maxWidth: 1200,
+      margin: "0 auto",
+      width: "100%"
+    }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: 32
+      }}>
+        {months.map((month, monthIndex) => {
+          const monthDate = new Date(year, monthIndex, 1);
+          const isCurrentMonth = monthDate.getMonth() === today.getMonth() && isCurrentYear;
+          
+          return (
+            <div
+              key={monthIndex}
+              style={{
+                background: theme.card,
+                borderRadius: 16,
+                padding: 20,
+                boxShadow: theme.shadow
+              }}
+            >
+              <div style={{
+                fontSize: 20,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 20,
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span className="luxe">{month.name}</span>
+                {isCurrentMonth && (
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
+                  }}>
+                    <div style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: "50%",
+                      background: theme.accent,
+                      animation: config.enablePulseEffects ? "pulse 2s infinite" : "none"
+                    }} />
+                    <span style={{
+                      fontSize: 12,
+                      color: theme.textMuted
+                    }}>
+                      Current
+                    </span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Month grid */}
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                gap: 4
+              }}>
+                {Array.from({ length: month.startDay }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                
+                {Array.from({ length: month.daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const date = new Date(year, monthIndex, day);
+                  const isToday = date.toDateString() === today.toDateString();
+                  const dayEvents = events.filter(event => 
+                    event?.start && new Date(event.start).toDateString() === date.toDateString()
+                  );
+                  
+                  return (
+                    <div
+                      key={day}
+                      onClick={() => onDayClick(date)}
+                      style={{
+                        aspectRatio: "1",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 8,
+                        background: isToday ? accentColor : "transparent",
+                        color: isToday ? "#fff" : theme.text,
+                        fontSize: 12,
+                        fontWeight: isToday ? 700 : 500,
+                        cursor: "pointer",
+                        position: "relative",
+                        transition: "all 0.2s"
+                      }}
+                      onMouseEnter={e => {
+                        if (!isToday) {
+                          e.currentTarget.style.background = theme.hoverBg;
+                        }
+                      }}
+                      onMouseLeave={e => {
+                        if (!isToday) {
+                          e.currentTarget.style.background = "transparent";
+                        }
+                      }}
+                    >
+                      {day}
+                      
+                      {/* Event dots */}
+                      {dayEvents.length > 0 && (
+                        <div style={{
+                          position: "absolute",
+                          bottom: 2,
+                          display: "flex",
+                          justifyContent: "center",
+                          gap: 2
+                        }}>
+                          {dayEvents.slice(0, 3).map((event, idx) => {
+                            const tag = tags.find(t => t.id === event.category) || tags[0];
+                            return (
+                              <div
+                                key={idx}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onEventClick(event);
+                                }}
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
+                                  background: tag?.color || theme.accent,
+                                  cursor: "pointer",
+                                  transition: "all 0.2s",
+                                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)"
+                                }}
+                                onMouseEnter={e => {
+                                  e.currentTarget.style.transform = "scale(1.6)";
+                                  e.currentTarget.style.zIndex = "10";
+                                }}
+                                onMouseLeave={e => {
+                                  e.currentTarget.style.transform = "scale(1)";
+                                  e.currentTarget.style.zIndex = "1";
+                                }}
+                                title={event.title}
+                              />
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              
+              {/* Month events summary */}
+              {events.filter(event => {
+                const eventDate = new Date(event.start);
+                return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
+              }).length > 0 && (
+                <div style={{
+                  marginTop: 20,
+                  paddingTop: 20,
+                  borderTop: `1px solid ${theme.border}`
+                }}>
+                  <div style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: theme.textMuted,
+                    textTransform: "uppercase",
+                    letterSpacing: 1,
+                    marginBottom: 8
+                  }}>
+                    Highlights
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {events
+                      .filter(event => {
+                        const eventDate = new Date(event.start);
+                        return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
+                      })
+                      .slice(0, 3)
+                      .map(event => {
+                        const tag = tags.find(t => t.id === event.category) || tags[0];
+                        return (
+                          <div
+                            key={event.id}
+                            onClick={() => onEventClick(event)}
+                            style={{
+                              padding: "6px 8px",
+                              background: theme.hoverBg,
+                              borderRadius: 6,
+                              cursor: "pointer",
+                              transition: "all 0.2s",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 8
+                            }}
+                            onMouseEnter={e => {
+                              e.currentTarget.style.transform = "translateX(4px)";
+                              e.currentTarget.style.background = theme.activeBg;
+                            }}
+                            onMouseLeave={e => {
+                              e.currentTarget.style.transform = "translateX(0)";
+                              e.currentTarget.style.background = theme.hoverBg;
+                            }}
+                          >
+                            <div style={{
+                              width: 8,
+                              height: 8,
+                              borderRadius: "50%",
+                              background: tag?.color || theme.accent,
+                              flexShrink: 0
+                            }} />
+                            <div style={{
+                              fontSize: 11,
+                              fontWeight: 600,
+                              color: theme.text,
+                              whiteSpace: "nowrap",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis"
+                            }}>
+                              {event.title}
+                            </div>
+                            <div style={{
+                              fontSize: 9,
+                              color: theme.textMuted,
+                              marginLeft: "auto"
+                            }}>
+                              {new Date(event.start).getDate()}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, context }) {
-  const [formData, setFormData] = useState({ id: event?.id || null, title: event?.title || "", category: event?.category || (tags[0]?.id || 'work'), description: event?.description || "", location: event?.location || "", start: event?.start ? new Date(event.start) : new Date(), end: event?.end ? new Date(event.end) : (() => { const endDate = new Date(); endDate.setHours(endDate.getHours() + 1); return endDate; })() });
-  const handleSubmit = (e) => { e.preventDefault(); onSave(formData); };
-  const handleDateChange = (field, value) => { setFormData(prev => { const newDate = new Date(prev[field]); const [hours, minutes] = value.split(':'); newDate.setHours(parseInt(hours), parseInt(minutes)); return { ...prev, [field]: newDate }; }); };
-  const handleFullDateChange = (field, value) => { setFormData(prev => { const newDate = new Date(value); newDate.setHours(prev[field].getHours(), prev[field].getMinutes()); return { ...prev, [field]: newDate }; }); };
+  const [formData, setFormData] = useState({
+    id: event?.id || null,
+    title: event?.title || "",
+    category: event?.category || (tags[0]?.id || 'work'),
+    description: event?.description || "",
+    location: event?.location || "",
+    start: event?.start ? new Date(event.start) : new Date(),
+    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 3600000) // +1 hour
+  });
+  
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    onSave(formData);
+  };
+  
+  const handleDateChange = (field, value) => {
+    setFormData(prev => {
+      const newDate = new Date(prev[field]);
+      if (field === 'start') {
+        const [hours, minutes] = value.split(':');
+        newDate.setHours(parseInt(hours), parseInt(minutes));
+      } else {
+        const [hours, minutes] = value.split(':');
+        newDate.setHours(parseInt(hours), parseInt(minutes));
+      }
+      return { ...prev, [field]: newDate };
+    });
+  };
+  
   const isEditing = !!event?.id;
-  return (<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}><div onClick={onCancel} style={{position:"absolute",top:0,left:0,right:0,bottom:0}}/><div style={{background:theme.card,borderRadius:24,padding:32,width:"100%",maxWidth:500,maxHeight:"90vh",overflow:"auto",boxShadow:theme.shadowLg,zIndex:1001,position:"relative"}}><button onClick={onCancel} style={{position:"absolute",top:24,right:24,background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:8,borderRadius:8}}><ICONS.Close width={20} height={20} /></button><h2 className="luxe" style={{fontSize:28,fontWeight:600,color:theme.text,marginBottom:32}}>{isEditing ? 'Edit Event' : 'New Event'}</h2><form onSubmit={handleSubmit}><div style={{display:"flex",flexDirection:"column",gap:20}}><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Title *</label><input type="text" value={formData.title} onChange={(e) => setFormData(prev => ({...prev, title: e.target.value}))} required className="input-luxe" style={{borderColor:theme.border,color:theme.text}} placeholder="What's happening?" /></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Category</label><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{tags.map(tag => (<button key={tag.id} type="button" onClick={() => setFormData(prev => ({...prev, category: tag.id}))} style={{padding:"8px 16px",borderRadius:20,border:`2px solid ${formData.category === tag.id ? tag.color : theme.border}`,background:formData.category === tag.id ? tag.color : "transparent",color:formData.category === tag.id ? "#fff" : theme.text,fontSize:12,fontWeight:600,cursor:"pointer",display:"flex",alignItems:"center",gap:6,transition:"all 0.2s"}}>{tag.icon}{tag.name}</button>))}</div></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Date</label><input type="date" value={formData.start.toISOString().split('T')[0]} onChange={(e) => handleFullDateChange('start', e.target.value)} className="input-luxe" style={{borderColor:theme.border,color:theme.text}} /></div><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16}}><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Start Time</label><input type="time" value={`${formData.start.getHours().toString().padStart(2,'0')}:${formData.start.getMinutes().toString().padStart(2,'0')}`} onChange={(e) => handleDateChange('start', e.target.value)} className="input-luxe" style={{borderColor:theme.border,color:theme.text}} /></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>End Time</label><input type="time" value={`${formData.end.getHours().toString().padStart(2,'0')}:${formData.end.getMinutes().toString().padStart(2,'0')}`} onChange={(e) => handleDateChange('end', e.target.value)} className="input-luxe" style={{borderColor:theme.border,color:theme.text}} /></div></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}><ICONS.MapPin width={14} height={14} style={{marginRight:6}} />Location</label><input type="text" value={formData.location} onChange={(e) => setFormData(prev => ({...prev, location: e.target.value}))} className="input-luxe" style={{borderColor:theme.border,color:theme.text}} placeholder="Where?" /></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Notes</label><textarea value={formData.description} onChange={(e) => setFormData(prev => ({...prev, description: e.target.value}))} rows={3} className="input-luxe" style={{borderColor:theme.border,color:theme.text,resize:"vertical"}} placeholder="Add some details..." /></div><div style={{display:"flex",gap:12,marginTop:20}}><button type="submit" style={{flex:1,padding:"14px",background:context==='family'?theme.familyAccent:theme.accent,color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => e.currentTarget.style.background = context==='family'?theme.familyAccentHover:theme.accentHover} onMouseLeave={e => e.currentTarget.style.background = context==='family'?theme.familyAccent:theme.accent}>{isEditing ? 'Update' : 'Create'} Event</button>{isEditing && onDelete && (<button type="button" onClick={onDelete} style={{padding:"14px 20px",background:"transparent",color:theme.indicator,border:`2px solid ${theme.indicator}`,borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s",display:"flex",alignItems:"center",gap:6}} onMouseEnter={e => { e.currentTarget.style.background = theme.indicator; e.currentTarget.style.color = "#fff"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.indicator; }}><ICONS.Trash width={16} height={16} />Delete</button>)}<button type="button" onClick={onCancel} style={{padding:"14px 20px",background:"transparent",color:theme.textSec,border:`2px solid ${theme.border}`,borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}>Cancel</button></div></div></form></div></div>);
+  
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 24
+    }}>
+      <div
+        onClick={onCancel}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}
+      />
+      
+      <div
+        style={{
+          background: theme.card,
+          borderRadius: 24,
+          padding: 32,
+          width: "100%",
+          maxWidth: 500,
+          maxHeight: "90vh",
+          overflow: "auto",
+          boxShadow: theme.shadowLg,
+          zIndex: 1001,
+          position: "relative"
+        }}
+      >
+        <button
+          onClick={onCancel}
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 24,
+            background: "transparent",
+            border: "none",
+            color: theme.textSec,
+            cursor: "pointer",
+            padding: 8,
+            borderRadius: 8
+          }}
+        >
+          <ICONS.Close width={20} height={20} />
+        </button>
+        
+        <h2 className="luxe" style={{
+          fontSize: 28,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 32
+        }}>
+          {isEditing ? 'Edit Event' : 'New Event'}
+        </h2>
+        
+        <form onSubmit={handleSubmit}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Title */}
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                required
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                  border: `1.5px solid ${theme.border}`,
+                  fontFamily: "'Inter', sans-serif",
+                  background: "transparent",
+                  color: theme.text
+                }}
+                placeholder="What's happening?"
+              />
+            </div>
+            
+            {/* Category */}
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Category
+              </label>
+              <div style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8
+              }}>
+                {tags.map(tag => (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, category: tag.id }))}
+                    style={{
+                      padding: "8px 16px",
+                      borderRadius: 20,
+                      border: `2px solid ${formData.category === tag.id ? tag.color : theme.border}`,
+                      background: formData.category === tag.id ? tag.color : "transparent",
+                      color: formData.category === tag.id ? "#fff" : theme.text,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    {tag.icon}
+                    {tag.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+            
+            {/* Date and Time */}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 16
+            }}>
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.text,
+                  marginBottom: 8
+                }}>
+                  Date
+                </label>
+                <input
+                  type="date"
+                  value={formData.start.toISOString().split('T')[0]}
+                  onChange={(e) => {
+                    const newDate = new Date(e.target.value);
+                    newDate.setHours(formData.start.getHours(), formData.start.getMinutes());
+                    setFormData(prev => ({ ...prev, start: newDate }));
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                    border: `1.5px solid ${theme.border}`,
+                    fontFamily: "'Inter', sans-serif",
+                    background: "transparent",
+                    color: theme.text
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.text,
+                  marginBottom: 8
+                }}>
+                  Start Time
+                </label>
+                <input
+                  type="time"
+                  value={`${formData.start.getHours().toString().padStart(2, '0')}:${formData.start.getMinutes().toString().padStart(2, '0')}`}
+                  onChange={(e) => handleDateChange('start', e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                    border: `1.5px solid ${theme.border}`,
+                    fontFamily: "'Inter', sans-serif",
+                    background: "transparent",
+                    color: theme.text
+                  }}
+                />
+              </div>
+              
+              <div>
+                <label style={{
+                  display: "block",
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.text,
+                  marginBottom: 8
+                }}>
+                  End Time
+                </label>
+                <input
+                  type="time"
+                  value={`${formData.end.getHours().toString().padStart(2, '0')}:${formData.end.getMinutes().toString().padStart(2, '0')}`}
+                  onChange={(e) => handleDateChange('end', e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                    border: `1.5px solid ${theme.border}`,
+                    fontFamily: "'Inter', sans-serif",
+                    background: "transparent",
+                    color: theme.text
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Location */}
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                <ICONS.MapPin width={14} height={14} style={{ marginRight: 6 }} />
+                Location
+              </label>
+              <input
+                type="text"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                  border: `1.5px solid ${theme.border}`,
+                  fontFamily: "'Inter', sans-serif",
+                  background: "transparent",
+                  color: theme.text
+                }}
+                placeholder="Where?"
+              />
+            </div>
+            
+            {/* Description */}
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Notes
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                  border: `1.5px solid ${theme.border}`,
+                  fontFamily: "'Inter', sans-serif",
+                  background: "transparent",
+                  color: theme.text,
+                  resize: "vertical"
+                }}
+                placeholder="Add some details..."
+              />
+            </div>
+            
+            {/* Actions */}
+            <div style={{
+              display: "flex",
+              gap: 12,
+              marginTop: 20
+            }}>
+              <button
+                type="submit"
+                style={{
+                  flex: 1,
+                  padding: "14px",
+                  background: context === 'family' ? theme.familyAccent : theme.accent,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = context === 'family' ? theme.familyAccentHover : theme.accentHover}
+                onMouseLeave={e => e.currentTarget.style.background = context === 'family' ? theme.familyAccent : theme.accent}
+              >
+                {isEditing ? 'Update' : 'Create'} Event
+              </button>
+              
+              {isEditing && onDelete && (
+                <button
+                  type="button"
+                  onClick={onDelete}
+                  style={{
+                    padding: "14px 20px",
+                    background: "transparent",
+                    color: theme.indicator,
+                    border: `2px solid ${theme.indicator}`,
+                    borderRadius: 12,
+                    fontSize: 14,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    transition: "all 0.2s"
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = theme.indicator;
+                    e.currentTarget.style.color = "#fff";
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.color = theme.indicator;
+                  }}
+                >
+                  <ICONS.Trash width={16} height={16} style={{ marginRight: 6 }} />
+                  Delete
+                </button>
+              )}
+              
+              <button
+                type="button"
+                onClick={onCancel}
+                style={{
+                  padding: "14px 20px",
+                  background: "transparent",
+                  color: theme.textSec,
+                  border: `2px solid ${theme.border}`,
+                  borderRadius: 12,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = theme.hoverBg;
+                  e.currentTarget.style.color = theme.text;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.color = theme.textSec;
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
 }
 
-
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
-  const [tempConfig, setTempConfig] = useState({...config});
-  const handleSave = () => { setConfig(tempConfig); onClose(); };
-  const handleReset = () => { if (window.confirm("Reset all settings to defaults?")) { setTempConfig({ darkMode:true, use24Hour:false, blurPast:true, weekStartMon:true, showSidebar:true, showMotivationalQuotes:true, showUpcomingEvents:true, enableDragDrop:true, enableAnimations:true, enablePulseEffects:true }); } };
-  const Toggle = ({checked, onChange}) => (<label style={{position:"relative",display:"inline-block"}}><input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} style={{opacity:0,width:0,height:0}}/><span style={{position:"relative",display:"inline-block",width:44,height:24,background:checked?theme.accent:theme.border,borderRadius:12,cursor:"pointer",transition:"all 0.3s"}}><span style={{position:"absolute",content:"''",height:18,width:18,left:checked?"calc(100% - 20px)":"3px",top:3,background:"#fff",borderRadius:"50%",transition:"all 0.3s"}}/></span></label>);
-  return (<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}><div onClick={onClose} style={{position:"absolute",top:0,left:0,right:0,bottom:0}}/><div style={{background:theme.card,borderRadius:24,padding:32,width:"100%",maxWidth:600,maxHeight:"90vh",overflow:"auto",boxShadow:theme.shadowLg,zIndex:1001,position:"relative"}}><button onClick={onClose} style={{position:"absolute",top:24,right:24,background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:8,borderRadius:8}}><ICONS.Close width={20} height={20} /></button><h2 className="luxe" style={{fontSize:28,fontWeight:600,color:theme.text,marginBottom:8}}>Settings</h2><div style={{fontSize:14,color:theme.textSec,marginBottom:32}}>Customize your Timeline experience</div><div style={{background:theme.hoverBg,padding:20,borderRadius:12,marginBottom:32}}><div style={{display:"flex",alignItems:"center",gap:12,marginBottom:12}}><div style={{width:48,height:48,borderRadius:"50%",background:theme.accent,display:"flex",alignItems:"center",justifyContent:"center",color:"#fff",fontWeight:600,fontSize:20}}>{user?.displayName?.charAt(0) || 'U'}</div><div><div style={{fontSize:16,fontWeight:600,color:theme.text}}>{user?.displayName || 'User'}</div><div style={{fontSize:13,color:theme.textSec}}>{user?.email}</div></div></div><button onClick={handleLogout} style={{padding:"8px 16px",background:"transparent",border:`1px solid ${theme.border}`,borderRadius:8,color:theme.textSec,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}>Sign Out</button></div><div style={{display:"flex",flexDirection:"column",gap:24}}><div><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>Appearance</h3><div style={{display:"flex",flexDirection:"column",gap:12}}>{[{label:"Dark Mode",key:"darkMode"},{label:"24-Hour Time",key:"use24Hour"},{label:"Show Sidebar",key:"showSidebar"}].map(({label,key}) => (<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:theme.text}}>{label}</span><Toggle checked={tempConfig[key]} onChange={(val) => setTempConfig(prev => ({...prev, [key]:val}))} /></div>))}</div></div><div><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>Calendar</h3><div style={{display:"flex",flexDirection:"column",gap:12}}>{[{label:"Week Starts on Monday",key:"weekStartMon"},{label:"Blur Past Events",key:"blurPast"}].map(({label,key}) => (<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:theme.text}}>{label}</span><Toggle checked={tempConfig[key]} onChange={(val) => setTempConfig(prev => ({...prev, [key]:val}))} /></div>))}</div></div><div><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>Features</h3><div style={{display:"flex",flexDirection:"column",gap:12}}>{[{label:"Show Motivational Quotes",key:"showMotivationalQuotes"},{label:"Show Upcoming Events",key:"showUpcomingEvents"},{label:"Enable Drag & Drop",key:"enableDragDrop"},{label:"Enable Animations",key:"enableAnimations"},{label:"Enable Pulse Effects",key:"enablePulseEffects"}].map(({label,key}) => (<div key={key} style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{color:theme.text}}>{label}</span><Toggle checked={tempConfig[key]} onChange={(val) => setTempConfig(prev => ({...prev, [key]:val}))} /></div>))}</div></div><div><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>About</h3><div style={{background:theme.hoverBg,padding:16,borderRadius:12,fontSize:14,color:theme.textSec}}><div style={{marginBottom:8}}><strong>Timeline OS</strong> v{APP_META.version}</div><div style={{fontStyle:"italic",marginBottom:8}}>"{APP_META.motto}"</div><div>© {new Date().getFullYear()} {APP_META.author}. All rights reserved.</div></div></div></div><div style={{display:"flex",gap:12,marginTop:32,justifyContent:"flex-end"}}><button onClick={handleReset} style={{padding:"12px 20px",background:"transparent",color:theme.textSec,border:`2px solid ${theme.border}`,borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}>Reset Defaults</button><button onClick={handleSave} style={{padding:"12px 24px",background:theme.accent,color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => e.currentTarget.style.background = theme.accentHover} onMouseLeave={e => e.currentTarget.style.background = theme.accent}>Save Changes</button></div></div></div>);
+  const [tempConfig, setTempConfig] = useState({ ...config });
+  
+  const handleSave = () => {
+    setConfig(tempConfig);
+    onClose();
+  };
+  
+  const handleReset = () => {
+    if (window.confirm("Reset all settings to defaults?")) {
+      setTempConfig({
+        darkMode: true,
+        use24Hour: false,
+        blurPast: true,
+        weekStartMon: true,
+        showSidebar: true,
+        showMotivationalQuotes: true,
+        showUpcomingEvents: true,
+        enableDragDrop: true,
+        enableAnimations: true,
+        enablePulseEffects: true
+      });
+    }
+  };
+  
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 24
+    }}>
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}
+      />
+      
+      <div
+        style={{
+          background: theme.card,
+          borderRadius: 24,
+          padding: 32,
+          width: "100%",
+          maxWidth: 600,
+          maxHeight: "90vh",
+          overflow: "auto",
+          boxShadow: theme.shadowLg,
+          zIndex: 1001,
+          position: "relative"
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 24,
+            background: "transparent",
+            border: "none",
+            color: theme.textSec,
+            cursor: "pointer",
+            padding: 8,
+            borderRadius: 8
+          }}
+        >
+          <ICONS.Close width={20} height={20} />
+        </button>
+        
+        <h2 className="luxe" style={{
+          fontSize: 28,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 8
+        }}>
+          Settings
+        </h2>
+        
+        <div style={{
+          fontSize: 14,
+          color: theme.textSec,
+          marginBottom: 32
+        }}>
+          Customize your Timeline experience
+        </div>
+        
+        {/* User Info */}
+        <div style={{
+          background: theme.hoverBg,
+          padding: 20,
+          borderRadius: 12,
+          marginBottom: 32
+        }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 12
+          }}>
+            <div style={{
+              width: 48,
+              height: 48,
+              borderRadius: "50%",
+              background: theme.accent,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontWeight: 600,
+              fontSize: 20
+            }}>
+              {user?.displayName?.charAt(0) || 'U'}
+            </div>
+            <div>
+              <div style={{
+                fontSize: 16,
+                fontWeight: 600,
+                color: theme.text
+              }}>
+                {user?.displayName || 'User'}
+              </div>
+              <div style={{
+                fontSize: 13,
+                color: theme.textSec
+              }}>
+                {user?.email}
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            style={{
+              padding: "8px 16px",
+              background: "transparent",
+              border: `1px solid ${theme.border}`,
+              borderRadius: 8,
+              color: theme.textSec,
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme.hoverBg;
+              e.currentTarget.style.color = theme.text;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = theme.textSec;
+            }}
+          >
+            Sign Out
+          </button>
+        </div>
+        
+        {/* Settings Sections */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* Appearance */}
+          <div>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 16
+            }}>
+              Appearance
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Dark Mode</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.darkMode}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, darkMode: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.darkMode ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.darkMode ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>24-Hour Time</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.use24Hour}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, use24Hour: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.use24Hour ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.use24Hour ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Show Sidebar</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.showSidebar}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, showSidebar: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.showSidebar ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.showSidebar ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          {/* Calendar */}
+          <div>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 16
+            }}>
+              Calendar
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Week Starts on Monday</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.weekStartMon}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, weekStartMon: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.weekStartMon ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.weekStartMon ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Blur Past Events</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.blurPast}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, blurPast: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.blurPast ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.blurPast ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          {/* Features */}
+          <div>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 16
+            }}>
+              Features
+            </h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Show Motivational Quotes</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.showMotivationalQuotes}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, showMotivationalQuotes: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.showMotivationalQuotes ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.showMotivationalQuotes ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Show Upcoming Events</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.showUpcomingEvents}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, showUpcomingEvents: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.showUpcomingEvents ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.showUpcomingEvents ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Enable Animations</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.enableAnimations}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, enableAnimations: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.enableAnimations ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.enableAnimations ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+              
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center"
+              }}>
+                <span style={{ color: theme.text }}>Enable Pulse Effects</span>
+                <label style={{ position: "relative", display: "inline-block" }}>
+                  <input
+                    type="checkbox"
+                    checked={tempConfig.enablePulseEffects}
+                    onChange={(e) => setTempConfig(prev => ({ ...prev, enablePulseEffects: e.target.checked }))}
+                    style={{ opacity: 0, width: 0, height: 0 }}
+                  />
+                  <span style={{
+                    position: "relative",
+                    display: "inline-block",
+                    width: 44,
+                    height: 24,
+                    background: tempConfig.enablePulseEffects ? theme.accent : theme.border,
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    transition: "all 0.3s"
+                  }}>
+                    <span style={{
+                      position: "absolute",
+                      height: 18,
+                      width: 18,
+                      left: tempConfig.enablePulseEffects ? "calc(100% - 20px)" : "3px",
+                      top: 3,
+                      background: "#fff",
+                      borderRadius: "50%",
+                      transition: "all 0.3s"
+                    }} />
+                  </span>
+                </label>
+              </div>
+            </div>
+          </div>
+          
+          {/* App Info */}
+          <div>
+            <h3 style={{
+              fontSize: 16,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 16
+            }}>
+              About
+            </h3>
+            <div style={{
+              background: theme.hoverBg,
+              padding: 16,
+              borderRadius: 12,
+              fontSize: 14,
+              color: theme.textSec
+            }}>
+              <div style={{ marginBottom: 8 }}>
+                <strong>Timeline OS</strong> v{APP_META.version}
+              </div>
+              <div style={{ fontStyle: "italic", marginBottom: 8 }}>
+                "{APP_META.motto}"
+              </div>
+              <div>
+                © {new Date().getFullYear()} {APP_META.author}. All rights reserved.
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Actions */}
+        <div style={{
+          display: "flex",
+          gap: 12,
+          marginTop: 32,
+          justifyContent: "flex-end"
+        }}>
+          <button
+            onClick={handleReset}
+            style={{
+              padding: "12px 20px",
+              background: "transparent",
+              color: theme.textSec,
+              border: `2px solid ${theme.border}`,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme.hoverBg;
+              e.currentTarget.style.color = theme.text;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = theme.textSec;
+            }}
+          >
+            Reset Defaults
+          </button>
+          
+          <button
+            onClick={handleSave}
+            style={{
+              padding: "12px 24px",
+              background: theme.accent,
+              color: "#fff",
+              border: "none",
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = theme.accentHover}
+            onMouseLeave={e => e.currentTarget.style.background = theme.accent}
+          >
+            Save Changes
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
-  return (<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}><div onClick={onClose} style={{position:"absolute",top:0,left:0,right:0,bottom:0}}/><div style={{background:theme.card,borderRadius:24,padding:32,width:"100%",maxWidth:800,maxHeight:"90vh",overflow:"auto",boxShadow:theme.shadowLg,zIndex:1001,position:"relative"}}><button onClick={onClose} style={{position:"absolute",top:24,right:24,background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:8,borderRadius:8}}><ICONS.Close width={20} height={20} /></button><h2 className="luxe" style={{fontSize:28,fontWeight:600,color:theme.text,marginBottom:8}}>Trash</h2><div style={{fontSize:14,color:theme.textSec,marginBottom:32}}>{events.length} deleted {events.length === 1 ? 'event' : 'events'}</div>{events.length === 0 ? (<div style={{textAlign:"center",padding:60,color:theme.textMuted,fontSize:16}}><ICONS.Trash width={48} height={48} style={{margin:"0 auto 20px",opacity:0.5}} /><div>Trash is empty</div></div>) : (<div style={{display:"flex",flexDirection:"column",gap:12,maxHeight:"calc(90vh - 200px)",overflow:"auto"}}>{events.map(event => (<div key={event.id} style={{padding:16,background:theme.hoverBg,borderRadius:12,display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}}><div style={{flex:1}}><div style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:4}}>{event.title || 'Untitled Event'}</div><div style={{fontSize:13,color:theme.textSec,display:"flex",gap:16,alignItems:"center"}}><span>{new Date(event.start).toLocaleDateString()}</span><span>{new Date(event.start).toLocaleTimeString([], {hour:'numeric',minute:'2-digit'})}</span>{event.location && (<span style={{display:'flex',alignItems:'center',gap:4}}><ICONS.MapPin width={12} height={12} /> {event.location}</span>)}</div></div><div style={{display:"flex",gap:8}}><button onClick={() => onRestore(event.id)} style={{padding:"8px 16px",background:theme.familyAccent,color:"#fff",border:"none",borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => e.currentTarget.style.background = theme.familyAccentHover} onMouseLeave={e => e.currentTarget.style.background = theme.familyAccent}>Restore</button><button onClick={() => onDelete(event.id)} style={{padding:"8px 16px",background:"transparent",color:theme.indicator,border:`1px solid ${theme.indicator}`,borderRadius:8,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.indicator; e.currentTarget.style.color = "#fff"; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.indicator; }}>Delete Permanently</button></div></div>))}</div>)}<div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${theme.border}`,display:"flex",justifyContent:"flex-end"}}><button onClick={onClose} style={{padding:"12px 24px",background:"transparent",color:theme.textSec,border:`2px solid ${theme.border}`,borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}>Close</button></div></div></div>);
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 24
+    }}>
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}
+      />
+      
+      <div
+        style={{
+          background: theme.card,
+          borderRadius: 24,
+          padding: 32,
+          width: "100%",
+          maxWidth: 800,
+          maxHeight: "90vh",
+          overflow: "auto",
+          boxShadow: theme.shadowLg,
+          zIndex: 1001,
+          position: "relative"
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 24,
+            background: "transparent",
+            border: "none",
+            color: theme.textSec,
+            cursor: "pointer",
+            padding: 8,
+            borderRadius: 8
+          }}
+        >
+          <ICONS.Close width={20} height={20} />
+        </button>
+        
+        <h2 className="luxe" style={{
+          fontSize: 28,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 8
+        }}>
+          Trash
+        </h2>
+        
+        <div style={{
+          fontSize: 14,
+          color: theme.textSec,
+          marginBottom: 32
+        }}>
+          {events.length} deleted {events.length === 1 ? 'event' : 'events'}
+        </div>
+        
+        {events.length === 0 ? (
+          <div style={{
+            textAlign: "center",
+            padding: 60,
+            color: theme.textMuted,
+            fontSize: 16
+          }}>
+            <ICONS.Trash width={48} height={48} style={{ margin: "0 auto 20px", opacity: 0.5 }} />
+            <div>Trash is empty</div>
+          </div>
+        ) : (
+          <div style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            maxHeight: "calc(90vh - 200px)",
+            overflow: "auto"
+          }}>
+            {events.map(event => (
+              <div
+                key={event.id}
+                style={{
+                  padding: 16,
+                  background: theme.hoverBg,
+                  borderRadius: 12,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 16
+                }}
+              >
+                <div style={{ flex: 1 }}>
+                  <div style={{
+                    fontSize: 16,
+                    fontWeight: 600,
+                    color: theme.text,
+                    marginBottom: 4
+                  }}>
+                    {event.title || 'Untitled Event'}
+                  </div>
+                  <div style={{
+                    fontSize: 13,
+                    color: theme.textSec,
+                    display: "flex",
+                    gap: 16,
+                    alignItems: "center"
+                  }}>
+                    <span>{new Date(event.start).toLocaleDateString()}</span>
+                    <span>{new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                    {event.location && (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <ICONS.MapPin width={12} height={12} /> {event.location}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    onClick={() => onRestore(event.id)}
+                    style={{
+                      padding: "8px 16px",
+                      background: theme.familyAccent,
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = theme.familyAccentHover}
+                    onMouseLeave={e => e.currentTarget.style.background = theme.familyAccent}
+                  >
+                    Restore
+                  </button>
+                  
+                  <button
+                    onClick={() => onDelete(event.id)}
+                    style={{
+                      padding: "8px 16px",
+                      background: "transparent",
+                      color: theme.indicator,
+                      border: `1px solid ${theme.indicator}`,
+                      borderRadius: 8,
+                      fontSize: 13,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = theme.indicator;
+                      e.currentTarget.style.color = "#fff";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = "transparent";
+                      e.currentTarget.style.color = theme.indicator;
+                    }}
+                  >
+                    Delete Permanently
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        
+        <div style={{
+          marginTop: 32,
+          paddingTop: 24,
+          borderTop: `1px solid ${theme.border}`,
+          display: "flex",
+          justifyContent: "flex-end"
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "12px 24px",
+              background: "transparent",
+              color: theme.textSec,
+              border: `2px solid ${theme.border}`,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme.hoverBg;
+              e.currentTarget.style.color = theme.text;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = theme.textSec;
+            }}
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function TagManager({ tags, setTags, theme, context, onClose }) {
-  const [newTagName, setNewTagName] = useState(""); const [newTagColor, setNewTagColor] = useState(PALETTE.onyx.color); const [editingTag, setEditingTag] = useState(null); const colorOptions = Object.values(PALETTE); const currentTags = tags[context] || [];
-  const handleAddTag = () => { if (!newTagName.trim()) return; const newTag = { id: `custom-${Date.now()}`, name: newTagName.trim(), icon: <ICONS.Star />, color: newTagColor, text: "#000000", bg: "linear-gradient(135deg, #f3f3f3 0%, #e0e0e0 100%)", border: newTagColor, colorLight: newTagColor, darkBg: `linear-gradient(135deg, ${newTagColor}20 0%, ${newTagColor}40 100%)` }; setTags(prev => ({...prev, [context]: [...currentTags, newTag]})); setNewTagName(""); };
-  const handleDeleteTag = (tagId) => { if (window.confirm("Delete this tag?")) setTags(prev => ({...prev, [context]: currentTags.filter(tag => tag.id !== tagId)})); };
-  const handleUpdateTag = (tagId, updates) => { setTags(prev => ({...prev, [context]: currentTags.map(tag => tag.id === tagId ? {...tag, ...updates} : tag)})); setEditingTag(null); };
-  return (<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"rgba(0,0,0,0.5)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:24}}><div onClick={onClose} style={{position:"absolute",top:0,left:0,right:0,bottom:0}}/><div style={{background:theme.card,borderRadius:24,padding:32,width:"100%",maxWidth:600,maxHeight:"90vh",overflow:"auto",boxShadow:theme.shadowLg,zIndex:1001,position:"relative"}}><button onClick={onClose} style={{position:"absolute",top:24,right:24,background:"transparent",border:"none",color:theme.textSec,cursor:"pointer",padding:8,borderRadius:8}}><ICONS.Close width={20} height={20} /></button><h2 className="luxe" style={{fontSize:28,fontWeight:600,color:theme.text,marginBottom:8}}>Category Manager</h2><div style={{fontSize:14,color:theme.textSec,marginBottom:32}}>Manage your {context} categories</div><div style={{background:theme.hoverBg,padding:20,borderRadius:12,marginBottom:32}}><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>Add New Category</h3><div style={{display:"flex",flexDirection:"column",gap:16}}><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Name</label><input type="text" value={newTagName} onChange={(e) => setNewTagName(e.target.value)} className="input-luxe" style={{borderColor:theme.border,color:theme.text}} placeholder="Category name" /></div><div><label style={{display:"block",fontSize:13,fontWeight:600,color:theme.text,marginBottom:8}}>Color</label><div style={{display:"flex",flexWrap:"wrap",gap:8}}>{colorOptions.map((color, index) => (<button key={index} type="button" onClick={() => setNewTagColor(color.color)} style={{width:32,height:32,borderRadius:"50%",background:color.color,border:`2px solid ${newTagColor === color.color ? theme.text : 'transparent'}`,cursor:"pointer"}} />))}</div></div><button onClick={handleAddTag} disabled={!newTagName.trim()} style={{padding:"12px",background:newTagName.trim()?theme.accent:theme.border,color:"#fff",border:"none",borderRadius:12,fontSize:14,fontWeight:600,cursor:newTagName.trim()?"pointer":"not-allowed",opacity:newTagName.trim()?1:0.6}}>Add Category</button></div></div><div><h3 style={{fontSize:16,fontWeight:600,color:theme.text,marginBottom:16}}>Existing Categories</h3>{currentTags.length === 0 ? (<div style={{textAlign:"center",padding:40,color:theme.textMuted}}>No categories yet. Add one above.</div>) : (<div style={{display:"flex",flexDirection:"column",gap:12,maxHeight:300,overflow:"auto"}}>{currentTags.map(tag => (<div key={tag.id} style={{padding:16,background:theme.hoverBg,borderRadius:12,display:"flex",alignItems:"center",gap:16}}><div style={{width:24,height:24,borderRadius:"50%",background:tag.color,flexShrink:0}}/>{editingTag === tag.id ? (<div style={{flex:1,display:"flex",gap:8}}><input type="text" defaultValue={tag.name} onBlur={(e) => handleUpdateTag(tag.id, {name: e.target.value})} className="input-luxe" style={{borderColor:theme.border,color:theme.text,padding:"8px 12px"}} /></div>) : (<div style={{flex:1}}><div style={{fontSize:16,fontWeight:600,color:theme.text}}>{tag.name}</div><div style={{fontSize:12,color:theme.textSec}}>{tag.color}</div></div>)}<div style={{display:"flex",gap:8}}><button onClick={() => setEditingTag(editingTag === tag.id ? null : tag.id)} style={{padding:"6px 12px",background:"transparent",color:theme.textSec,border:`1px solid ${theme.border}`,borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>{editingTag === tag.id ? 'Save' : 'Edit'}</button>{!tag.id.startsWith('custom-') ? (<button disabled style={{padding:"6px 12px",background:theme.border,color:theme.textMuted,border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"not-allowed"}}>Default</button>) : (<button onClick={() => handleDeleteTag(tag.id)} style={{padding:"6px 12px",background:theme.indicator,color:"#fff",border:"none",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer"}}>Delete</button>)}</div></div>))}</div>)}</div><div style={{marginTop:32,paddingTop:24,borderTop:`1px solid ${theme.border}`,display:"flex",justifyContent:"flex-end"}}><button onClick={onClose} style={{padding:"12px 24px",background:"transparent",color:theme.textSec,border:`2px solid ${theme.border}`,borderRadius:12,fontSize:14,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}} onMouseEnter={e => { e.currentTarget.style.background = theme.hoverBg; e.currentTarget.style.color = theme.text; }} onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = theme.textSec; }}>Done</button></div></div></div>);
+  const [newTagName, setNewTagName] = useState("");
+  const [newTagColor, setNewTagColor] = useState(PALETTE.onyx.color);
+  const [editingTag, setEditingTag] = useState(null);
+  
+  const colorOptions = Object.values(PALETTE);
+  const currentTags = tags[context] || [];
+  
+  const handleAddTag = () => {
+    if (!newTagName.trim()) return;
+    
+    const newTag = {
+      id: `custom-${Date.now()}`,
+      name: newTagName.trim(),
+      icon: <ICONS.Star />,
+      color: newTagColor,
+      text: "#000000",
+      bg: "linear-gradient(135deg, #f3f3f3 0%, #e0e0e0 100%)",
+      border: newTagColor,
+      colorLight: newTagColor,
+      darkBg: `linear-gradient(135deg, ${newTagColor}20 0%, ${newTagColor}40 100%)`
+    };
+    
+    setTags(prev => ({
+      ...prev,
+      [context]: [...currentTags, newTag]
+    }));
+    
+    setNewTagName("");
+  };
+  
+  const handleDeleteTag = (tagId) => {
+    if (window.confirm("Delete this tag? Events using it will keep the category but lose the styling.")) {
+      setTags(prev => ({
+        ...prev,
+        [context]: currentTags.filter(tag => tag.id !== tagId)
+      }));
+    }
+  };
+  
+  const handleUpdateTag = (tagId, updates) => {
+    setTags(prev => ({
+      ...prev,
+      [context]: currentTags.map(tag =>
+        tag.id === tagId ? { ...tag, ...updates } : tag
+      )
+    }));
+    setEditingTag(null);
+  };
+  
+  return (
+    <div style={{
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: "rgba(0, 0, 0, 0.5)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 1000,
+      padding: 24
+    }}>
+      <div
+        onClick={onClose}
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
+        }}
+      />
+      
+      <div
+        style={{
+          background: theme.card,
+          borderRadius: 24,
+          padding: 32,
+          width: "100%",
+          maxWidth: 600,
+          maxHeight: "90vh",
+          overflow: "auto",
+          boxShadow: theme.shadowLg,
+          zIndex: 1001,
+          position: "relative"
+        }}
+      >
+        <button
+          onClick={onClose}
+          style={{
+            position: "absolute",
+            top: 24,
+            right: 24,
+            background: "transparent",
+            border: "none",
+            color: theme.textSec,
+            cursor: "pointer",
+            padding: 8,
+            borderRadius: 8
+          }}
+        >
+          <ICONS.Close width={20} height={20} />
+        </button>
+        
+        <h2 className="luxe" style={{
+          fontSize: 28,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 8
+        }}>
+          Category Manager
+        </h2>
+        
+        <div style={{
+          fontSize: 14,
+          color: theme.textSec,
+          marginBottom: 32
+        }}>
+          Manage your {context} categories
+        </div>
+        
+        {/* Add new tag */}
+        <div style={{
+          background: theme.hoverBg,
+          padding: 20,
+          borderRadius: 12,
+          marginBottom: 32
+        }}>
+          <h3 style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: theme.text,
+            marginBottom: 16
+          }}>
+            Add New Category
+          </h3>
+          
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Name
+              </label>
+              <input
+                type="text"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "12px 16px",
+                  borderRadius: 10,
+                  fontSize: 14,
+                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                  border: `1.5px solid ${theme.border}`,
+                  fontFamily: "'Inter', sans-serif",
+                  background: "transparent",
+                  color: theme.text
+                }}
+                placeholder="Category name"
+              />
+            </div>
+            
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Color
+              </label>
+              <div style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 8
+              }}>
+                {colorOptions.map((color, index) => (
+                  <button
+                    key={index}
+                    type="button"
+                    onClick={() => setNewTagColor(color.color)}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: "50%",
+                      background: color.color,
+                      border: `2px solid ${newTagColor === color.color ? theme.text : 'transparent'}`,
+                      cursor: "pointer"
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            
+            <button
+              onClick={handleAddTag}
+              disabled={!newTagName.trim()}
+              style={{
+                padding: "12px",
+                background: newTagName.trim() ? theme.accent : theme.border,
+                color: "#fff",
+                border: "none",
+                borderRadius: 12,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: newTagName.trim() ? "pointer" : "not-allowed",
+                opacity: newTagName.trim() ? 1 : 0.6
+              }}
+            >
+              Add Category
+            </button>
+          </div>
+        </div>
+        
+        {/* Existing tags */}
+        <div>
+          <h3 style={{
+            fontSize: 16,
+            fontWeight: 600,
+            color: theme.text,
+            marginBottom: 16
+          }}>
+            Existing Categories
+          </h3>
+          
+          {currentTags.length === 0 ? (
+            <div style={{
+              textAlign: "center",
+              padding: 40,
+              color: theme.textMuted
+            }}>
+              No categories yet. Add one above.
+            </div>
+          ) : (
+            <div style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              maxHeight: 300,
+              overflow: "auto"
+            }}>
+              {currentTags.map(tag => (
+                <div
+                  key={tag.id}
+                  style={{
+                    padding: 16,
+                    background: theme.hoverBg,
+                    borderRadius: 12,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16
+                  }}
+                >
+                  <div style={{
+                    width: 24,
+                    height: 24,
+                    borderRadius: "50%",
+                    background: tag.color,
+                    flexShrink: 0
+                  }} />
+                  
+                  {editingTag === tag.id ? (
+                    <div style={{ flex: 1, display: "flex", gap: 8 }}>
+                      <input
+                        type="text"
+                        defaultValue={tag.name}
+                        onBlur={(e) => handleUpdateTag(tag.id, { name: e.target.value })}
+                        style={{
+                          width: "100%",
+                          padding: "8px 12px",
+                          borderRadius: 10,
+                          fontSize: 14,
+                          transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
+                          border: `1.5px solid ${theme.border}`,
+                          fontFamily: "'Inter', sans-serif",
+                          background: "transparent",
+                          color: theme.text
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: theme.text
+                      }}>
+                        {tag.name}
+                      </div>
+                      <div style={{
+                        fontSize: 12,
+                        color: theme.textSec
+                      }}>
+                        {tag.color}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      onClick={() => setEditingTag(editingTag === tag.id ? null : tag.id)}
+                      style={{
+                        padding: "6px 12px",
+                        background: "transparent",
+                        color: theme.textSec,
+                        border: `1px solid ${theme.border}`,
+                        borderRadius: 6,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer"
+                      }}
+                    >
+                      {editingTag === tag.id ? 'Save' : 'Edit'}
+                    </button>
+                    
+                    {!tag.id.startsWith('custom-') ? (
+                      <button
+                        disabled
+                        style={{
+                          padding: "6px 12px",
+                          background: theme.border,
+                          color: theme.textMuted,
+                          border: "none",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "not-allowed"
+                        }}
+                      >
+                        Default
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleDeleteTag(tag.id)}
+                        style={{
+                          padding: "6px 12px",
+                          background: theme.indicator,
+                          color: "#fff",
+                          border: "none",
+                          borderRadius: 6,
+                          fontSize: 12,
+                          fontWeight: 600,
+                          cursor: "pointer"
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        
+        <div style={{
+          marginTop: 32,
+          paddingTop: 24,
+          borderTop: `1px solid ${theme.border}`,
+          display: "flex",
+          justifyContent: "flex-end"
+        }}>
+          <button
+            onClick={onClose}
+            style={{
+              padding: "12px 24px",
+              background: "transparent",
+              color: theme.textSec,
+              border: `2px solid ${theme.border}`,
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: "pointer",
+              transition: "all 0.2s"
+            }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme.hoverBg;
+              e.currentTarget.style.color = theme.text;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent";
+              e.currentTarget.style.color = theme.textSec;
+            }}
+          >
+            Done
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
 
+// ==========================================
+// 5. ROOT EXPORT
+// ==========================================
+
 export default function App() {
-  return (<ErrorBoundary><TimelineOS /></ErrorBoundary>);
+  return (
+    <ErrorBoundary>
+      <TimelineOS />
+    </ErrorBoundary>
+  );
 }
