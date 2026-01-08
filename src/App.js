@@ -1,36 +1,11 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-
-// Firebase imports - These need to be set up in a separate firebase.js file
-// For now, I'll create a mock implementation so the code runs
-const mockAuth = {
-  onAuthStateChanged: (callback) => {
-    setTimeout(() => callback(null), 100);
-    return () => {};
-  },
-  signInWithPopup: () => Promise.resolve({ user: { uid: '123', displayName: 'Test User', email: 'test@example.com' } }),
-  signOut: () => Promise.resolve(),
-  currentUser: null
-};
-
-const mockFirestore = {
-  collection: () => ({}),
-  query: () => ({}),
-  where: () => ({}),
-  getDocs: () => Promise.resolve({ forEach: () => {} }),
-  addDoc: () => Promise.resolve({ id: 'new-id' }),
-  updateDoc: () => Promise.resolve(),
-  deleteDoc: () => Promise.resolve(),
-  doc: () => ({}),
-  serverTimestamp: () => new Date(),
-  Timestamp: {
-    fromDate: (date) => date
-  }
-};
-
-// Mock Firebase - You should replace these with real Firebase imports
-const auth = mockAuth;
-const provider = {}; // Google provider
-const db = mockFirestore;
+import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { auth, provider } from "./firebase";
+import { 
+  collection, query, where, getDocs, addDoc, updateDoc, 
+  deleteDoc, doc, serverTimestamp, Timestamp
+} from "firebase/firestore";
+import { db } from "./firebase";
 
 // ==========================================
 // ERROR BOUNDARY COMPONENT
@@ -111,7 +86,7 @@ class ErrorBoundary extends React.Component {
 
 const APP_META = { 
   name: "Timeline OS", 
-  version: "8.1.0",
+  version: "8.2.0",
   quoteInterval: 14400000,
   author: "Timeline Systems",
   motto: "Time is the luxury you cannot buy."
@@ -162,23 +137,108 @@ const MOTIVATIONAL_QUOTES = [
 // ==========================================
 
 const ICONS = {
-  Settings: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-  Trash: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-  Plus: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  ChevronLeft: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevronRight: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  Close: (props) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Calendar: (props) => <svg {...props} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  Clock: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  MapPin: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-  Finance: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
-  Health: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>,
-  Users: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-  Briefcase: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>,
-  Home: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
-  Star: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
-  TrendingUp: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>,
-  Bell: (props) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+  Settings: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  ),
+  Trash: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6"/>
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+    </svg>
+  ),
+  Plus: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"/>
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  ChevronLeft: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+  ),
+  ChevronRight: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="9 18 15 12 9 6"/>
+    </svg>
+  ),
+  Close: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/>
+      <line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  ),
+  Calendar: (props) => (
+    <svg {...props} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+      <line x1="16" y1="2" x2="16" y2="6"/>
+      <line x1="8" y1="2" x2="8" y2="6"/>
+      <line x1="3" y1="10" x2="21" y2="10"/>
+    </svg>
+  ),
+  Clock: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/>
+      <polyline points="12 6 12 12 16 14"/>
+    </svg>
+  ),
+  MapPin: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <circle cx="12" cy="10" r="3"/>
+    </svg>
+  ),
+  Finance: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23"/>
+      <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+    </svg>
+  ),
+  Health: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+    </svg>
+  ),
+  Users: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+      <circle cx="9" cy="7" r="4"/>
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+      <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </svg>
+  ),
+  Briefcase: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"/>
+      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
+    </svg>
+  ),
+  Home: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      <polyline points="9 22 9 12 15 12 15 22"/>
+    </svg>
+  ),
+  Star: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+    </svg>
+  ),
+  TrendingUp: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+      <polyline points="17 6 23 6 23 12"/>
+    </svg>
+  ),
+  Bell: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+      <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+    </svg>
+  )
 };
 
 const PALETTE = {
@@ -336,6 +396,165 @@ const DEFAULT_TAGS = {
   ]
 };
 
+const CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap');
+  
+  :root {
+    --ease: cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    overflow: hidden;
+  }
+  
+  h1, h2, h3, h4, .luxe {
+    font-family: 'Cormorant Garamond', serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(156, 163, 175, 0.3);
+    border-radius: 10px;
+  }
+  
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgba(156, 163, 175, 0.5);
+  }
+  
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.05);
+      opacity: 0.8;
+    }
+  }
+  
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 0 4px rgba(234, 88, 12, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 0 8px rgba(234, 88, 12, 0.4);
+    }
+  }
+  
+  .fade-enter {
+    animation: fadeIn 0.3s var(--ease) forwards;
+  }
+  
+  .glass-panel {
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+  
+  .btn-reset {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    font-family: inherit;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s var(--ease);
+  }
+  
+  .btn-hover:hover {
+    transform: translateY(-1px);
+  }
+  
+  .btn-hover:active {
+    transform: translateY(0);
+  }
+  
+  .input-luxe {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 14px;
+    transition: all 0.2s var(--ease);
+    border: 1.5px solid;
+    font-family: 'Inter', sans-serif;
+    background: transparent;
+  }
+  
+  .input-luxe:focus {
+    outline: none;
+  }
+  
+  .mini-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
+    text-align: center;
+    margin-top: 12px;
+  }
+  
+  .mini-cal-day {
+    font-size: 12px;
+    padding: 10px 0;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+    font-weight: 500;
+    position: relative;
+  }
+  
+  .year-event-dot {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.2s var(--ease);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  }
+  
+  .year-event-dot:hover {
+    transform: scale(1.6);
+    z-index: 10;
+  }
+  
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+`;
+
 // ==========================================
 // 3. MAIN APPLICATION KERNEL
 // ==========================================
@@ -343,7 +562,7 @@ const DEFAULT_TAGS = {
 function TimelineOS() {
   // Authentication & User State
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   
   // Date & Time State
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -414,77 +633,7 @@ function TimelineOS() {
   // Inject CSS
   useEffect(() => {
     const style = document.createElement('style');
-    style.textContent = `
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600;700&display=swap');
-      
-      * {
-        box-sizing: border-box;
-        margin: 0;
-        padding: 0;
-        -webkit-font-smoothing: antialiased;
-        -moz-osx-font-smoothing: grayscale;
-      }
-      
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        overflow: hidden;
-      }
-      
-      h1, h2, h3, h4, .luxe {
-        font-family: 'Cormorant Garamond', serif;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-      }
-      
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      ::-webkit-scrollbar-thumb {
-        background: rgba(156, 163, 175, 0.3);
-        border-radius: 10px;
-      }
-      
-      ::-webkit-scrollbar-thumb:hover {
-        background: rgba(156, 163, 175, 0.5);
-      }
-      
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(16px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-      
-      @keyframes pulse {
-        0%, 100% {
-          transform: scale(1);
-          opacity: 1;
-        }
-        50% {
-          transform: scale(1.05);
-          opacity: 0.8;
-        }
-      }
-      
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      
-      .fade-enter {
-        animation: fadeIn 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-      }
-    `;
+    style.textContent = CSS;
     document.head.appendChild(style);
     return () => style.remove();
   }, []);
@@ -506,48 +655,28 @@ function TimelineOS() {
   
   // Load events data with useCallback
   const loadData = useCallback(async (u) => {
-    if (!u) return;
     setLoading(true);
     try {
-      // Mock data for demo
-      const mockEvents = [
-        {
-          id: '1',
-          title: 'Team Meeting',
-          category: 'work',
-          context: 'personal',
-          description: 'Weekly team sync',
-          location: 'Conference Room A',
-          start: new Date(Date.now() + 86400000),
-          end: new Date(Date.now() + 86400000 + 3600000),
-          deleted: false
-        },
-        {
-          id: '2',
-          title: 'Doctor Appointment',
-          category: 'health',
-          context: 'personal',
-          description: 'Annual checkup',
-          location: 'Medical Center',
-          start: new Date(Date.now() + 172800000),
-          end: new Date(Date.now() + 172800000 + 1800000),
-          deleted: false
-        },
-        {
-          id: '3',
-          title: 'Kids Soccer Practice',
-          category: 'kids',
-          context: 'family',
-          description: 'Weekly practice',
-          location: 'Local Field',
-          start: new Date(Date.now() + 259200000),
-          end: new Date(Date.now() + 259200000 + 5400000),
-          deleted: false
-        }
-      ];
+      const q = query(
+        collection(db, "events"),
+        where("uid", "==", u.uid)
+      );
       
-      setEvents(mockEvents.filter(e => !e.deleted));
-      setDeletedEvents(mockEvents.filter(e => e.deleted));
+      const querySnapshot = await getDocs(q);
+      const eventsData = [];
+      
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        eventsData.push({
+          id: doc.id,
+          ...data,
+          start: data.startTime?.toDate() || new Date(),
+          end: data.endTime?.toDate() || new Date()
+        });
+      });
+      
+      setEvents(eventsData.filter(e => !e.deleted));
+      setDeletedEvents(eventsData.filter(e => e.deleted));
       
     } catch (error) {
       console.error("Error loading events:", error);
@@ -559,6 +688,8 @@ function TimelineOS() {
   
   // Authentication
   useEffect(() => {
+    setPersistence(auth, browserLocalPersistence);
+    
     const unsubscribe = auth.onAuthStateChanged(u => {
       setUser(u);
       if (u) {
@@ -637,29 +768,25 @@ function TimelineOS() {
         context: context,
         description: data.description?.trim() || "",
         location: data.location?.trim() || "",
-        startTime: start,
-        endTime: end,
+        startTime: Timestamp.fromDate(start),
+        endTime: Timestamp.fromDate(end),
         deleted: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
       };
       
       if (data.id) {
         // Update existing event
+        await updateDoc(doc(db, "events", data.id), eventData);
         notify("Event updated successfully", "success");
       } else {
         // Create new event
-        const newEvent = {
-          ...eventData,
-          id: `event-${Date.now()}`,
-          start,
-          end
-        };
-        setEvents(prev => [...prev, newEvent]);
+        await addDoc(collection(db, "events"), eventData);
         notify("Event created successfully", "success");
       }
       
       setModalOpen(false);
+      loadData(user); // Reload events
       
     } catch (error) {
       console.error("Error saving event:", error);
@@ -672,8 +799,13 @@ function TimelineOS() {
     if (!window.confirm("Move this event to trash?")) return;
     
     try {
-      setEvents(prev => prev.filter(e => e.id !== id));
+      await updateDoc(doc(db, "events", id), {
+        deleted: true,
+        deletedAt: serverTimestamp()
+      });
+      
       setModalOpen(false);
+      loadData(user);
       notify("Event moved to trash", "info");
     } catch (error) {
       notify("Failed to delete event", "error");
@@ -683,6 +815,12 @@ function TimelineOS() {
   // Restore event
   const restoreEvent = async (id) => {
     try {
+      await updateDoc(doc(db, "events", id), { 
+        deleted: false,
+        updatedAt: serverTimestamp()
+      });
+      
+      loadData(user);
       notify("Event restored", "success");
     } catch (error) {
       notify("Failed to restore event", "error");
@@ -694,10 +832,37 @@ function TimelineOS() {
     if (!window.confirm("Permanently delete this event?")) return;
     
     try {
-      setDeletedEvents(prev => prev.filter(e => e.id !== id));
+      await deleteDoc(doc(db, "events", id));
+      loadData(user);
       notify("Event permanently deleted", "info");
     } catch (error) {
       notify("Failed to delete event", "error");
+    }
+  };
+  
+  // Drag & Drop
+  const handleEventDrag = async (eventId, newDate) => {
+    if (!config.enableDragDrop) return;
+    
+    const event = events.find(e => e.id === eventId);
+    if (!event) return;
+    
+    const duration = event.end.getTime() - event.start.getTime();
+    const newStart = new Date(newDate);
+    newStart.setHours(event.start.getHours(), event.start.getMinutes());
+    const newEnd = new Date(newStart.getTime() + duration);
+    
+    try {
+      await updateDoc(doc(db, "events", eventId), {
+        startTime: Timestamp.fromDate(newStart),
+        endTime: Timestamp.fromDate(newEnd),
+        updatedAt: serverTimestamp()
+      });
+      
+      loadData(user);
+      notify("Event moved successfully", "success");
+    } catch (error) {
+      notify("Failed to move event", "error");
     }
   };
   
@@ -763,7 +928,7 @@ function TimelineOS() {
   
   // Auth screen
   if (!user) {
-    return <AuthScreen onLogin={() => auth.signInWithPopup(provider)} theme={theme} />;
+    return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
   }
   
   return (
@@ -1295,7 +1460,7 @@ function TimelineOS() {
               }}
             />
           ) : viewMode === 'year' ? (
-            <YearView
+            <LinearYearView
               currentDate={currentDate}
               events={filteredEvents}
               theme={theme}
@@ -1311,6 +1476,9 @@ function TimelineOS() {
                 setEditingEvent(event);
                 setModalOpen(true);
               }}
+              onEventDrag={handleEventDrag}
+              draggedEvent={draggedEvent}
+              setDraggedEvent={setDraggedEvent}
             />
           ) : null}
         </div>
@@ -1326,7 +1494,7 @@ function TimelineOS() {
           user={user}
           handleLogout={async () => {
             try {
-              await auth.signOut();
+              await signOut(auth);
             } catch (error) {
               console.error("Error signing out:", error);
             }
@@ -1432,7 +1600,7 @@ function TimelineOS() {
 }
 
 // ==========================================
-// 4. SUB-COMPONENTS
+// 4. SUB-COMPONENTS - AUTHENTICATION
 // ==========================================
 
 function AuthScreen({ onLogin, theme }) {
@@ -1526,6 +1694,10 @@ function AuthScreen({ onLogin, theme }) {
   );
 }
 
+// ==========================================
+// 5. SUB-COMPONENTS - MINI CALENDAR
+// ==========================================
+
 function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor }) {
   const today = new Date();
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -1585,13 +1757,7 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
         </div>
       </div>
       
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        gap: 4,
-        textAlign: "center",
-        marginTop: 12
-      }}>
+      <div className="mini-cal-grid">
         {weekDays.map(day => (
           <div
             key={day}
@@ -1621,15 +1787,9 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
           return (
             <div
               key={day}
+              className="mini-cal-day"
               onClick={() => setCurrentDate(date)}
               style={{
-                fontSize: 12,
-                padding: "10px 0",
-                borderRadius: 10,
-                cursor: "pointer",
-                transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                fontWeight: 500,
-                position: "relative",
                 background: isSelected 
                   ? accentColor 
                   : isToday 
@@ -1663,6 +1823,10 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
     </div>
   );
 }
+
+// ==========================================
+// 6. VIEW COMPONENTS - DAY VIEW
+// ==========================================
 
 function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
   const now = new Date();
@@ -1859,6 +2023,11 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
     </div>
   );
 }
+
+
+// ==========================================
+// 7. VIEW COMPONENTS - WEEK VIEW
+// ==========================================
 
 function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
   const days = useMemo(() => {
@@ -2065,6 +2234,10 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
   );
 }
 
+// ==========================================
+// 8. VIEW COMPONENTS - MONTH VIEW
+// ==========================================
+
 function MonthView({ currentDate, events, theme, config, onDayClick, onEventClick }) {
   const today = new Date();
   
@@ -2241,7 +2414,12 @@ function MonthView({ currentDate, events, theme, config, onDayClick, onEventClic
   );
 }
 
-function YearView({ 
+
+// ==========================================
+// 9. VIEW COMPONENTS - LINEAR YEAR VIEW (NEW!)
+// ==========================================
+
+function LinearYearView({ 
   currentDate, 
   events, 
   theme, 
@@ -2250,262 +2428,403 @@ function YearView({
   context,
   accentColor, 
   onDayClick, 
-  onEventClick
+  onEventClick, 
+  onEventDrag,
+  draggedEvent,
+  setDraggedEvent
 }) {
   const year = currentDate.getFullYear();
-  const months = useMemo(() => {
-    return Array.from({ length: 12 }, (_, i) => {
-      const monthStart = new Date(year, i, 1);
-      const monthEnd = new Date(year, i + 1, 0);
-      const startDay = monthStart.getDay();
-      const daysInMonth = monthEnd.getDate();
-      
-      return {
-        name: monthStart.toLocaleDateString('en-US', { month: 'long' }),
-        startDay,
-        daysInMonth
-      };
-    });
-  }, [year]);
-  
   const today = new Date();
   const isCurrentYear = year === today.getFullYear();
   
+  // Generate all 365/366 days of the year
+  const yearDays = useMemo(() => {
+    const days = [];
+    const startDate = new Date(year, 0, 1);
+    const endDate = new Date(year, 11, 31);
+    const dayCount = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    
+    for (let i = 0; i < dayCount; i++) {
+      const date = new Date(year, 0, 1 + i);
+      days.push(date);
+    }
+    
+    return days;
+  }, [year]);
+  
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const grouped = {};
+    yearDays.forEach(day => {
+      const dayStr = day.toDateString();
+      grouped[dayStr] = events.filter(event => 
+        event?.start && new Date(event.start).toDateString() === dayStr
+      );
+    });
+    return grouped;
+  }, [events, yearDays]);
+  
+  const DAY_WIDTH = LAYOUT.LINEAR_YEAR_DAY_WIDTH;
+  const totalWidth = yearDays.length * DAY_WIDTH;
+  
+  const handleDragStart = (e, event) => {
+    if (!config.enableDragDrop) return;
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedEvent(event);
+  };
+  
+  const handleDragOver = (e) => {
+    if (!config.enableDragDrop) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+  
+  const handleDrop = (e, date) => {
+    if (!config.enableDragDrop) return;
+    e.preventDefault();
+    
+    if (draggedEvent) {
+      onEventDrag(draggedEvent.id, date);
+      setDraggedEvent(null);
+    }
+  };
+  
   return (
     <div style={{
-      maxWidth: 1200,
-      margin: "0 auto",
-      width: "100%"
+      width: "100%",
+      height: "100%",
+      overflow: "auto"
     }}>
+      {/* Month labels */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 32
+        position: "sticky",
+        top: 0,
+        zIndex: 10,
+        background: theme.bg,
+        borderBottom: `2px solid ${theme.border}`,
+        paddingBottom: 12,
+        marginBottom: 20
       }}>
-        {months.map((month, monthIndex) => {
-          const monthDate = new Date(year, monthIndex, 1);
-          const isCurrentMonth = monthDate.getMonth() === today.getMonth() && isCurrentYear;
-          
-          return (
-            <div
-              key={monthIndex}
-              style={{
-                background: theme.card,
-                borderRadius: 16,
-                padding: 20,
-                boxShadow: theme.shadow
-              }}
-            >
-              <div style={{
-                fontSize: 20,
-                fontWeight: 600,
-                color: theme.text,
-                marginBottom: 20,
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span className="luxe">{month.name}</span>
-                {isCurrentMonth && (
+        <div style={{
+          display: "flex",
+          position: "relative",
+          minWidth: totalWidth
+        }}>
+          {Array.from({ length: 12 }).map((_, monthIndex) => {
+            const monthStart = new Date(year, monthIndex, 1);
+            const monthEnd = new Date(year, monthIndex + 1, 0);
+            const daysInMonth = monthEnd.getDate();
+            const monthWidth = daysInMonth * DAY_WIDTH;
+            
+            // Calculate position
+            const dayOfYear = Math.floor((monthStart - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24));
+            const left = dayOfYear * DAY_WIDTH;
+            
+            return (
+              <div
+                key={monthIndex}
+                style={{
+                  position: "absolute",
+                  left: `${left}px`,
+                  width: `${monthWidth}px`,
+                  textAlign: "center",
+                  paddingTop: 8
+                }}
+              >
+                <div className="luxe" style={{
+                  fontSize: 18,
+                  fontWeight: 600,
+                  color: theme.text
+                }}>
+                  {monthStart.toLocaleDateString('en-US', { month: 'short' })}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: theme.textMuted,
+                  marginTop: 2
+                }}>
+                  {daysInMonth} days
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      
+      {/* Days timeline */}
+      <div style={{
+        position: "relative",
+        minWidth: totalWidth,
+        height: 400,
+        background: theme.card,
+        borderRadius: 16,
+        padding: "20px 0",
+        overflow: "visible",
+        boxShadow: theme.shadow
+      }}>
+        {/* Day markers */}
+        <div style={{
+          display: "flex",
+          height: "100%",
+          position: "relative"
+        }}>
+          {yearDays.map((day, index) => {
+            const dayStr = day.toDateString();
+            const isToday = day.toDateString() === today.toDateString();
+            const dayEvents = eventsByDay[dayStr] || [];
+            const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+            
+            return (
+              <div
+                key={index}
+                onClick={() => onDayClick(day)}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, day)}
+                style={{
+                  width: `${DAY_WIDTH}px`,
+                  height: "100%",
+                  borderRight: `1px solid ${theme.borderLight}`,
+                  background: isToday 
+                    ? theme.selection 
+                    : isWeekend 
+                    ? theme.hoverBg 
+                    : "transparent",
+                  cursor: "pointer",
+                  position: "relative",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => {
+                  if (!isToday) {
+                    e.currentTarget.style.background = theme.activeBg;
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isToday) {
+                    e.currentTarget.style.background = isWeekend ? theme.hoverBg : "transparent";
+                  }
+                }}
+              >
+                {/* Day number (show on 1st of month or every 5 days) */}
+                {(day.getDate() === 1 || day.getDate() % 5 === 0) && (
                   <div style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6
+                    position: "absolute",
+                    bottom: 4,
+                    left: "50%",
+                    transform: "translateX(-50%)",
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: isToday ? accentColor : theme.textMuted
                   }}>
-                    <div style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: "50%",
-                      background: theme.accent,
-                      animation: config.enablePulseEffects ? "pulse 2s infinite" : "none"
-                    }} />
-                    <span style={{
-                      fontSize: 12,
-                      color: theme.textMuted
-                    }}>
-                      Current
-                    </span>
+                    {day.getDate()}
                   </div>
                 )}
+                
+                {/* Today marker */}
+                {isToday && (
+                  <div style={{
+                    position: "absolute",
+                    top: "50%",
+                    left: "50%",
+                    transform: "translate(-50%, -50%)",
+                    width: 4,
+                    height: 4,
+                    borderRadius: "50%",
+                    background: accentColor,
+                    animation: config.enablePulseEffects ? "pulse 2s infinite" : "none"
+                  }} />
+                )}
+                
+                {/* Event dots */}
+                <div style={{
+                  position: "absolute",
+                  top: 20,
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  alignItems: "center"
+                }}>
+                  {dayEvents.slice(0, 8).map((event, eventIndex) => {
+                    const tag = tags.find(t => t.id === event.category) || tags[0];
+                    
+                    return (
+                      <div
+                        key={event.id}
+                        draggable={config.enableDragDrop}
+                        onDragStart={(e) => handleDragStart(e, event)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onEventClick(event);
+                        }}
+                        className="year-event-dot"
+                        style={{
+                          background: tag?.color || accentColor,
+                          width: 8,
+                          height: 8
+                        }}
+                        title={event.title}
+                      />
+                    );
+                  })}
+                  
+                  {dayEvents.length > 8 && (
+                    <div style={{
+                      fontSize: 8,
+                      fontWeight: 700,
+                      color: theme.textMuted,
+                      marginTop: 2
+                    }}>
+                      +{dayEvents.length - 8}
+                    </div>
+                  )}
+                </div>
               </div>
+            );
+          })}
+        </div>
+        
+        {/* Current date indicator line */}
+        {isCurrentYear && (
+          <div style={{
+            position: "absolute",
+            top: 0,
+            bottom: 0,
+            left: `${Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24)) * DAY_WIDTH}px`,
+            width: 2,
+            background: accentColor,
+            zIndex: 5,
+            pointerEvents: "none"
+          }}>
+            <div style={{
+              position: "absolute",
+              top: -8,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: 0,
+              height: 0,
+              borderLeft: "6px solid transparent",
+              borderRight: "6px solid transparent",
+              borderTop: `8px solid ${accentColor}`
+            }} />
+          </div>
+        )}
+      </div>
+      
+      {/* Events list grouped by month */}
+      <div style={{
+        marginTop: 40,
+        display: "flex",
+        flexDirection: "column",
+        gap: 32
+      }}>
+        {Array.from({ length: 12 }).map((_, monthIndex) => {
+          const monthEvents = events.filter(event => {
+            const eventDate = new Date(event.start);
+            return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
+          });
+          
+          if (monthEvents.length === 0) return null;
+          
+          const monthDate = new Date(year, monthIndex, 1);
+          
+          return (
+            <div key={monthIndex}>
+              <h3 className="luxe" style={{
+                fontSize: 24,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 16
+              }}>
+                {monthDate.toLocaleDateString('en-US', { month: 'long' })}
+                <span style={{
+                  fontSize: 16,
+                  color: theme.textMuted,
+                  marginLeft: 12
+                }}>
+                  {monthEvents.length} {monthEvents.length === 1 ? 'event' : 'events'}
+                </span>
+              </h3>
               
-              {/* Month grid */}
               <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                gap: 4
+                gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+                gap: 12
               }}>
-                {Array.from({ length: month.startDay }).map((_, i) => (
-                  <div key={`empty-${i}`} />
-                ))}
-                
-                {Array.from({ length: month.daysInMonth }).map((_, i) => {
-                  const day = i + 1;
-                  const date = new Date(year, monthIndex, day);
-                  const isToday = date.toDateString() === today.toDateString();
-                  const dayEvents = events.filter(event => 
-                    event?.start && new Date(event.start).toDateString() === date.toDateString()
-                  );
+                {monthEvents.map(event => {
+                  const tag = tags.find(t => t.id === event.category) || tags[0];
                   
                   return (
                     <div
-                      key={day}
-                      onClick={() => onDayClick(date)}
+                      key={event.id}
+                      onClick={() => onEventClick(event)}
+                      draggable={config.enableDragDrop}
+                      onDragStart={(e) => handleDragStart(e, event)}
                       style={{
-                        aspectRatio: "1",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        borderRadius: 8,
-                        background: isToday ? accentColor : "transparent",
-                        color: isToday ? "#fff" : theme.text,
-                        fontSize: 12,
-                        fontWeight: isToday ? 700 : 500,
+                        padding: 16,
+                        background: config.darkMode ? tag.darkBg : tag.bg,
+                        borderLeft: `3px solid ${tag?.color || accentColor}`,
+                        borderRadius: 10,
                         cursor: "pointer",
-                        position: "relative",
-                        transition: "all 0.2s"
+                        transition: "all 0.2s",
+                        boxShadow: theme.shadow
                       }}
                       onMouseEnter={e => {
-                        if (!isToday) {
-                          e.currentTarget.style.background = theme.hoverBg;
-                        }
+                        e.currentTarget.style.transform = "translateY(-2px)";
+                        e.currentTarget.style.boxShadow = theme.shadowLg;
                       }}
                       onMouseLeave={e => {
-                        if (!isToday) {
-                          e.currentTarget.style.background = "transparent";
-                        }
+                        e.currentTarget.style.transform = "translateY(0)";
+                        e.currentTarget.style.boxShadow = theme.shadow;
                       }}
                     >
-                      {day}
+                      <div style={{
+                        fontSize: 16,
+                        fontWeight: 600,
+                        color: config.darkMode ? '#FAFAFA' : tag.text,
+                        marginBottom: 8
+                      }}>
+                        {event.title || 'Untitled Event'}
+                      </div>
                       
-                      {/* Event dots */}
-                      {dayEvents.length > 0 && (
-                        <div style={{
-                          position: "absolute",
-                          bottom: 2,
-                          display: "flex",
-                          justifyContent: "center",
-                          gap: 2
-                        }}>
-                          {dayEvents.slice(0, 3).map((event, idx) => {
-                            const tag = tags.find(t => t.id === event.category) || tags[0];
-                            return (
-                              <div
-                                key={idx}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onEventClick(event);
-                                }}
-                                style={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: "50%",
-                                  background: tag?.color || theme.accent,
-                                  cursor: "pointer",
-                                  transition: "all 0.2s",
-                                  boxShadow: "0 1px 2px rgba(0, 0, 0, 0.2)"
-                                }}
-                                onMouseEnter={e => {
-                                  e.currentTarget.style.transform = "scale(1.6)";
-                                  e.currentTarget.style.zIndex = "10";
-                                }}
-                                onMouseLeave={e => {
-                                  e.currentTarget.style.transform = "scale(1)";
-                                  e.currentTarget.style.zIndex = "1";
-                                }}
-                                title={event.title}
-                              />
-                            );
+                      <div style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        fontSize: 12,
+                        color: config.darkMode ? theme.textSec : tag.text
+                      }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <ICONS.Calendar width={12} height={12} />
+                          {new Date(event.start).toLocaleDateString('en-US', { 
+                            month: 'short', 
+                            day: 'numeric' 
                           })}
                         </div>
-                      )}
+                        
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <ICONS.Clock width={12} height={12} />
+                          {new Date(event.start).toLocaleTimeString([], { 
+                            hour: 'numeric', 
+                            minute: '2-digit' 
+                          })} – 
+                          {new Date(event.end).toLocaleTimeString([], { 
+                            hour: 'numeric', 
+                            minute: '2-digit' 
+                          })}
+                        </div>
+                        
+                        {event.location && (
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <ICONS.MapPin width={12} height={12} />
+                            {event.location}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              
-              {/* Month events summary */}
-              {events.filter(event => {
-                const eventDate = new Date(event.start);
-                return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
-              }).length > 0 && (
-                <div style={{
-                  marginTop: 20,
-                  paddingTop: 20,
-                  borderTop: `1px solid ${theme.border}`
-                }}>
-                  <div style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: theme.textMuted,
-                    textTransform: "uppercase",
-                    letterSpacing: 1,
-                    marginBottom: 8
-                  }}>
-                    Highlights
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    {events
-                      .filter(event => {
-                        const eventDate = new Date(event.start);
-                        return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
-                      })
-                      .slice(0, 3)
-                      .map(event => {
-                        const tag = tags.find(t => t.id === event.category) || tags[0];
-                        return (
-                          <div
-                            key={event.id}
-                            onClick={() => onEventClick(event)}
-                            style={{
-                              padding: "6px 8px",
-                              background: theme.hoverBg,
-                              borderRadius: 6,
-                              cursor: "pointer",
-                              transition: "all 0.2s",
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8
-                            }}
-                            onMouseEnter={e => {
-                              e.currentTarget.style.transform = "translateX(4px)";
-                              e.currentTarget.style.background = theme.activeBg;
-                            }}
-                            onMouseLeave={e => {
-                              e.currentTarget.style.transform = "translateX(0)";
-                              e.currentTarget.style.background = theme.hoverBg;
-                            }}
-                          >
-                            <div style={{
-                              width: 8,
-                              height: 8,
-                              borderRadius: "50%",
-                              background: tag?.color || theme.accent,
-                              flexShrink: 0
-                            }} />
-                            <div style={{
-                              fontSize: 11,
-                              fontWeight: 600,
-                              color: theme.text,
-                              whiteSpace: "nowrap",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis"
-                            }}>
-                              {event.title}
-                            </div>
-                            <div style={{
-                              fontSize: 9,
-                              color: theme.textMuted,
-                              marginLeft: "auto"
-                            }}>
-                              {new Date(event.start).getDate()}
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
@@ -2513,6 +2832,11 @@ function YearView({
     </div>
   );
 }
+
+
+// ==========================================
+// 10. MODAL COMPONENTS - EVENT EDITOR
+// ==========================================
 
 function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, context }) {
   const [formData, setFormData] = useState({
@@ -2522,7 +2846,11 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
     description: event?.description || "",
     location: event?.location || "",
     start: event?.start ? new Date(event.start) : new Date(),
-    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 3600000) // +1 hour
+    end: event?.end ? new Date(event.end) : (() => {
+      const endDate = new Date();
+      endDate.setHours(endDate.getHours() + 1);
+      return endDate;
+    })()
   });
   
   const handleSubmit = (e) => {
@@ -2533,13 +2861,16 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
   const handleDateChange = (field, value) => {
     setFormData(prev => {
       const newDate = new Date(prev[field]);
-      if (field === 'start') {
-        const [hours, minutes] = value.split(':');
-        newDate.setHours(parseInt(hours), parseInt(minutes));
-      } else {
-        const [hours, minutes] = value.split(':');
-        newDate.setHours(parseInt(hours), parseInt(minutes));
-      }
+      const [hours, minutes] = value.split(':');
+      newDate.setHours(parseInt(hours), parseInt(minutes));
+      return { ...prev, [field]: newDate };
+    });
+  };
+  
+  const handleFullDateChange = (field, value) => {
+    setFormData(prev => {
+      const newDate = new Date(value);
+      newDate.setHours(prev[field].getHours(), prev[field].getMinutes());
       return { ...prev, [field]: newDate };
     });
   };
@@ -2629,15 +2960,9 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                 value={formData.title}
                 onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
                 required
+                className="input-luxe"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                  border: `1.5px solid ${theme.border}`,
-                  fontFamily: "'Inter', sans-serif",
-                  background: "transparent",
+                  borderColor: theme.border,
                   color: theme.text
                 }}
                 placeholder="What's happening?"
@@ -2687,44 +3012,35 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
               </div>
             </div>
             
-            {/* Date and Time */}
+            {/* Date */}
+            <div>
+              <label style={{
+                display: "block",
+                fontSize: 13,
+                fontWeight: 600,
+                color: theme.text,
+                marginBottom: 8
+              }}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={formData.start.toISOString().split('T')[0]}
+                onChange={(e) => handleFullDateChange('start', e.target.value)}
+                className="input-luxe"
+                style={{
+                  borderColor: theme.border,
+                  color: theme.text
+                }}
+              />
+            </div>
+            
+            {/* Time */}
             <div style={{
               display: "grid",
               gridTemplateColumns: "1fr 1fr",
               gap: 16
             }}>
-              <div>
-                <label style={{
-                  display: "block",
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: theme.text,
-                  marginBottom: 8
-                }}>
-                  Date
-                </label>
-                <input
-                  type="date"
-                  value={formData.start.toISOString().split('T')[0]}
-                  onChange={(e) => {
-                    const newDate = new Date(e.target.value);
-                    newDate.setHours(formData.start.getHours(), formData.start.getMinutes());
-                    setFormData(prev => ({ ...prev, start: newDate }));
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "12px 16px",
-                    borderRadius: 10,
-                    fontSize: 14,
-                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                    border: `1.5px solid ${theme.border}`,
-                    fontFamily: "'Inter', sans-serif",
-                    background: "transparent",
-                    color: theme.text
-                  }}
-                />
-              </div>
-              
               <div>
                 <label style={{
                   display: "block",
@@ -2739,15 +3055,9 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                   type="time"
                   value={`${formData.start.getHours().toString().padStart(2, '0')}:${formData.start.getMinutes().toString().padStart(2, '0')}`}
                   onChange={(e) => handleDateChange('start', e.target.value)}
+                  className="input-luxe"
                   style={{
-                    width: "100%",
-                    padding: "12px 16px",
-                    borderRadius: 10,
-                    fontSize: 14,
-                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                    border: `1.5px solid ${theme.border}`,
-                    fontFamily: "'Inter', sans-serif",
-                    background: "transparent",
+                    borderColor: theme.border,
                     color: theme.text
                   }}
                 />
@@ -2767,15 +3077,9 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                   type="time"
                   value={`${formData.end.getHours().toString().padStart(2, '0')}:${formData.end.getMinutes().toString().padStart(2, '0')}`}
                   onChange={(e) => handleDateChange('end', e.target.value)}
+                  className="input-luxe"
                   style={{
-                    width: "100%",
-                    padding: "12px 16px",
-                    borderRadius: 10,
-                    fontSize: 14,
-                    transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                    border: `1.5px solid ${theme.border}`,
-                    fontFamily: "'Inter', sans-serif",
-                    background: "transparent",
+                    borderColor: theme.border,
                     color: theme.text
                   }}
                 />
@@ -2798,15 +3102,9 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                 type="text"
                 value={formData.location}
                 onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                className="input-luxe"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                  border: `1.5px solid ${theme.border}`,
-                  fontFamily: "'Inter', sans-serif",
-                  background: "transparent",
+                  borderColor: theme.border,
                   color: theme.text
                 }}
                 placeholder="Where?"
@@ -2828,15 +3126,9 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                 value={formData.description}
                 onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                 rows={3}
+                className="input-luxe"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                  border: `1.5px solid ${theme.border}`,
-                  fontFamily: "'Inter', sans-serif",
-                  background: "transparent",
+                  borderColor: theme.border,
                   color: theme.text,
                   resize: "vertical"
                 }}
@@ -2883,7 +3175,10 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                     fontSize: 14,
                     fontWeight: 600,
                     cursor: "pointer",
-                    transition: "all 0.2s"
+                    transition: "all 0.2s",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.background = theme.indicator;
@@ -2894,7 +3189,7 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                     e.currentTarget.style.color = theme.indicator;
                   }}
                 >
-                  <ICONS.Trash width={16} height={16} style={{ marginRight: 6 }} />
+                  <ICONS.Trash width={16} height={16} />
                   Delete
                 </button>
               )}
@@ -2932,6 +3227,11 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
   );
 }
 
+
+// ==========================================
+// 11. MODAL COMPONENTS - SETTINGS
+// ==========================================
+
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
   const [tempConfig, setTempConfig] = useState({ ...config });
   
@@ -2956,6 +3256,39 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       });
     }
   };
+  
+  const Toggle = ({ checked, onChange }) => (
+    <label style={{ position: "relative", display: "inline-block" }}>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        style={{ opacity: 0, width: 0, height: 0 }}
+      />
+      <span style={{
+        position: "relative",
+        display: "inline-block",
+        width: 44,
+        height: 24,
+        background: checked ? theme.accent : theme.border,
+        borderRadius: 12,
+        cursor: "pointer",
+        transition: "all 0.3s"
+      }}>
+        <span style={{
+          position: "absolute",
+          content: "''",
+          height: 18,
+          width: 18,
+          left: checked ? "calc(100% - 20px)" : "3px",
+          top: 3,
+          background: "#fff",
+          borderRadius: "50%",
+          transition: "all 0.3s"
+        }} />
+      </span>
+    </label>
+  );
   
   return (
     <div style={{
@@ -3112,116 +3445,23 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               Appearance
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Dark Mode</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.darkMode}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, darkMode: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
+              {[
+                { label: "Dark Mode", key: "darkMode" },
+                { label: "24-Hour Time", key: "use24Hour" },
+                { label: "Show Sidebar", key: "showSidebar" }
+              ].map(({ label, key }) => (
+                <div key={key} style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <span style={{ color: theme.text }}>{label}</span>
+                  <Toggle
+                    checked={tempConfig[key]}
+                    onChange={(val) => setTempConfig(prev => ({ ...prev, [key]: val }))}
                   />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.darkMode ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.darkMode ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>24-Hour Time</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.use24Hour}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, use24Hour: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.use24Hour ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.use24Hour ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Show Sidebar</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.showSidebar}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, showSidebar: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.showSidebar ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.showSidebar ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
+                </div>
+              ))}
             </div>
           </div>
           
@@ -3236,79 +3476,22 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               Calendar
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Week Starts on Monday</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.weekStartMon}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, weekStartMon: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
+              {[
+                { label: "Week Starts on Monday", key: "weekStartMon" },
+                { label: "Blur Past Events", key: "blurPast" }
+              ].map(({ label, key }) => (
+                <div key={key} style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <span style={{ color: theme.text }}>{label}</span>
+                  <Toggle
+                    checked={tempConfig[key]}
+                    onChange={(val) => setTempConfig(prev => ({ ...prev, [key]: val }))}
                   />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.weekStartMon ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.weekStartMon ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Blur Past Events</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.blurPast}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, blurPast: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.blurPast ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.blurPast ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
+                </div>
+              ))}
             </div>
           </div>
           
@@ -3323,153 +3506,25 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               Features
             </h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Show Motivational Quotes</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.showMotivationalQuotes}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, showMotivationalQuotes: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
+              {[
+                { label: "Show Motivational Quotes", key: "showMotivationalQuotes" },
+                { label: "Show Upcoming Events", key: "showUpcomingEvents" },
+                { label: "Enable Drag & Drop", key: "enableDragDrop" },
+                { label: "Enable Animations", key: "enableAnimations" },
+                { label: "Enable Pulse Effects", key: "enablePulseEffects" }
+              ].map(({ label, key }) => (
+                <div key={key} style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center"
+                }}>
+                  <span style={{ color: theme.text }}>{label}</span>
+                  <Toggle
+                    checked={tempConfig[key]}
+                    onChange={(val) => setTempConfig(prev => ({ ...prev, [key]: val }))}
                   />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.showMotivationalQuotes ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.showMotivationalQuotes ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Show Upcoming Events</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.showUpcomingEvents}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, showUpcomingEvents: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.showUpcomingEvents ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.showUpcomingEvents ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Enable Animations</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.enableAnimations}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, enableAnimations: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.enableAnimations ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.enableAnimations ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
-              
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center"
-              }}>
-                <span style={{ color: theme.text }}>Enable Pulse Effects</span>
-                <label style={{ position: "relative", display: "inline-block" }}>
-                  <input
-                    type="checkbox"
-                    checked={tempConfig.enablePulseEffects}
-                    onChange={(e) => setTempConfig(prev => ({ ...prev, enablePulseEffects: e.target.checked }))}
-                    style={{ opacity: 0, width: 0, height: 0 }}
-                  />
-                  <span style={{
-                    position: "relative",
-                    display: "inline-block",
-                    width: 44,
-                    height: 24,
-                    background: tempConfig.enablePulseEffects ? theme.accent : theme.border,
-                    borderRadius: 12,
-                    cursor: "pointer",
-                    transition: "all 0.3s"
-                  }}>
-                    <span style={{
-                      position: "absolute",
-                      height: 18,
-                      width: 18,
-                      left: tempConfig.enablePulseEffects ? "calc(100% - 20px)" : "3px",
-                      top: 3,
-                      background: "#fff",
-                      borderRadius: "50%",
-                      transition: "all 0.3s"
-                    }} />
-                  </span>
-                </label>
-              </div>
+                </div>
+              ))}
             </div>
           </div>
           
@@ -3558,6 +3613,10 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
     </div>
   );
 }
+
+// ==========================================
+// 12. MODAL COMPONENTS - TRASH
+// ==========================================
 
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
   return (
@@ -3777,6 +3836,10 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
   );
 }
 
+// ==========================================
+// 13. MODAL COMPONENTS - TAG MANAGER
+// ==========================================
+
 function TagManager({ tags, setTags, theme, context, onClose }) {
   const [newTagName, setNewTagName] = useState("");
   const [newTagColor, setNewTagColor] = useState(PALETTE.onyx.color);
@@ -3931,15 +3994,9 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
                 type="text"
                 value={newTagName}
                 onChange={(e) => setNewTagName(e.target.value)}
+                className="input-luxe"
                 style={{
-                  width: "100%",
-                  padding: "12px 16px",
-                  borderRadius: 10,
-                  fontSize: 14,
-                  transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                  border: `1.5px solid ${theme.border}`,
-                  fontFamily: "'Inter', sans-serif",
-                  background: "transparent",
+                  borderColor: theme.border,
                   color: theme.text
                 }}
                 placeholder="Category name"
@@ -4052,16 +4109,11 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
                         type="text"
                         defaultValue={tag.name}
                         onBlur={(e) => handleUpdateTag(tag.id, { name: e.target.value })}
+                        className="input-luxe"
                         style={{
-                          width: "100%",
-                          padding: "8px 12px",
-                          borderRadius: 10,
-                          fontSize: 14,
-                          transition: "all 0.2s cubic-bezier(0.22, 1, 0.36, 1)",
-                          border: `1.5px solid ${theme.border}`,
-                          fontFamily: "'Inter', sans-serif",
-                          background: "transparent",
-                          color: theme.text
+                          borderColor: theme.border,
+                          color: theme.text,
+                          padding: "8px 12px"
                         }}
                       />
                     </div>
@@ -4178,7 +4230,7 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
 }
 
 // ==========================================
-// 5. ROOT EXPORT
+// 14. ROOT EXPORT
 // ==========================================
 
 export default function App() {
