@@ -413,7 +413,7 @@ export default function TimelineOS() {
   const [filteredEvents, setFilteredEvents] = useState([]);
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   
-  // Tags & Categories - FIXED: Use localStorage for persistence
+  // Tags & Categories
   const [tags, setTags] = useState(() => {
     try {
       const saved = localStorage.getItem('timeline_tags_v4');
@@ -521,7 +521,7 @@ export default function TimelineOS() {
     setActiveTagIds(currentTags.map(t => t.id));
   }, [context, tags]);
   
-  // Load events data - FIXED: Proper Firestore query
+  // Load events data
   const loadData = async (u) => {
     setLoading(true);
     try {
@@ -554,7 +554,7 @@ export default function TimelineOS() {
     }
   };
   
-  // Filter events - FIXED: Proper filtering logic
+  // Filter events
   useEffect(() => {
     const filtered = events.filter(e => {
       // Check if event has the correct context
@@ -581,7 +581,7 @@ export default function TimelineOS() {
     setUpcomingEvents(upcoming);
   }, [events, context, activeTagIds]);
   
-  // Save event - FIXED: Proper Firestore structure
+  // Save event
   const handleSaveEvent = async (data) => {
     if (!user) {
       notify("You must be logged in to save events", "error");
@@ -803,7 +803,7 @@ export default function TimelineOS() {
               color: theme.textSec,
               marginBottom: 8
             }}>
-              Welcome, <span style={{ fontWeight: 600 }}>{user.displayName?.split(" ")[0]}</span>
+              Welcome, <span style={{ fontWeight: 600 }}>{user.displayName?.split(" ")[0] || 'User'}</span>
             </div>
             {config.showMotivationalQuotes && (
               <div style={{
@@ -947,7 +947,7 @@ export default function TimelineOS() {
                           width: 8,
                           height: 8,
                           borderRadius: "50%",
-                          background: tag.color,
+                          background: tag?.color || theme.accent,
                           flexShrink: 0
                         }} />
                         {event.title}
@@ -960,8 +960,8 @@ export default function TimelineOS() {
                         gap: 8,
                         marginLeft: 16
                       }}>
-                        {event.start.toLocaleDateString([], { month: 'short', day: 'numeric' })} • 
-                        {event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                        {event.start?.toLocaleDateString([], { month: 'short', day: 'numeric' })} • 
+                        {event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
                       </div>
                     </div>
                   );
@@ -1563,6 +1563,15 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
   const now = new Date();
   const isToday = currentDate.toDateString() === now.toDateString();
   
+  // Filter events for the current day
+  const dayEvents = useMemo(() => {
+    return events.filter(event => {
+      if (!event?.start) return false;
+      const eventDate = new Date(event.start);
+      return eventDate.toDateString() === currentDate.toDateString();
+    });
+  }, [events, currentDate]);
+  
   return (
     <div style={{
       maxWidth: 800,
@@ -1626,7 +1635,8 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
           const hourEnd = new Date(hourStart);
           hourEnd.setHours(hour + 1, 0, 0, 0);
           
-          const hourEvents = events.filter(event => {
+          const hourEvents = dayEvents.filter(event => {
+            if (!event?.start || !event?.end) return false;
             const eventStart = new Date(event.start);
             const eventEnd = new Date(event.end);
             return eventStart < hourEnd && eventEnd > hourStart;
@@ -1671,7 +1681,7 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
               {/* Events for this hour */}
               <div style={{ position: "relative", zIndex: 1 }}>
                 {hourEvents.map(event => {
-                  const tag = tags.find(t => t.id === event.category) || tags[0];
+                  const tag = tags.find(t => t.id === event.category) || tags[0] || {};
                   const isPast = config.blurPast && event.end < now;
                   
                   return (
@@ -1681,8 +1691,8 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
                       style={{
                         marginBottom: 12,
                         cursor: "pointer",
-                        background: config.darkMode ? tag.darkBg : tag.bg,
-                        borderLeft: `3px solid ${tag.color}`,
+                        background: config.darkMode ? (tag.darkBg || theme.hoverBg) : (tag.bg || theme.hoverBg),
+                        borderLeft: `3px solid ${tag.color || theme.accent}`,
                         padding: "16px 20px",
                         borderRadius: 10,
                         opacity: isPast ? 0.5 : 1,
@@ -1705,22 +1715,22 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick }) {
                       <div style={{
                         fontSize: 18,
                         fontWeight: 600,
-                        color: config.darkMode ? '#FAFAFA' : tag.text,
+                        color: config.darkMode ? '#FAFAFA' : (tag.text || theme.text),
                         marginBottom: 4
                       }}>
-                        {event.title}
+                        {event.title || 'Untitled Event'}
                       </div>
                       <div style={{
                         display: "flex",
                         gap: 16,
                         fontSize: 13,
-                        color: config.darkMode ? theme.textSec : tag.text,
+                        color: config.darkMode ? theme.textSec : (tag.text || theme.textSec),
                         alignItems: "center"
                       }}>
                         <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                           <ICONS.Clock width={12} height={12} />
-                          {event.start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} – 
-                          {event.end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                          {event.start?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) || ''} – 
+                          {event.end?.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) || ''}
                         </span>
                         {event.location && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -1761,6 +1771,18 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
   const now = new Date();
   const HOUR_HEIGHT = 60;
   
+  // Group events by day
+  const eventsByDay = useMemo(() => {
+    const grouped = {};
+    days.forEach(day => {
+      const dayStr = day.toDateString();
+      grouped[dayStr] = events.filter(event => 
+        event?.start && new Date(event.start).toDateString() === dayStr
+      );
+    });
+    return grouped;
+  }, [events, days]);
+  
   return (
     <div style={{ display: "flex", height: "100%", overflow: "auto" }}>
       {/* Time column */}
@@ -1796,10 +1818,9 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
       {/* Days columns */}
       <div style={{ flex: 1, display: "flex", overflow: "auto" }}>
         {days.map((day, dayIndex) => {
-          const isToday = day.toDateString() === now.toDateString();
-          const dayEvents = events.filter(event => 
-            event.start.toDateString() === day.toDateString()
-          );
+          const dayStr = day.toDateString();
+          const isToday = dayStr === now.toDateString();
+          const dayEvents = eventsByDay[dayStr] || [];
           
           return (
             <div
@@ -1861,7 +1882,7 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
                 {dayEvents.map(event => {
                   const start = new Date(event.start);
                   const end = new Date(event.end);
-                  const tag = tags.find(t => t.id === event.category) || tags[0];
+                  const tag = tags.find(t => t.id === event.category) || tags[0] || {};
                   
                   const top = (start.getHours() * 60 + start.getMinutes()) * (HOUR_HEIGHT / 60);
                   const height = Math.max(((end - start) / 60000) * (HOUR_HEIGHT / 60), 30);
@@ -1876,8 +1897,8 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
                         right: 4,
                         top: top,
                         height: height,
-                        background: config.darkMode ? tag.darkBg : tag.bg,
-                        borderLeft: `3px solid ${tag.color}`,
+                        background: config.darkMode ? (tag.darkBg || theme.hoverBg) : (tag.bg || theme.hoverBg),
+                        borderLeft: `3px solid ${tag.color || theme.accent}`,
                         borderRadius: 8,
                         padding: "8px 10px",
                         overflow: "hidden",
@@ -1900,14 +1921,14 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
                       <div style={{
                         fontSize: 12,
                         fontWeight: 600,
-                        color: config.darkMode ? '#FAFAFA' : tag.text,
+                        color: config.darkMode ? '#FAFAFA' : (tag.text || theme.text),
                         marginBottom: 2
                       }}>
-                        {event.title}
+                        {event.title || 'Untitled Event'}
                       </div>
                       <div style={{
                         fontSize: 10,
-                        color: config.darkMode ? theme.textSec : tag.text,
+                        color: config.darkMode ? theme.textSec : (tag.text || theme.textSec),
                         opacity: 0.9
                       }}>
                         {start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
@@ -1984,7 +2005,7 @@ function MonthView({ currentDate, events, theme, config, onDayClick, onEventClic
   
   const getDayEvents = (date) => {
     return events.filter(event => 
-      event.start.toDateString() === date.toDateString()
+      event?.start && new Date(event.start).toDateString() === date.toDateString()
     );
   };
   
@@ -2112,7 +2133,7 @@ function MonthView({ currentDate, events, theme, config, onDayClick, onEventClic
                       e.currentTarget.style.transform = "translateX(0)";
                     }}
                   >
-                    {event.title}
+                    {event.title || 'Untitled Event'}
                   </div>
                 ))}
                 
@@ -2164,28 +2185,31 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
   const today = new Date();
   
   // Initialize months grid
-  const months = Array.from({ length: 12 }, (_, i) => {
-    const monthDate = new Date(year, i, 1);
-    const monthEvents = events.filter(event => 
-      event.start.getFullYear() === year && 
-      event.start.getMonth() === i
-    );
-    
-    // Group events by day
-    const eventsByDay = {};
-    monthEvents.forEach(event => {
-      const day = event.start.getDate();
-      if (!eventsByDay[day]) eventsByDay[day] = [];
-      eventsByDay[day].push(event);
+  const months = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const monthDate = new Date(year, i, 1);
+      const monthEvents = events.filter(event => 
+        event?.start && 
+        event.start.getFullYear() === year && 
+        event.start.getMonth() === i
+      );
+      
+      // Group events by day
+      const eventsByDay = {};
+      monthEvents.forEach(event => {
+        const day = event.start.getDate();
+        if (!eventsByDay[day]) eventsByDay[day] = [];
+        eventsByDay[day].push(event);
+      });
+      
+      return {
+        date: monthDate,
+        name: monthDate.toLocaleDateString('en-US', { month: 'short' }),
+        events: monthEvents,
+        eventsByDay
+      };
     });
-    
-    return {
-      date: monthDate,
-      name: monthDate.toLocaleDateString('en-US', { month: 'short' }),
-      events: monthEvents,
-      eventsByDay
-    };
-  });
+  }, [year, events]);
   
   const handleDragStart = (event, e) => {
     e.preventDefault();
@@ -2301,7 +2325,7 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
                         height: 20,
                         borderRadius: "50%",
                         background: isToday ? theme.accent : 
-                                  dayHasEvents ? eventColor + "20" : "transparent",
+                                  dayHasEvents ? (eventColor + "20") : "transparent",
                         border: isToday ? `1px solid ${theme.accent}` : 
                                dayHasEvents ? `1px solid ${eventColor}40` : `1px solid ${theme.border}`,
                         color: isToday ? "#fff" : 
@@ -2329,7 +2353,7 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
                         <div
                           className="year-event-dot"
                           style={{
-                            background: eventColor,
+                            background: eventColor || theme.accent,
                             position: "absolute",
                             bottom: -3,
                             right: -3,
@@ -2338,7 +2362,9 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
                           }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onEventClick(dayEvents[0]);
+                            if (dayEvents[0]) {
+                              onEventClick(dayEvents[0]);
+                            }
                           }}
                         />
                       )}
@@ -2400,14 +2426,14 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
                           color: theme.textMuted,
                           minWidth: 24
                         }}>
-                          {event.start.getDate()}
+                          {event.start?.getDate() || ''}
                         </div>
                         <div style={{
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap"
                         }}>
-                          {event.title}
+                          {event.title || 'Untitled Event'}
                         </div>
                       </div>
                     );
@@ -2474,7 +2500,7 @@ function YearView({ currentDate, events, theme, config, tags, context, accentCol
               color: context === 'family' ? theme.familyAccent : theme.accent,
               marginBottom: 4
             }}>
-              {new Set(events.map(e => e.category)).size}
+              {new Set(events.map(e => e.category).filter(Boolean)).size}
             </div>
             <div style={{
               fontSize: 12,
@@ -2601,7 +2627,7 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
   
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSave(form);
+    onSave({ ...form, id: event?.id });
   };
   
   const handleChange = (field, value) => {
@@ -3106,13 +3132,13 @@ function SettingsModal({ config, setConfig, theme, onClose, user }) {
                   color: theme.text,
                   marginBottom: 4
                 }}>
-                  {user?.displayName}
+                  {user?.displayName || 'User'}
                 </div>
                 <div style={{
                   fontSize: 12,
                   color: theme.textSec
                 }}>
-                  {user?.email}
+                  {user?.email || 'No email'}
                 </div>
               </div>
               <button
@@ -3270,7 +3296,7 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
                       color: theme.text,
                       marginBottom: 4
                     }}>
-                      {event.title}
+                      {event.title || 'Untitled Event'}
                     </div>
                     <div style={{
                       fontSize: 12,
@@ -3279,7 +3305,7 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
                       gap: 12
                     }}>
                       <span>
-                        {event.start.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' })}
+                        {event.start?.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) || 'No date'}
                       </span>
                       <span>
                         Deleted: {event.deletedAt?.toDate().toLocaleDateString() || 'Recently'}
