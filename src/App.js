@@ -22,7 +22,8 @@ const LAYOUT = {
   HEADER_HEIGHT: 84,
   PIXELS_PER_MINUTE: 2.2, 
   SNAP_MINUTES: 15,
-  YEAR_COLS: 38 
+  YEAR_COLS: 38,
+  LINEAR_YEAR_DAY_WIDTH: 2 // pixels per day in linear view
 };
 
 const QUOTES = [
@@ -40,26 +41,28 @@ const QUOTES = [
 // ==========================================
 
 const ICONS = {
-  Settings: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
-  Trash: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
-  Plus: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
-  ChevronLeft: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-  ChevronRight: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
-  Close: () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-  Calendar: () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
-  Clock: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-  MapPin: () => <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+  Settings: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.09a2 2 0 0 1-1-1.74v-.51a2 2 0 0 1 1-1.72l.15-.1a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>,
+  Trash: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>,
+  Plus: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+  ChevronLeft: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+  ChevronRight: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+  Close: ({...props}) => <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+  Calendar: ({...props}) => <svg {...props} width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>,
+  Clock: ({...props}) => <svg {...props} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+  MapPin: ({...props}) => <svg {...props} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+  Finance: ({...props}) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>,
+  Health: ({...props}) => <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
 };
 
 const PALETTE = {
-  onyx: { bg: "#27272a", text: "#f4f4f5", border: "#52525b", color: "#71717a" },
-  ceramic: { bg: "#f5f5f4", text: "#44403c", border: "#d6d3d1", color: "#78716c" },
-  gold: { bg: "#fffbeb", text: "#92400e", border: "#fcd34d", color: "#f59e0b" },
-  emerald: { bg: "#ecfdf5", text: "#065f46", border: "#6ee7b7", color: "#10b981" },
-  rose: { bg: "#fff1f2", text: "#9f1239", border: "#fda4af", color: "#f43f5e" },
-  midnight: { bg: "#eff6ff", text: "#1e3a8a", border: "#93c5fd", color: "#3b82f6" },
-  lavender: { bg: "#fdf4ff", text: "#86198f", border: "#f0abfc", color: "#d946ef" },
-  clay: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74", color: "#f97316" }
+  onyx: { bg: "#27272a", text: "#f4f4f5", border: "#52525b", color: "#27272a", darkBg: "#18181b" },
+  ceramic: { bg: "#f5f5f4", text: "#44403c", border: "#d6d3d1", color: "#f5f5f4", darkBg: "#292524" },
+  gold: { bg: "#fffbeb", text: "#92400e", border: "#fcd34d", color: "#fffbeb", darkBg: "#78350f" },
+  emerald: { bg: "#ecfdf5", text: "#065f46", border: "#6ee7b7", color: "#ecfdf5", darkBg: "#064e3b" },
+  rose: { bg: "#fff1f2", text: "#9f1239", border: "#fda4af", color: "#fff1f2", darkBg: "#881337" },
+  midnight: { bg: "#eff6ff", text: "#1e3a8a", border: "#93c5fd", color: "#eff6ff", darkBg: "#1e3a8a" },
+  lavender: { bg: "#fdf4ff", text: "#86198f", border: "#f0abfc", color: "#fdf4ff", darkBg: "#86198f" },
+  clay: { bg: "#fff7ed", text: "#9a3412", border: "#fdba74", color: "#fff7ed", darkBg: "#7c2d12" }
 };
 
 const THEMES = {
@@ -99,18 +102,14 @@ const THEMES = {
   }
 };
 
-const DEFAULT_TAGS = {
-  personal: [
-    { id: 'work', name: "Business", ...PALETTE.onyx },
-    { id: 'health', name: "Wellness", ...PALETTE.rose },
-    { id: 'finance', name: "Finance", ...PALETTE.emerald },
-  ],
-  family: [
-    { id: 'family-events', name: "Events", ...PALETTE.midnight },
-    { id: 'kids', name: "Kids", ...PALETTE.lavender },
-    { id: 'household', name: "Household", ...PALETTE.clay },
-  ]
-};
+const DEFAULT_TAGS = [
+  { id: 'work',    name: "Business", ...PALETTE.onyx },
+  { id: 'health',  name: "Wellness", ...PALETTE.rose },
+  { id: 'finance', name: "Finance",  ...PALETTE.emerald },
+  { id: 'personal',name: "Personal", ...PALETTE.midnight },
+  { id: 'family',  name: "Family",   ...PALETTE.gold },
+  { id: 'travel',  name: "Travel",   ...PALETTE.lavender }
+];
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap');
@@ -124,6 +123,7 @@ const CSS = `
   .fade-enter { animation: fadeIn 0.5s var(--ease) forwards; }
   @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
   .glass-panel { backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+  .past-event { filter: grayscale(1) opacity(0.5); transition: 0.3s; pointer-events: none; }
   .btn-reset { border: none; background: transparent; cursor: pointer; color: inherit; font-family: inherit; display: flex; align-items: center; justify-content: center; }
   .btn-hover:hover { transform: translateY(-1px); transition: transform 0.2s; }
   .tab-pill { padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: 500; transition: 0.3s var(--ease); }
@@ -146,6 +146,15 @@ const CSS = `
   .event-card-journal { transition: all 0.3s var(--ease); border-left-width: 3px; border-left-style: solid; }
   .event-card-journal:hover { transform: translateX(4px); box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
 
+  /* Linear Year View */
+  .linear-year-container { position: relative; height: 100%; }
+  .linear-year-timeline { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  .linear-year-day { position: absolute; height: 30px; border-right: 1px solid rgba(0,0,0,0.1); pointer-events: none; }
+  .linear-year-event { position: absolute; cursor: move; transition: all 0.2s ease; border-radius: 3px; overflow: hidden; }
+  .linear-year-event:hover { transform: scale(1.02); z-index: 10 !important; box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+  .linear-year-event.dragging { opacity: 0.8; z-index: 100 !important; cursor: grabbing; }
+  .linear-year-event-content { padding: 2px 4px; font-size: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
   /* Settings UI */
   .settings-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
   .settings-label { font-size: 14px; font-weight: 500; }
@@ -162,11 +171,6 @@ const CSS = `
   .switch-track.active { background: #3B82F6; }
   .switch-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; position: absolute; top: 2px; left: 2px; transition: 0.3s var(--ease); box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
   .switch-track.active .switch-thumb { transform: translateX(20px); }
-
-  /* Year View Event Dots */
-  .year-event-dot { position: absolute; width: 4px; height: 4px; border-radius: 50%; cursor: pointer; transition: all 0.2s; }
-  .year-event-dot:hover { transform: scale(1.5); z-index: 10; }
-  .year-day-cell { position: relative; }
 `;
 
 // ==========================================
@@ -182,19 +186,14 @@ export default function TimelineOS() {
   const [context, setContext] = useState("personal");
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
-  
-  const [tags, setTags] = useState(() => {
-    const saved = localStorage.getItem('timeline_tags_v3');
-    return saved ? JSON.parse(saved) : DEFAULT_TAGS;
-  });
-  
-  const [activeTagIds, setActiveTagIds] = useState(() => {
-    const currentTags = tags[context] || [];
-    return currentTags.map(t => t.id);
-  });
-  
+  const [tags, setTags] = useState(() => JSON.parse(localStorage.getItem('timeline_tags_v2')) || DEFAULT_TAGS);
+  const [activeTagIds, setActiveTagIds] = useState(tags.map(t => t.id));
   const [quote, setQuote] = useState(QUOTES[0]);
-  const [draggedEvent, setDraggedEvent] = useState(null);
+  
+  // Drag state for linear year view
+  const [draggingEvent, setDraggingEvent] = useState(null);
+  const [dragStartPos, setDragStartPos] = useState({ x: 0, y: 0 });
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -208,6 +207,7 @@ export default function TimelineOS() {
   });
 
   const scrollRef = useRef(null);
+  const linearYearRef = useRef(null);
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
 
   useEffect(() => {
@@ -223,13 +223,7 @@ export default function TimelineOS() {
   }, []);
 
   useEffect(() => localStorage.setItem('timeline_v4_cfg', JSON.stringify(config)), [config]);
-  useEffect(() => localStorage.setItem('timeline_tags_v3', JSON.stringify(tags)), [tags]);
-
-  // Update active tags when context changes
-  useEffect(() => {
-    const currentTags = tags[context] || [];
-    setActiveTagIds(currentTags.map(t => t.id));
-  }, [context, tags]);
+  useEffect(() => localStorage.setItem('timeline_tags_v2', JSON.stringify(tags)), [tags]);
 
   // Scroll logic
   useEffect(() => {
@@ -254,50 +248,54 @@ export default function TimelineOS() {
     if(!user) return;
     try {
       const payload = {
-        uid: user.uid, title: data.title, category: data.category, context: context, description: data.description || "", location: data.location || "",
-        startTime: Timestamp.fromDate(data.start), endTime: Timestamp.fromDate(data.end), deleted: false, updatedAt: serverTimestamp()
+        uid: user.uid, 
+        title: data.title, 
+        category: data.category, 
+        context: context, 
+        description: data.description || "", 
+        location: data.location || "",
+        startTime: Timestamp.fromDate(data.start), 
+        endTime: Timestamp.fromDate(data.end), 
+        deleted: false, 
+        updatedAt: serverTimestamp()
       };
-      if(data.id) await updateDoc(doc(db, "events", data.id), payload);
-      else { payload.createdAt = serverTimestamp(); await addDoc(collection(db, "events"), payload); }
-      setModalOpen(false); loadData(user); notify("Event saved.");
+      if(data.id) {
+        await updateDoc(doc(db, "events", data.id), payload);
+      } else { 
+        payload.createdAt = serverTimestamp(); 
+        await addDoc(collection(db, "events"), payload); 
+      }
+      setModalOpen(false); 
+      loadData(user); 
+      notify("Event saved.");
     } catch(e) { notify("Save failed.", "error"); }
   };
 
   const softDelete = async (id) => {
     if(!window.confirm("Move to trash?")) return;
-    try { await updateDoc(doc(db, "events", id), { deleted: true, deletedAt: serverTimestamp() }); setModalOpen(false); loadData(user); notify("Moved to trash."); } 
-    catch(e) { notify("Delete failed.", "error"); }
+    try { 
+      await updateDoc(doc(db, "events", id), { deleted: true, deletedAt: serverTimestamp() }); 
+      setModalOpen(false); 
+      loadData(user); 
+      notify("Moved to trash."); 
+    } catch(e) { notify("Delete failed.", "error"); }
   };
 
   const restoreEvent = async (id) => {
-    try { await updateDoc(doc(db, "events", id), { deleted: false }); loadData(user); notify("Event restored."); } catch(e) {}
+    try { 
+      await updateDoc(doc(db, "events", id), { deleted: false }); 
+      loadData(user); 
+      notify("Event restored."); 
+    } catch(e) {}
   };
 
   const hardDelete = async (id) => {
     if(!window.confirm("Permanently destroy?")) return;
-    try { await deleteDoc(doc(db, "events", id)); loadData(user); notify("Permanently deleted."); } catch(e) {}
-  };
-
-  const handleEventDrag = async (eventId, newDate) => {
-    const event = events.find(e => e.id === eventId);
-    if (!event) return;
-
-    const duration = event.end - event.start;
-    const newStart = new Date(newDate);
-    newStart.setHours(event.start.getHours(), event.start.getMinutes());
-    const newEnd = new Date(newStart.getTime() + duration);
-
-    try {
-      await updateDoc(doc(db, "events", eventId), {
-        startTime: Timestamp.fromDate(newStart),
-        endTime: Timestamp.fromDate(newEnd),
-        updatedAt: serverTimestamp()
-      });
-      loadData(user);
-      notify("Event moved.");
-    } catch(e) {
-      notify("Move failed.", "error");
-    }
+    try { 
+      await deleteDoc(doc(db, "events", id)); 
+      loadData(user); 
+      notify("Permanently deleted."); 
+    } catch(e) {}
   };
 
   const notify = (msg, type='neutral') => {
@@ -306,8 +304,20 @@ export default function TimelineOS() {
     setTimeout(() => setNotifications(p => p.filter(n => n.id !== id)), 4000);
   };
 
-  const currentTags = tags[context] || [];
-  const filteredEvents = useMemo(() => events.filter(e => e.context === context && activeTagIds.includes(e.category)), [events, context, activeTagIds]);
+  // Filter events based on context and active tags
+  const filteredEvents = useMemo(() => 
+    events.filter(e => e.context === context && activeTagIds.includes(e.category)), 
+    [events, context, activeTagIds]
+  );
+
+  // Calculate upcoming events for the sidebar
+  const upcomingEvents = useMemo(() => 
+    events
+      .filter(e => e.context === context && e.start > now && !e.deleted)
+      .sort((a,b) => a.start - b.start)
+      .slice(0, 3), 
+    [events, now, context]
+  );
 
   const nav = (amt) => {
     const d = new Date(currentDate);
@@ -317,6 +327,72 @@ export default function TimelineOS() {
     else d.setDate(d.getDate() + amt);
     setCurrentDate(d);
   };
+
+  // Linear Year View Drag Handlers
+  const handleDragStart = (event, eventId) => {
+    if (viewMode !== 'linear-year') return;
+    setDraggingEvent(eventId);
+    setDragStartPos({ x: event.clientX, y: event.clientY });
+    setDragOffset({ x: 0, y: 0 });
+    
+    // Prevent text selection during drag
+    event.preventDefault();
+  };
+
+  const handleDragMove = useCallback((e) => {
+    if (!draggingEvent || !linearYearRef.current) return;
+    
+    const rect = linearYearRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left - dragStartPos.x;
+    const y = e.clientY - rect.top - dragStartPos.y;
+    
+    setDragOffset({ x, y });
+  }, [draggingEvent, dragStartPos]);
+
+  const handleDragEnd = async () => {
+    if (!draggingEvent || !linearYearRef.current) return;
+    
+    const draggedEvent = events.find(e => e.id === draggingEvent);
+    if (!draggedEvent) return;
+    
+    const daysOffset = Math.round(dragOffset.x / LAYOUT.LINEAR_YEAR_DAY_WIDTH);
+    
+    if (daysOffset !== 0) {
+      const newStart = new Date(draggedEvent.start);
+      newStart.setDate(newStart.getDate() + daysOffset);
+      
+      const newEnd = new Date(draggedEvent.end);
+      newEnd.setDate(newEnd.getDate() + daysOffset);
+      
+      try {
+        await updateDoc(doc(db, "events", draggingEvent), {
+          startTime: Timestamp.fromDate(newStart),
+          endTime: Timestamp.fromDate(newEnd),
+          updatedAt: serverTimestamp()
+        });
+        
+        loadData(user);
+        notify(`Event moved ${daysOffset} day${Math.abs(daysOffset) !== 1 ? 's' : ''}`);
+      } catch (e) {
+        notify("Move failed.", "error");
+      }
+    }
+    
+    setDraggingEvent(null);
+    setDragOffset({ x: 0, y: 0 });
+  };
+
+  // Add event listeners for drag
+  useEffect(() => {
+    if (draggingEvent) {
+      document.addEventListener('mousemove', handleDragMove);
+      document.addEventListener('mouseup', handleDragEnd);
+      return () => {
+        document.removeEventListener('mousemove', handleDragMove);
+        document.removeEventListener('mouseup', handleDragEnd);
+      };
+    }
+  }, [draggingEvent, handleDragMove]);
 
   if (!user) return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
 
@@ -341,7 +417,28 @@ export default function TimelineOS() {
 
         {/* Mini Calendar */}
         <div style={{ marginBottom: 24, paddingBottom: 24, borderBottom: `1px solid ${theme.border}` }}>
-           <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} config={config} />
+           <MiniCalendar currentDate={currentDate} setCurrentDate={setCurrentDate} theme={theme} />
+        </div>
+
+        {/* Upcoming Events */}
+        <div style={{ marginBottom: 24 }}>
+          <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Upcoming</h4>
+          {upcomingEvents.length === 0 ? (
+            <div style={{ fontSize: 12, color: theme.textMuted, textAlign: 'center', padding: '12px' }}>No upcoming events</div>
+          ) : (
+            upcomingEvents.map(ev => {
+              const tag = tags.find(t => t.id === ev.category) || tags[0];
+              return (
+                <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className="btn-hover" style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", marginBottom: 6, borderRadius: 8, background: theme.card, cursor: "pointer", border: `1px solid ${theme.border}` }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: tag.color || tag.text }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600 }}>{ev.title}</div>
+                    <div style={{ fontSize: 10, color: theme.textMuted }}>{ev.start.toLocaleDateString([], { month: 'short', day: 'numeric' })}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Tags */}
@@ -350,11 +447,11 @@ export default function TimelineOS() {
              <h4 style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: "uppercase", letterSpacing: 1 }}>Tags</h4>
              <button onClick={() => setTagManagerOpen(true)} className="btn-reset btn-hover" style={{ color: theme.textSec }}><ICONS.Settings /></button>
           </div>
-          {currentTags.map(t => (
+          {tags.map(t => (
             <div key={t.id} onClick={() => setActiveTagIds(prev => prev.includes(t.id) ? prev.filter(x => x !== t.id) : [...prev, t.id])}
               className="btn-hover"
               style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0", cursor: "pointer", opacity: activeTagIds.includes(t.id) ? 1 : 0.5 }}>
-              <div style={{ width: 10, height: 10, borderRadius: "50%", background: t.color }} />
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: theme.id === 'dark' ? t.color : t.text }} />
               <span style={{ fontSize: 13, fontWeight: 500 }}>{t.name}</span>
             </div>
           ))}
@@ -377,7 +474,9 @@ export default function TimelineOS() {
         {/* Header */}
         <header style={{ height: LAYOUT.HEADER_HEIGHT, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 40px", borderBottom: `1px solid ${theme.border}`, background: theme.bg }}>
           <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>{viewMode === 'year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}</h2>
+            <h2 className="serif" style={{ fontSize: 32, fontWeight: 500 }}>
+              {viewMode === 'year' || viewMode === 'linear-year' ? currentDate.getFullYear() : currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h2>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={() => nav(-1)} className="btn-reset btn-hover" style={{ width: 36, height: 36, borderRadius: 18, border: `1px solid ${theme.border}` }}><ICONS.ChevronLeft/></button>
               <button onClick={() => setCurrentDate(new Date())} className="btn-reset btn-hover" style={{ padding: "0 20px", height: 36, borderRadius: 18, border: `1px solid ${theme.border}`, fontSize: 13, fontWeight: 500 }}>Today</button>
@@ -385,8 +484,10 @@ export default function TimelineOS() {
             </div>
           </div>
           <div style={{ display: "flex", background: theme.sidebar, padding: 4, borderRadius: 12 }}>
-            {['day', 'week', 'month', 'year'].map(m => (
-              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>{m}</button>
+            {['day', 'week', 'month', 'year', 'linear-year'].map(m => (
+              <button key={m} onClick={() => setViewMode(m)} className={`btn-reset tab-pill ${viewMode===m?'active':''}`} style={{ background: viewMode===m ? theme.card : 'transparent', color: viewMode===m ? theme.text : theme.textMuted, textTransform: "capitalize" }}>
+                {m.replace('-', ' ')}
+              </button>
             ))}
           </div>
         </header>
@@ -397,7 +498,7 @@ export default function TimelineOS() {
           {viewMode === 'day' && (
             <div className="fade-enter" style={{ padding: "40px 80px", maxWidth: 900, margin: "0 auto" }}>
               <div style={{ marginBottom: 60 }}>
-                <div style={{ fontSize: 14, fontWeight: 700, color: context === 'family' ? theme.familyAccent : theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: theme.accent, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 8 }}>{currentDate.toLocaleDateString('en-US', {weekday:'long'})}</div>
                 <h1 className="serif" style={{ fontSize: 64, fontWeight: 500, color: theme.text }}>{currentDate.toDateString() === now.toDateString() ? "Today's Agenda" : currentDate.toLocaleDateString('en-US', {month:'long', day:'numeric'})}</h1>
               </div>
               <div style={{ position: "relative", borderLeft: `1px solid ${theme.manifestoLine}`, paddingLeft: 40 }}>
@@ -410,10 +511,10 @@ export default function TimelineOS() {
                       <div style={{ position: "absolute", left: -46, top: 4, width: 11, height: 11, borderRadius: "50%", background: theme.bg, border: `2px solid ${theme.textSec}` }} />
                       <div>
                         {slotEvents.map(ev => {
-                          const tag = currentTags.find(t => t.id === ev.category) || currentTags[0];
+                          const tag = tags.find(t => t.id === ev.category) || tags[0];
                           const isPast = config.blurPast && ev.end < now;
                           return (
-                            <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`event-card-journal ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 16, cursor: "pointer", background: tag.bg, borderLeftColor: tag.color, padding: "20px 24px", borderRadius: 12, opacity: isPast ? 0.5 : 1 }}>
+                            <div key={ev.id} onClick={() => { setEditingEvent(ev); setModalOpen(true); }} className={`event-card-journal ${isPast ? 'past-event' : ''}`} style={{ marginBottom: 16, cursor: "pointer", background: config.darkMode ? tag.darkBg : tag.bg, borderLeftColor: tag.color, padding: "20px 24px", borderRadius: 12 }}>
                               <div style={{ fontSize: 22, fontWeight: 500, color: theme.text, fontFamily: 'Playfair Display', marginBottom: 4 }}>{ev.title}</div>
                               <div style={{ display: "flex", gap: 16, fontSize: 13, color: theme.textSec, alignItems: "center" }}>
                                 <span style={{display:'flex', alignItems:'center', gap:6}}><ICONS.Clock/> {ev.start.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})} — {ev.end.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}</span>
@@ -422,7 +523,7 @@ export default function TimelineOS() {
                             </div>
                           );
                         })}
-                        {slotEvents.length === 0 && <div style={{ height: 60, cursor: "pointer" }} onClick={() => { const s = new Date(currentDate); s.setHours(h,0,0,0); setEditingEvent({ start: s, end: new Date(s.getTime()+3600000), title: "", category: currentTags[0].id }); setModalOpen(true); }} />}
+                        {slotEvents.length === 0 && <div style={{ height: 60, cursor: "pointer" }} onClick={() => { const s = new Date(currentDate); s.setHours(h,0,0,0); setEditingEvent({ start: s, end: new Date(s.getTime()+3600000), title: "", category: tags[0].id }); setModalOpen(true); }} />}
                       </div>
                     </div>
                   );
@@ -431,25 +532,66 @@ export default function TimelineOS() {
             </div>
           )}
 
-          {/* YEAR VIEW WITH EVENTS */}
+          {/* TRADITIONAL YEAR VIEW */}
           {viewMode === 'year' && (
-            <YearView 
-              currentDate={currentDate} 
-              events={filteredEvents} 
-              theme={theme} 
-              config={config} 
-              tags={currentTags}
-              context={context}
-              onDayClick={(d) => { setCurrentDate(d); setViewMode('day'); }}
+            <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
+              <div style={{ minWidth: 1200 }}>
+                <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
+                  {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
+                    <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
+                  ))}
+                </div>
+                {Array.from({length: 12}).map((_, m) => {
+                  const monthStart = new Date(currentDate.getFullYear(), m, 1);
+                  const daysInMonth = new Date(currentDate.getFullYear(), m+1, 0).getDate();
+                  let offset = monthStart.getDay(); if(config.weekStartMon) offset = offset===0 ? 6 : offset-1;
+                  return (
+                    <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 8, height: 36 }}>
+                      <div className="serif" style={{ width: 100, fontSize: 14, fontWeight: 600, color: theme.textSec }}>{monthStart.toLocaleDateString('en-US',{month:'short'})}</div>
+                      <div style={{ flex: 1, display: "flex", gap: 2 }}>
+                        {Array.from({length: LAYOUT.YEAR_COLS}).map((_, col) => {
+                          const dayNum = col - offset + 1;
+                          if(dayNum < 1 || dayNum > daysInMonth) return <div key={col} style={{ flex: 1 }} />;
+                          const d = new Date(currentDate.getFullYear(), m, dayNum);
+                          const isT = d.toDateString() === now.toDateString();
+                          const hasEv = events.some(e => e.start.toDateString() === d.toDateString() && e.context === context);
+                          return (
+                            <div key={col} onClick={() => { setCurrentDate(d); setViewMode('day'); }}
+                              style={{ 
+                                flex: 1, height: 32, borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, cursor: "pointer",
+                                background: isT ? theme.accent : hasEv ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
+                                color: isT ? "#fff" : hasEv ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
+                                border: isT ? `1px solid ${theme.accent}` : "none", fontWeight: isT ? 700 : 400
+                              }}>{dayNum}</div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* LINEAR YEAR VIEW */}
+          {viewMode === 'linear-year' && (
+            <LinearYearView 
+              ref={linearYearRef}
+              currentDate={currentDate}
+              events={filteredEvents}
+              tags={tags}
+              theme={theme}
+              config={config}
+              draggingEvent={draggingEvent}
+              dragOffset={dragOffset}
               onEventClick={(ev) => { setEditingEvent(ev); setModalOpen(true); }}
-              onEventDrag={handleEventDrag}
-              draggedEvent={draggedEvent}
-              setDraggedEvent={setDraggedEvent}
+              onEventDragStart={handleDragStart}
+              onEventDrop={() => setDraggingEvent(null)}
             />
           )}
 
           {/* WEEK VIEW */}
-          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={currentTags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: currentTags[0].id}); setModalOpen(true); }} onEventClick={(ev) => { setEditingEvent(ev); setModalOpen(true); }} />}
+          {viewMode === 'week' && <WeekView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} tags={tags} onNew={(s,e) => { setEditingEvent({start:s, end:e, title:"", category: tags[0].id}); setModalOpen(true); }} />}
           
           {/* MONTH VIEW */}
           {viewMode === 'month' && <MonthView currentDate={currentDate} events={filteredEvents} theme={theme} config={config} setCurrentDate={setCurrentDate} setViewMode={setViewMode} />}
@@ -458,9 +600,9 @@ export default function TimelineOS() {
 
       {/* MODALS */}
       {settingsOpen && <SettingsModal config={config} setConfig={setConfig} theme={theme} onClose={() => setSettingsOpen(false)} />}
-      {modalOpen && <EventEditor event={editingEvent} theme={theme} tags={currentTags} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} config={config} />}
+      {modalOpen && <EventEditor event={editingEvent} theme={theme} tags={tags} onSave={handleSave} onDelete={editingEvent?.id ? () => softDelete(editingEvent.id) : null} onCancel={() => setModalOpen(false)} />}
       {trashOpen && <TrashModal events={deletedEvents} theme={theme} onClose={() => setTrashOpen(false)} onRestore={(id) => restoreEvent(id)} onDelete={(id) => hardDelete(id)} />}
-      {tagManagerOpen && <TagManager tags={tags} setTags={setTags} theme={theme} context={context} onClose={() => setTagManagerOpen(false)} />}
+      {tagManagerOpen && <TagManager tags={tags} setTags={setTags} theme={theme} onClose={() => setTagManagerOpen(false)} />}
 
       <div style={{ position: "fixed", bottom: 24, right: 24, zIndex: 200, display: "flex", flexDirection: "column", gap: 10 }}>{notifications.map(n => (<div key={n.id} className="fade-enter" style={{ padding: "12px 24px", background: n.type==='error' ? theme.indicator : theme.card, color: n.type==='error' ? '#fff' : theme.text, borderRadius: 8, boxShadow: "0 10px 40px rgba(0,0,0,0.2)", fontSize: 13, fontWeight: 600 }}>{n.msg}</div>))}</div>
     </div>
@@ -471,32 +613,33 @@ export default function TimelineOS() {
 // 4. SUB-COMPONENTS & UTILS
 // ==========================================
 
-function MiniCalendar({ currentDate, setCurrentDate, theme, config }) {
-  const days = config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"];
+function MiniCalendar({ currentDate, setCurrentDate, theme }) {
+  const days = ["S","M","T","W","T","F","S"];
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  let startDay = startOfMonth.getDay();
-  if (config.weekStartMon) startDay = startDay === 0 ? 6 : startDay - 1;
+  const startDay = startOfMonth.getDay();
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
   const today = new Date();
 
   return (
     <div>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:12}}>
-        <span style={{fontSize:13, fontWeight:600, color: theme.text}}>{currentDate.toLocaleDateString('en-US', {month:'long', year:'numeric'})}</span>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+        <span style={{ fontSize: 14, fontWeight: 600, color: theme.text }}>
+          {currentDate.toLocaleDateString('en-US', {month:'long', year:'numeric'})}
+        </span>
         <div style={{display:'flex', gap:4}}>
           <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()-1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronLeft/></button>
           <button onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth()+1, 1))} className="btn-reset" style={{color: theme.textSec}}><ICONS.ChevronRight/></button>
         </div>
       </div>
       <div className="mini-cal-grid">
-        {days.map(d => <div key={d} style={{fontSize:10, color:theme.textMuted, fontWeight:700}}>{d}</div>)}
+        {days.map(d => <div key={d} style={{fontSize:10, color:theme.textMuted}}>{d}</div>)}
         {Array.from({length:startDay}).map((_,i) => <div key={`e-${i}`} />)}
         {Array.from({length:daysInMonth}).map((_,i) => {
           const day = i+1;
           const isToday = today.getDate() === day && today.getMonth() === currentDate.getMonth() && today.getFullYear() === currentDate.getFullYear();
-          const isSelected = currentDate.getDate() === day;
+          const isSelected = currentDate.getDate() === day && currentDate.getMonth() === currentDate.getMonth();
           return (
-            <div key={day} className={`mini-cal-day ${isSelected?'active':''}`} onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))} style={{background: isToday && !isSelected ? 'rgba(217, 119, 6, 0.2)' : undefined}}>
+            <div key={day} className={`mini-cal-day ${isSelected?'active':''} ${isToday?'today':''}`} onClick={() => setCurrentDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), day))}>
               {day}
             </div>
           )
@@ -506,97 +649,180 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config }) {
   );
 }
 
-function YearView({ currentDate, events, theme, config, tags, context, onDayClick, onEventClick, onEventDrag, draggedEvent, setDraggedEvent }) {
-  const now = new Date();
+const LinearYearView = React.forwardRef(({ 
+  currentDate, 
+  events, 
+  tags, 
+  theme, 
+  config, 
+  draggingEvent, 
+  dragOffset, 
+  onEventClick, 
+  onEventDragStart, 
+  onEventDrop 
+}, ref) => {
   
-  const handleDragStart = (e, event) => {
-    e.stopPropagation();
-    setDraggedEvent(event);
+  const totalDays = isLeapYear(currentDate.getFullYear()) ? 366 : 365;
+  const containerWidth = totalDays * LAYOUT.LINEAR_YEAR_DAY_WIDTH;
+  const today = new Date();
+  const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
+  
+  // Calculate day of year for a date
+  const getDayOfYear = (date) => {
+    const start = new Date(date.getFullYear(), 0, 0);
+    const diff = date - start;
+    const oneDay = 1000 * 60 * 60 * 24;
+    return Math.floor(diff / oneDay);
   };
-
-  const handleDragOver = (e) => {
-    e.preventDefault();
-  };
-
-  const handleDrop = (e, date) => {
-    e.preventDefault();
-    if (draggedEvent) {
-      onEventDrag(draggedEvent.id, date);
-      setDraggedEvent(null);
-    }
-  };
+  
+  // Helper to check if year is leap year
+  function isLeapYear(year) {
+    return (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+  }
+  
+  // Position events on timeline
+  const positionedEvents = useMemo(() => {
+    return events.map(event => {
+      const eventStart = new Date(event.start);
+      const eventEnd = new Date(event.end);
+      const startDay = getDayOfYear(eventStart) - 1; // Zero-indexed
+      const endDay = getDayOfYear(eventEnd) - 1;
+      const durationDays = Math.max(1, endDay - startDay + 1);
+      
+      const tag = tags.find(t => t.id === event.category) || tags[0];
+      
+      return {
+        ...event,
+        startDay,
+        durationDays,
+        tag,
+        width: durationDays * LAYOUT.LINEAR_YEAR_DAY_WIDTH,
+        left: startDay * LAYOUT.LINEAR_YEAR_DAY_WIDTH,
+        row: 0 // Simple single row for now
+      };
+    }).sort((a, b) => a.startDay - b.startDay);
+  }, [events, tags]);
+  
+  // Simple row packing algorithm
+  const packedEvents = useMemo(() => {
+    const rows = [];
+    const eventRows = [];
+    
+    positionedEvents.forEach(event => {
+      let placed = false;
+      
+      // Try to place in existing row
+      for (let i = 0; i < rows.length; i++) {
+        const lastEvent = rows[i][rows[i].length - 1];
+        if (!lastEvent || lastEvent.startDay + lastEvent.durationDays <= event.startDay) {
+          rows[i].push(event);
+          eventRows[i] = [...(eventRows[i] || []), event];
+          event.row = i;
+          placed = true;
+          break;
+        }
+      }
+      
+      // Create new row if needed
+      if (!placed) {
+        rows.push([event]);
+        eventRows.push([event]);
+        event.row = rows.length - 1;
+      }
+    });
+    
+    return positionedEvents;
+  }, [positionedEvents]);
 
   return (
-    <div className="fade-enter" style={{ padding: "40px", overflowX: "auto" }}>
-      <div style={{ minWidth: 1200 }}>
-        <div style={{ display: "flex", marginLeft: 100, marginBottom: 16 }}>
-          {Array.from({length: LAYOUT.YEAR_COLS}).map((_,i) => (
-            <div key={i} style={{ flex: 1, textAlign: "center", fontSize: 11, fontWeight: 700, color: theme.textMuted }}>{(config.weekStartMon ? ["M","T","W","T","F","S","S"] : ["S","M","T","W","T","F","S"])[i%7]}</div>
-          ))}
-        </div>
-        {Array.from({length: 12}).map((_, m) => {
-          const monthStart = new Date(currentDate.getFullYear(), m, 1);
-          const daysInMonth = new Date(currentDate.getFullYear(), m+1, 0).getDate();
-          let offset = monthStart.getDay(); 
-          if(config.weekStartMon) offset = offset===0 ? 6 : offset-1;
+    <div className="fade-enter" style={{ padding: "20px 40px", height: "100%" }}>
+      <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 10 }}>
+        Drag events horizontally to move them. Click to edit.
+      </div>
+      <div 
+        ref={ref}
+        className="linear-year-container" 
+        style={{ 
+          height: "calc(100% - 40px)", 
+          overflowX: "auto", 
+          overflowY: "hidden",
+          position: "relative",
+          border: `1px solid ${theme.border}`,
+          borderRadius: 8,
+          background: theme.sidebar
+        }}
+      >
+        {/* Month markers */}
+        {Array.from({length: 12}).map((_, month) => {
+          const monthStart = new Date(currentDate.getFullYear(), month, 1);
+          const daysInMonth = new Date(currentDate.getFullYear(), month + 1, 0).getDate();
+          const startDay = getDayOfYear(monthStart) - 1;
+          const width = daysInMonth * LAYOUT.LINEAR_YEAR_DAY_WIDTH;
           
           return (
-            <div key={m} style={{ display: "flex", alignItems: "center", marginBottom: 8, height: 36 }}>
-              <div className="serif" style={{ width: 100, fontSize: 14, fontWeight: 600, color: theme.textSec }}>{monthStart.toLocaleDateString('en-US',{month:'short'})}</div>
-              <div style={{ flex: 1, display: "flex", gap: 2 }}>
-                {Array.from({length: LAYOUT.YEAR_COLS}).map((_, col) => {
-                  const dayNum = col - offset + 1;
-                  if(dayNum < 1 || dayNum > daysInMonth) return <div key={col} style={{ flex: 1 }} />;
-                  
-                  const d = new Date(currentDate.getFullYear(), m, dayNum);
-                  const isT = d.toDateString() === now.toDateString();
-                  const dayEvents = events.filter(e => e.start.toDateString() === d.toDateString());
-                  
-                  return (
-                    <div 
-                      key={col} 
-                      className="year-day-cell"
-                      onClick={() => onDayClick(d)}
-                      onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, d)}
-                      style={{ 
-                        flex: 1, 
-                        height: 32, 
-                        borderRadius: 4, 
-                        display: "flex", 
-                        alignItems: "center", 
-                        justifyContent: "center", 
-                        fontSize: 11, 
-                        cursor: "pointer",
-                        background: isT ? (context === 'family' ? theme.familyAccent : theme.accent) : dayEvents.length > 0 ? (config.darkMode ? "#1F2937" : "#E5E7EB") : "transparent",
-                        color: isT ? "#fff" : dayEvents.length > 0 ? (config.darkMode ? "#93C5FD" : "#1E40AF") : theme.text,
-                        border: isT ? `1px solid ${context === 'family' ? theme.familyAccent : theme.accent}` : "none", 
-                        fontWeight: isT ? 700 : 400,
-                        position: "relative"
-                      }}
-                    >
-                      {dayNum}
-                      {dayEvents.length > 0 && (
-                        <div style={{ position: "absolute", bottom: 2, left: "50%", transform: "translateX(-50%)", display: "flex", gap: 2 }}>
-                          {dayEvents.slice(0, 3).map(ev => {
-                            const tag = tags.find(t => t.id === ev.category) || tags[0];
-                            return (
-                              <div
-                                key={ev.id}
-                                className="year-event-dot"
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, ev)}
-                                onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
-                                style={{ background: tag.color }}
-                                title={ev.title}
-                              />
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
+            <div key={month} style={{
+              position: "absolute",
+              left: startDay * LAYOUT.LINEAR_YEAR_DAY_WIDTH,
+              top: 0,
+              width: width,
+              height: "100%",
+              borderRight: `1px solid ${theme.border}`,
+              padding: "4px 8px",
+              fontSize: 10,
+              fontWeight: 600,
+              color: theme.textSec,
+              background: month % 2 === 0 ? "transparent" : "rgba(0,0,0,0.02)"
+            }}>
+              {monthStart.toLocaleDateString('en-US', {month: 'short'})}
+            </div>
+          );
+        })}
+        
+        {/* Today marker */}
+        {today.getFullYear() === currentDate.getFullYear() && (
+          <div style={{
+            position: "absolute",
+            left: getDayOfYear(today) * LAYOUT.LINEAR_YEAR_DAY_WIDTH,
+            top: 0,
+            height: "100%",
+            width: 2,
+            background: theme.accent,
+            zIndex: 5
+          }} />
+        )}
+        
+        {/* Events */}
+        {packedEvents.map(event => {
+          const isDragging = draggingEvent === event.id;
+          const dragX = isDragging ? dragOffset.x : 0;
+          
+          return (
+            <div
+              key={event.id}
+              className={`linear-year-event ${isDragging ? 'dragging' : ''}`}
+              style={{
+                position: "absolute",
+                left: event.left + dragX,
+                top: 20 + (event.row * 35),
+                width: event.width,
+                height: 25,
+                background: config.darkMode ? event.tag.darkBg : event.tag.bg,
+                borderLeft: `3px solid ${event.tag.color}`,
+                zIndex: isDragging ? 100 : event.row + 1,
+                transform: isDragging ? 'scale(1.05)' : 'none',
+                cursor: "move"
+              }}
+              onClick={(e) => {
+                if (!isDragging) onEventClick(event);
+              }}
+              onMouseDown={(e) => onEventDragStart(e, event.id)}
+              onMouseUp={onEventDrop}
+            >
+              <div className="linear-year-event-content" style={{ color: event.tag.text }}>
+                {event.title}
+                <div style={{ fontSize: 8, opacity: 0.8 }}>
+                  {event.start.toLocaleDateString([], { month: 'short', day: 'numeric' })}
+                </div>
               </div>
             </div>
           );
@@ -604,9 +830,9 @@ function YearView({ currentDate, events, theme, config, tags, context, onDayClic
       </div>
     </div>
   );
-}
+});
 
-function WeekView({ currentDate, events, theme, config, tags, onNew, onEventClick }) {
+function WeekView({ currentDate, events, theme, config, tags, onNew }) {
   const days = useMemo(() => {
     const s = new Date(currentDate);
     const day = s.getDay();
@@ -621,7 +847,7 @@ function WeekView({ currentDate, events, theme, config, tags, onNew, onEventClic
       <div style={{ width: 60, flexShrink: 0, borderRight: `1px solid ${theme.border}`, background: theme.bg }}>
         {Array.from({length:24}).map((_,h) => (
           <div key={h} style={{ height: HOUR_HEIGHT, position:"relative" }}>
-            <span style={{ position:"absolute", top:-6, right:8, fontSize:11, color:theme.textMuted }}>{config.use24Hour ? `${h}:00` : `${h % 12 || 12}${h < 12 ? 'a' : 'p'}`}</span>
+            <span style={{ position:"absolute", top:-6, right:8, fontSize:11, color:theme.textMuted }}>{h}:00</span>
           </div>
         ))}
       </div>
@@ -650,28 +876,7 @@ function WeekView({ currentDate, events, theme, config, tags, onNew, onEventClic
                   const h = Math.max(((ev.end - ev.start)/60000) * LAYOUT.PIXELS_PER_MINUTE, 24);
                   const tag = tags.find(t => t.id === ev.category) || tags[0];
                   return (
-                    <div 
-                      key={ev.id} 
-                      className="btn-hover" 
-                      onClick={() => onEventClick(ev)}
-                      style={{ 
-                        position: "absolute", 
-                        top, 
-                        height: h, 
-                        left: 4, 
-                        right: 4, 
-                        background: tag.bg, 
-                        borderLeft: `3px solid ${tag.color}`, 
-                        borderRadius: 4, 
-                        padding: 4, 
-                        fontSize: 11, 
-                        color: theme.text, 
-                        cursor: "pointer", 
-                        zIndex: 5, 
-                        overflow: "hidden", 
-                        boxShadow: "0 2px 4px rgba(0,0,0,0.05)" 
-                      }}
-                    >
+                    <div key={ev.id} className="btn-hover" style={{ position: "absolute", top, height: h, left: 4, right: 4, background: config.darkMode ? tag.darkBg : tag.bg, borderLeft: `3px solid ${tag.color}`, borderRadius: 4, padding: 4, fontSize: 11, color: theme.text, cursor: "pointer", zIndex: 5, overflow: "hidden", boxShadow: "0 2px 4px rgba(0,0,0,0.05)" }}>
                       <div style={{ fontWeight: 600 }}>{ev.title}</div>
                     </div>
                   );
@@ -687,9 +892,9 @@ function WeekView({ currentDate, events, theme, config, tags, onNew, onEventClic
 
 function MonthView({ currentDate, events, theme, config, setCurrentDate, setViewMode }) {
   const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-  let startDay = startOfMonth.getDay();
-  if (config.weekStartMon) startDay = startDay === 0 ? 6 : startDay - 1;
+  const startDay = startOfMonth.getDay();
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+  const offset = config.weekStartMon ? (startDay === 0 ? 6 : startDay - 1) : startDay;
 
   return (
     <div className="fade-enter" style={{ padding: 40, height: '100%' }}>
@@ -697,7 +902,7 @@ function MonthView({ currentDate, events, theme, config, setCurrentDate, setView
         {(config.weekStartMon ? ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"] : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"]).map(d => (
           <div key={d} style={{ textAlign: 'center', fontWeight: 600, color: theme.textMuted, paddingBottom: 10 }}>{d}</div>
         ))}
-        {Array.from({length: startDay}).map((_, i) => <div key={`empty-${i}`} />)}
+        {Array.from({length: offset}).map((_, i) => <div key={`empty-${i}`} />)}
         {Array.from({length: daysInMonth}).map((_, i) => {
           const day = i + 1;
           const d = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
@@ -740,75 +945,64 @@ function SettingsModal({ config, setConfig, theme, onClose }) {
             <div onClick={() => setConfig({...config, darkMode: true})} className={`seg-opt ${config.darkMode?'active':''}`}>☾ Dark</div>
           </div>
         </div>
-        <div style={{ marginBottom: 24 }}>
-          <label style={{ display: "block", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>Time Format</label>
-          <div className="segmented">
-            <div onClick={() => setConfig({...config, use24Hour: false})} className={`seg-opt ${!config.use24Hour?'active':''}`}>12-hour</div>
-            <div onClick={() => setConfig({...config, use24Hour: true})} className={`seg-opt ${config.use24Hour?'active':''}`}>24-hour</div>
-          </div>
-        </div>
         <div className="settings-row">
-          <div><div className="settings-label">Blur Past Events</div><div className="settings-sub">Fade completed items</div></div>
+          <div><div className="settings-label">Blur Past Dates</div><div className="settings-sub">Fade old days</div></div>
           <div className={`switch-track ${config.blurPast?'active':''}`} onClick={() => setConfig({...config, blurPast:!config.blurPast})}><div className="switch-thumb"/></div>
         </div>
         <div className="settings-row">
-          <div><div className="settings-label">Week Starts Monday</div><div className="settings-sub">Calendar alignment</div></div>
+          <div><div className="settings-label">Week Starts Monday</div><div className="settings-sub">Align calendar</div></div>
           <div className={`switch-track ${config.weekStartMon?'active':''}`} onClick={() => setConfig({...config, weekStartMon:!config.weekStartMon})}><div className="switch-thumb"/></div>
         </div>
-        <button onClick={() => signOut(auth)} style={{ width: "100%", padding: "14px", borderRadius: 12, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", fontWeight: 600, cursor: "pointer", marginTop: 8 }}>Sign Out</button>
+        <button onClick={() => signOut(auth)} style={{ width: "100%", padding: "14px", borderRadius: 12, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", fontWeight: 600, cursor: "pointer" }}>Sign Out</button>
       </div>
     </div>
   );
 }
 
-function TagManager({ tags, setTags, theme, context, onClose }) {
+function TagManager({ tags, setTags, theme, onClose }) {
   const [newTag, setNewTag] = useState("");
   const [color, setColor] = useState("onyx");
-
-  const currentTags = tags[context] || [];
 
   const addTag = () => {
     if(!newTag.trim()) return;
     const palette = PALETTE[color];
-    const id = newTag.toLowerCase().replace(/\s+/g,'-') + '-' + Date.now();
-    setTags({
-      ...tags,
-      [context]: [...currentTags, { id, name: newTag, ...palette }]
-    });
+    const id = newTag.toLowerCase().replace(/\s+/g,'-') + Date.now();
+    setTags([...tags, { id, name: newTag, ...palette }]);
     setNewTag("");
   };
 
-  const deleteTag = (tagId) => {
-    setTags({
-      ...tags,
-      [context]: currentTags.filter(t => t.id !== tagId)
-    });
+  const removeTag = (tagId) => {
+    if (tags.length <= 1) {
+      alert("You must have at least one tag");
+      return;
+    }
+    setTags(tags.filter(tg => tg.id !== tagId));
   };
 
   return (
     <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{ width: 400, background: theme.card, padding: 24, borderRadius: 20, boxShadow: theme.shadow }}>
         <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
-          <h3 className="serif" style={{ fontSize: 20 }}>Manage Tags - {context === 'personal' ? 'Personal' : 'Family'}</h3>
+          <h3 className="serif" style={{ fontSize: 20 }}>Manage Tags</h3>
           <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
         </div>
         <div style={{ marginBottom: 16 }}>
-          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Tag name..." className="input-luxe" style={{ color: theme.text, marginBottom: 12 }} onKeyPress={e => e.key === 'Enter' && addTag()} />
-          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+          <input value={newTag} onChange={e => setNewTag(e.target.value)} placeholder="Tag name..." className="input-luxe" style={{ color: theme.text, marginBottom: 12 }} />
+          <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
             {Object.keys(PALETTE).map(key => (
-              <div key={key} className={`color-swatch ${color === key ? 'active' : ''}`} style={{ background: PALETTE[key].color }} onClick={() => setColor(key)} />
+              <div key={key} className={`color-swatch ${color === key ? 'active' : ''}`} style={{ background: PALETTE[key].bg, borderColor: PALETTE[key].border }} onClick={() => setColor(key)} title={key} />
             ))}
           </div>
-          <button onClick={addTag} style={{ width: "100%", padding: "12px", background: context === 'family' ? theme.familyAccent : theme.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Create Tag</button>
+          <button onClick={addTag} style={{ width: "100%", padding: "12px", background: theme.accent, color: "#fff", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 600 }}>Create Tag</button>
         </div>
         <div style={{ maxHeight: 300, overflowY: "auto" }}>
-          {currentTags.map((t) => (
-            <div key={t.id} style={{ display: "flex", justifyContent: "space-between", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
+          {tags.map((t, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: `1px solid ${theme.border}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 12, height: 12, borderRadius: "50%", background: t.color }} />
+                <div style={{ width: 12, height: 12, borderRadius: "50%", background: t.color || t.text }} />
                 <span>{t.name}</span>
               </div>
-              <button onClick={() => deleteTag(t.id)} className="btn-reset" style={{ color: theme.indicator }}><ICONS.Trash/></button>
+              <button onClick={() => removeTag(t.id)} className="btn-reset" style={{ color: theme.indicator }}><ICONS.Trash/></button>
             </div>
           ))}
         </div>
@@ -817,10 +1011,10 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
   );
 }
 
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config }) {
+function EventEditor({ event, theme, tags, onSave, onDelete, onCancel }) {
   const [data, setData] = useState({ 
     title: event?.title || "", 
-    category: event?.category || tags[0]?.id || '',
+    category: event?.category || tags[0].id,
     start: event?.start ? event.start.toTimeString().slice(0,5) : "09:00",
     end: event?.end ? event.end.toTimeString().slice(0,5) : "10:00",
     description: event?.description || "", 
@@ -828,25 +1022,36 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config })
   });
 
   const submit = () => {
-    if (!data.title.trim()) return;
     const s = new Date(event?.start || new Date()); 
     const [sh, sm] = data.start.split(':'); 
-    s.setHours(parseInt(sh), parseInt(sm));
+    s.setHours(sh, sm);
     const e = new Date(s); 
     const [eh, em] = data.end.split(':'); 
-    e.setHours(parseInt(eh), parseInt(em));
+    e.setHours(eh, em);
+    
+    // Ensure end is after start
+    if (e <= s) {
+      e.setHours(s.getHours() + 1);
+    }
+    
     onSave({ ...data, id: event?.id, start: s, end: e });
   };
 
   return (
-    <div className="glass-panel fade-enter" style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }} onClick={onCancel}>
-      <div onClick={e => e.stopPropagation()} style={{ width: 440, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
+    <div className="glass-panel" onClick={e => e.stopPropagation()} style={{ position: "fixed", inset: 0, zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.5)" }}>
+      <div style={{ width: 440, background: theme.card, padding: 32, borderRadius: 24, boxShadow: theme.shadow }}>
         <h3 className="serif" style={{ fontSize: 24, marginBottom: 24 }}>{event?.id ? "Edit Event" : "Create Event"}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <input autoFocus value={data.title} onChange={e => setData({...data, title: e.target.value})} placeholder="Event title..." className="input-luxe" style={{ fontSize: 18, fontWeight: 600, background: theme.bg, color: theme.text }} />
+          <input autoFocus value={data.title} onChange={e => setData({...data, title: e.target.value})} placeholder="Title" className="input-luxe" style={{ fontSize: 18, fontWeight: 600, background: theme.bg, color: theme.text }} />
           <div style={{ display: "flex", gap: 12 }}>
-            <input type="time" value={data.start} onChange={e => setData({...data, start: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
-            <input type="time" value={data.end} onChange={e => setData({...data, end: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: theme.textSec, marginBottom: 4 }}>Start</div>
+              <input type="time" value={data.start} onChange={e => setData({...data, start: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12, color: theme.textSec, marginBottom: 4 }}>End</div>
+              <input type="time" value={data.end} onChange={e => setData({...data, end: e.target.value})} className="input-luxe" style={{ color: theme.text }} />
+            </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             {tags.map(t => (
@@ -854,11 +1059,11 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config })
             ))}
           </div>
           <input value={data.location} onChange={e => setData({...data, location: e.target.value})} placeholder="Location (optional)" className="input-luxe" style={{ color: theme.text }} />
-          <textarea value={data.description} onChange={e => setData({...data, description: e.target.value})} placeholder="Description (optional)" className="input-luxe" style={{ minHeight: 80, resize: "none", color: theme.text }} />
+          <textarea value={data.description} onChange={e => setData({...data, description: e.target.value})} placeholder="Notes (optional)" className="input-luxe" style={{ minHeight: 80, resize: "none", color: theme.text }} />
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 12 }}>
             {onDelete ? <button onClick={onDelete} className="btn-reset" style={{ color: theme.indicator, fontWeight: 600 }}>Delete</button> : <div/>}
             <div style={{ display: "flex", gap: 12 }}>
-              <button onClick={onCancel} className="btn-reset" style={{ color: theme.textSec, fontWeight: 500 }}>Cancel</button>
+              <button onClick={onCancel} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, border: `1px solid ${theme.border}`, color: theme.textSec, fontWeight: 600 }}>Cancel</button>
               <button onClick={submit} className="btn-reset" style={{ padding: "10px 24px", borderRadius: 8, background: theme.accent, color: "#fff", fontWeight: 600 }}>Save</button>
             </div>
           </div>
@@ -877,16 +1082,18 @@ function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
           <button onClick={onClose} className="btn-reset"><ICONS.Close/></button>
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
-          {events.length === 0 && <div style={{textAlign:'center', color:theme.textMuted, marginTop:40, fontStyle:'italic'}}>Trash is empty</div>}
+          {events.length === 0 && <div style={{textAlign:'center', color:theme.textMuted, marginTop:40}}>Empty</div>}
           {events.map(ev => (
             <div key={ev.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 16, borderBottom: `1px solid ${theme.border}` }}>
               <div>
-                <div style={{fontWeight:600, marginBottom:4}}>{ev.title}</div>
-                <div style={{fontSize:12, color:theme.textMuted}}>{ev.start.toLocaleDateString()} • {ev.context}</div>
+                <div style={{fontWeight:600}}>{ev.title}</div>
+                <div style={{fontSize:12, color:theme.textMuted}}>
+                  {ev.start.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </div>
               </div>
               <div style={{display:'flex', gap:8}}>
-                <button onClick={() => onRestore(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Restore</button>
-                <button onClick={() => onDelete(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600 }}>Delete</button>
+                <button onClick={() => onRestore(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, background: theme.accent, color: "#fff", border: "none", cursor: "pointer", fontSize: 12 }}>Restore</button>
+                <button onClick={() => onDelete(ev.id)} style={{ padding: "6px 12px", borderRadius: 6, border: `1px solid ${theme.indicator}`, color: theme.indicator, background: "transparent", cursor: "pointer", fontSize: 12 }}>Purge</button>
               </div>
             </div>
           ))}
@@ -901,7 +1108,7 @@ function AuthScreen({ onLogin, theme }) {
     <div style={{ height: "100vh", background: "#0B0E11", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column" }}>
       <h1 className="serif" style={{ fontSize: 64, color: "#F5F5F4", marginBottom: 24 }}>Timeline.</h1>
       <p style={{ color: "#A8A29E", marginBottom: 40, fontSize: 18, fontFamily: "serif", fontStyle: "italic" }}>"Time is the luxury you cannot buy."</p>
-      <button onClick={onLogin} style={{ padding: "16px 40px", borderRadius: 12, background: "#D97706", color: "#fff", border: "none", fontSize: 14, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 600 }}>Enter Timeline</button>
+      <button onClick={onLogin} style={{ padding: "16px 40px", borderRadius: 4, background: "#D97706", color: "#fff", border: "none", fontSize: 14, textTransform: "uppercase", letterSpacing: 2, cursor: "pointer", fontWeight: 600 }}>Enter System</button>
     </div>
   );
 }
