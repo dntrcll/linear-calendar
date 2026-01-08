@@ -379,20 +379,20 @@ const THEMES = {
 
 const DEFAULT_TAGS = {
   personal: [
-    { id: 'work', name: "Business", icon: <ICONS.Briefcase />, ...PALETTE.onyx },
-    { id: 'health', name: "Wellness", icon: <ICONS.Health />, ...PALETTE.rose },
-    { id: 'finance', name: "Finance", icon: <ICONS.Finance />, ...PALETTE.emerald },
-    { id: 'personal', name: "Personal", icon: <ICONS.Star />, ...PALETTE.midnight },
-    { id: 'travel', name: "Travel", icon: <ICONS.MapPin />, ...PALETTE.lavender },
-    { id: 'growth', name: "Growth", icon: <ICONS.TrendingUp />, ...PALETTE.gold }
+    { id: 'work', name: "Business", icon: ICONS.Briefcase, ...PALETTE.onyx },
+    { id: 'health', name: "Wellness", icon: ICONS.Health, ...PALETTE.rose },
+    { id: 'finance', name: "Finance", icon: ICONS.Finance, ...PALETTE.emerald },
+    { id: 'personal', name: "Personal", icon: ICONS.Star, ...PALETTE.midnight },
+    { id: 'travel', name: "Travel", icon: ICONS.MapPin, ...PALETTE.lavender },
+    { id: 'growth', name: "Growth", icon: ICONS.TrendingUp, ...PALETTE.gold }
   ],
   family: [
-    { id: 'family-events', name: "Events", icon: <ICONS.Calendar />, ...PALETTE.midnight },
-    { id: 'kids', name: "Kids", icon: <ICONS.Users />, ...PALETTE.lavender },
-    { id: 'household', name: "Household", icon: <ICONS.Home />, ...PALETTE.clay },
-    { id: 'vacation', name: "Vacation", icon: <ICONS.MapPin />, ...PALETTE.teal },
-    { id: 'education', name: "Education", icon: <ICONS.Star />, ...PALETTE.amber },
-    { id: 'healthcare', name: "Health", icon: <ICONS.Health />, ...PALETTE.emerald }
+    { id: 'family-events', name: "Events", icon: ICONS.Calendar, ...PALETTE.midnight },
+    { id: 'kids', name: "Kids", icon: ICONS.Users, ...PALETTE.lavender },
+    { id: 'household', name: "Household", icon: ICONS.Home, ...PALETTE.clay },
+    { id: 'vacation', name: "Vacation", icon: ICONS.MapPin, ...PALETTE.teal },
+    { id: 'education', name: "Education", icon: ICONS.Star, ...PALETTE.amber },
+    { id: 'healthcare', name: "Health", icon: ICONS.Health, ...PALETTE.emerald }
   ]
 };
 
@@ -2985,30 +2985,33 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, c
                 flexWrap: "wrap",
                 gap: 8
               }}>
-                {tags.map(tag => (
-                  <button
-                    key={tag.id}
-                    type="button"
-                    onClick={() => setFormData(prev => ({ ...prev, category: tag.id }))}
-                    style={{
-                      padding: "8px 16px",
-                      borderRadius: 20,
-                      border: `2px solid ${formData.category === tag.id ? tag.color : theme.border}`,
-                      background: formData.category === tag.id ? tag.color : "transparent",
-                      color: formData.category === tag.id ? "#fff" : theme.text,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 6,
-                      transition: "all 0.2s"
-                    }}
-                  >
-                    {tag.icon}
-                    {tag.name}
-                  </button>
-                ))}
+                {tags.map(tag => {
+                  const IconComponent = tag.icon;
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, category: tag.id }))}
+                      style={{
+                        padding: "8px 16px",
+                        borderRadius: 20,
+                        border: `2px solid ${formData.category === tag.id ? tag.color : theme.border}`,
+                        background: formData.category === tag.id ? tag.color : "transparent",
+                        color: formData.category === tag.id ? "#fff" : theme.text,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      {IconComponent && <IconComponent width={14} height={14} />}
+                      {tag.name}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             
@@ -3854,7 +3857,7 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
     const newTag = {
       id: `custom-${Date.now()}`,
       name: newTagName.trim(),
-      icon: <ICONS.Star />,
+      icon: ICONS.Star,
       color: newTagColor,
       text: "#000000",
       bg: "linear-gradient(135deg, #f3f3f3 0%, #e0e0e0 100%)",
