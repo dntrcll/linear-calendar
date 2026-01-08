@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { signInWithPopup, signOut, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, provider } from "./firebase";
 import { 
@@ -1304,6 +1304,7 @@ export default function TimelineOS() {
               config={config}
               tags={currentTags}
               context={context}
+              accentColor={accentColor}
               onDayClick={(date) => {
                 setCurrentDate(date);
                 setViewMode('day');
@@ -2158,7 +2159,7 @@ function MonthView({ currentDate, events, theme, config, onDayClick, onEventClic
   );
 }
 
-function YearView({ currentDate, events, theme, config, tags, context, onDayClick, onEventClick, onEventDrag, draggedEvent, setDraggedEvent }) {
+function YearView({ currentDate, events, theme, config, tags, context, accentColor, onDayClick, onEventClick, onEventDrag, draggedEvent, setDraggedEvent }) {
   const year = currentDate.getFullYear();
   const today = new Date();
   
@@ -3665,4 +3666,3 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
     </div>
   );
 }
-
