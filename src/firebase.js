@@ -1,19 +1,78 @@
-// firebase.js - COMPLETE FIXED VERSION
-import { initializeApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+// src/firebase.js
 
+// =====================
+// 1. IMPORTS
+// =====================
+import { initializeApp } from "firebase/app";
+import { 
+  getAuth, 
+  setPersistence, 
+  browserLocalPersistence,
+  signInWithPopup,
+  signOut,
+  GoogleAuthProvider 
+} from "firebase/auth";
+import { 
+  getFirestore, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  doc, 
+  updateDoc, 
+  addDoc, 
+  deleteDoc,
+  serverTimestamp,
+  Timestamp
+} from "firebase/firestore";
+
+// =====================
+// 2. FIREBASE CONFIG
+// =====================
 const firebaseConfig = {
-  apiKey: "AIzaSyBCwl3hRIJ4wVAWU9FoBP0nAqWuO6f9nJ8",
-  authDomain: "linear-calendar-e03d1.firebaseapp.com",
-  projectId: "linear-calendar-e03d1",
-  storageBucket: "linear-calendar-e03d1.firebasestorage.app",
-  messagingSenderId: "432287409618",
-  appId: "1:432287409618:web:ae8e139aa1813f2ba4140b"
+  apiKey: "AIzaSyD98eOILfbS-IYGFtjzBUki2JhokmNhtCQ",
+  authDomain: "timeline-os-45bf7.firebaseapp.com",
+  projectId: "timeline-os-45bf7",
+  storageBucket: "timeline-os-45bf7.firebasestorage.app",
+  messagingSenderId: "1032738943862",
+  appId: "1:1032738943862:web:1e301f89adcb6ff0234057"
 };
 
+// =====================
+// 3. INITIALIZE FIREBASE
+// =====================
 const app = initializeApp(firebaseConfig);
 
-export const auth = getAuth(app);
-export const provider = new GoogleAuthProvider();
-export const db = getFirestore(app);
+// =====================
+// 4. INITIALIZE SERVICES
+// =====================
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+// =====================
+// 5. OPTIONAL SETUP
+// =====================
+// Enable persistent login
+setPersistence(auth, browserLocalPersistence);
+
+// =====================
+// 6. EXPORTS
+// =====================
+// Core services
+export { auth, db, provider };
+
+// Authentication exports
+export { 
+  setPersistence, 
+  browserLocalPersistence,
+  signInWithPopup, 
+  signOut 
+};
+
+// Firestore exports
+export { 
+  collection, query, where, getDocs,
+  doc, updateDoc, addDoc, deleteDoc,
+  serverTimestamp, Timestamp
+};

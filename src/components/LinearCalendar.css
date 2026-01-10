@@ -1,0 +1,280 @@
+/* components/LinearCalendar.css */
+
+.linear-calendar-container {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    padding: 20px;
+    font-family: 'Inter', sans-serif;
+  }
+  
+  .linear-calendar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    padding: 0 10px;
+  }
+  
+  .linear-calendar-year {
+    font-size: 32px;
+    font-weight: 700;
+    margin: 0;
+    font-family: 'Cormorant Garamond', serif;
+  }
+  
+  .linear-calendar-controls {
+    display: flex;
+    gap: 10px;
+  }
+  
+  .linear-calendar-btn {
+    background: transparent;
+    border: 1px solid;
+    padding: 8px 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+  }
+  
+  .linear-calendar-btn:hover {
+    transform: translateY(-1px);
+  }
+  
+  .linear-calendar-legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+  }
+  
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+  }
+  
+  .legend-text {
+    font-size: 14px;
+    color: inherit;
+  }
+  
+  /* Linear Month View */
+  .linear-month {
+    margin-bottom: 30px;
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  
+  .linear-month-header {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 15px;
+    color: var(--text);
+    border-bottom: 2px solid var(--border);
+    padding-bottom: 10px;
+    font-family: 'Cormorant Garamond', serif;
+  }
+  
+  .linear-days-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 10px;
+  }
+  
+  .linear-day-header {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-sec);
+    padding: 8px 0;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    width: calc(100% / 7);
+    text-align: center;
+  }
+  
+  .linear-day {
+    width: calc(100% / 7);
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+  }
+  
+  .linear-day.current-month {
+    background: transparent;
+  }
+  
+  .linear-day.today {
+    background: var(--accent);
+    color: #FFFFFF;
+    border: 2px solid var(--accent);
+  }
+  
+  .linear-day.weekend {
+    background: var(--hover-bg);
+    color: var(--family-accent);
+  }
+  
+  .linear-day.other-month {
+    opacity: 0.4;
+    cursor: default;
+  }
+  
+  .linear-day:hover:not(.other-month) {
+    transform: scale(1.05);
+    box-shadow: var(--shadow);
+    z-index: 2;
+  }
+  
+  .holiday-indicator {
+    position: absolute;
+    bottom: 2px;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: #EF4444;
+  }
+  
+  .today-indicator {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+    50% {
+      transform: scale(1.2);
+      opacity: 0.8;
+    }
+  }
+  
+  /* Linear Stacked View */
+  .linear-stacked-view {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+  }
+  
+  .linear-stacked-month {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: var(--shadow);
+  }
+  
+  .linear-month-grid {
+    display: grid;
+    grid-template-columns: 120px repeat(31, 1fr);
+    gap: 4px;
+    overflow-x: auto;
+  }
+  
+  .linear-month-name {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    padding-right: 15px;
+    border-right: 2px solid var(--border);
+    font-family: 'Cormorant Garamond', serif;
+  }
+  
+  .linear-date-cell {
+    min-width: 35px;
+    height: 35px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    position: relative;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text);
+  }
+  
+  .linear-date-cell.empty {
+    visibility: hidden;
+    cursor: default;
+    border: none;
+  }
+  
+  .linear-date-cell.today {
+    background: var(--accent);
+    color: #FFFFFF;
+    border: 2px solid var(--accent);
+  }
+  
+  .linear-date-cell.weekend {
+    background: var(--hover-bg);
+    color: var(--family-accent);
+  }
+  
+  .linear-date-cell:hover:not(.empty) {
+    transform: scale(1.05);
+    box-shadow: var(--shadow);
+    z-index: 2;
+  }
+  
+  /* Responsive */
+  @media (max-width: 1200px) {
+    .linear-month-grid {
+      grid-template-columns: 100px repeat(31, 1fr);
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .linear-month-grid {
+      grid-template-columns: 80px repeat(31, 1fr);
+    }
+    
+    .linear-calendar-header {
+      flex-direction: column;
+      gap: 15px;
+      text-align: center;
+    }
+    
+    .linear-calendar-year {
+      order: -1;
+    }
+    
+    .linear-calendar-controls {
+      width: 100%;
+      justify-content: center;
+    }
+  }
