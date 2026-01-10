@@ -1,3 +1,5 @@
+import React, { useState } from 'react';
+
 const LinearCalendar = ({ year = new Date().getFullYear() }) => {
   const [currentYear, setCurrentYear] = useState(year);
   

@@ -54,7 +54,9 @@ const provider = new GoogleAuthProvider();
 // 5. OPTIONAL SETUP
 // =====================
 // Enable persistent login
-setPersistence(auth, browserLocalPersistence);
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.error("Error setting persistence:", error);
+});
 
 // =====================
 // 6. EXPORTS
