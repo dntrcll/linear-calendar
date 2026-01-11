@@ -406,6 +406,17 @@ const getTagIcon = (tag) => {
   return null;
 };
 
+// Helper to format date for datetime-local input (avoids UTC conversion issues)
+const toLocalDateTimeString = (date) => {
+  const d = new Date(date);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
   
@@ -2545,266 +2556,340 @@ WebkitBoxOrient: 'vertical'
 );
 }
 function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
-const days = useMemo(() => {
-const startOfWeek = new Date(currentDate);
-const dayOfWeek = startOfWeek.getDay();
-const diff = startOfWeek.getDate() - dayOfWeek + (config.weekStartMon ? (dayOfWeek === 0 ? -6 : 1) : 0);
-return Array.from({ length: 7 }, (_, i) => {
-  const day = new Date(startOfWeek);
-  day.setDate(diff + i);
-  return day;
-});
-}, [currentDate, config.weekStartMon]);
-const HOUR_HEIGHT = 50;
-const TOTAL_HOURS = 24;
-const eventsByDay = useMemo(() => {
-const grouped = {};
-days.forEach(day => {
-const dayStr = day.toDateString();
-grouped[dayStr] = events.filter(event =>
-event?.start && new Date(event.start).toDateString() === dayStr
-);
-});
-return grouped;
-}, [events, days]);
-return (
-<div style={{
-display: "flex",
-height: "100%",
-overflow: "auto"
-}}>
-<div style={{
-width: 60,
-flexShrink: 0,
-borderRight: `1px solid ${theme.border}`,
-background: theme.sidebar,
-paddingTop: 36,
-position: "sticky",
-left: 0,
-zIndex: 5
-}}>
-{Array.from({ length: TOTAL_HOURS }).map((_, hour) => (
-<div
-key={hour}
-style={{
-height: HOUR_HEIGHT,
-display: "flex",
-alignItems: "flex-start",
-justifyContent: "flex-end",
-paddingRight: 8,
-paddingTop: 6,
-borderBottom: `1px solid ${theme.borderLight}`,
-position: "relative"
-}}
->
-<span style={{
-fontSize: 9,
-color: theme.textMuted,
-fontWeight: 500,
-position: "relative",
-top: -6
-}}>
-{config.use24Hour 
-  ? `${hour.toString().padStart(2, '0')}:00`
-  : `${hour % 12 || 12}${hour < 12 ? 'a' : 'p'}`
-}
-</span>
-</div>
-))}
-</div>
-  <div style={{ 
-    flex: 1, 
-    display: "flex",
-    minWidth: "fit-content"
-  }}>
-    {days.map((day, index) => {
-      const dayStr = day.toDateString();
-      const isToday = day.toDateString() === new Date().toDateString();
-      const dayEvents = eventsByDay[dayStr] || [];
-      
-      return (
-        <div
-          key={index}
-          style={{
-            flex: 1,
-            minWidth: 100,
-            borderRight: index < 6 ? `1px solid ${theme.border}` : "none",
-            position: "relative",
-            paddingTop: 36
-          }}
-        >
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 36,
-            padding: "6px 8px",
-            background: theme.sidebar,
-            borderBottom: `1px solid ${theme.border}`,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 4
-          }}>
-            <div style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: isToday ? theme.accent : theme.textMuted,
-              textTransform: "uppercase",
-              letterSpacing: 0.8
-            }}>
-              {day.toLocaleDateString('en-US', { weekday: 'short' })}
-            </div>
-            <div style={{
-              fontSize: 14,
-              fontWeight: 600,
-              color: isToday ? theme.accent : theme.text,
-              marginTop: 2
-            }}>
-              {day.getDate()}
-            </div>
-          </div>
+  const HOUR_HEIGHT = 48;
+  const HEADER_HEIGHT = 56;
+  const TIME_COL_WIDTH = 56;
+  const TOTAL_HOURS = 24;
 
-          <div style={{ 
-            position: "relative",
-            height: HOUR_HEIGHT * TOTAL_HOURS
-          }}>
-            {Array.from({ length: TOTAL_HOURS }).map((_, hour) => (
-              <div
-                key={hour}
-                style={{
+  const days = useMemo(() => {
+    const startOfWeek = new Date(currentDate);
+    const dayOfWeek = startOfWeek.getDay();
+    const diff = startOfWeek.getDate() - dayOfWeek + (config.weekStartMon ? (dayOfWeek === 0 ? -6 : 1) : 0);
+    return Array.from({ length: 7 }, (_, i) => {
+      const day = new Date(startOfWeek);
+      day.setDate(diff + i);
+      return day;
+    });
+  }, [currentDate, config.weekStartMon]);
+
+  const eventsByDay = useMemo(() => {
+    const grouped = {};
+    days.forEach(day => {
+      const dayStr = day.toDateString();
+      grouped[dayStr] = events.filter(event =>
+        event?.start && new Date(event.start).toDateString() === dayStr
+      );
+    });
+    return grouped;
+  }, [events, days]);
+
+  const todayStr = new Date().toDateString();
+
+  return (
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "100%",
+      background: theme.bg
+    }}>
+      {/* Fixed Header Row */}
+      <div style={{
+        display: "flex",
+        flexShrink: 0,
+        borderBottom: `1px solid ${theme.border}`,
+        background: theme.bg,
+        position: "sticky",
+        top: 0,
+        zIndex: 20
+      }}>
+        {/* Time column header spacer */}
+        <div style={{
+          width: TIME_COL_WIDTH,
+          height: HEADER_HEIGHT,
+          flexShrink: 0,
+          borderRight: `1px solid ${theme.border}`,
+          background: theme.bg
+        }} />
+
+        {/* Day headers */}
+        {days.map((day, index) => {
+          const isToday = day.toDateString() === todayStr;
+          const isWeekend = day.getDay() === 0 || day.getDay() === 6;
+
+          return (
+            <div
+              key={index}
+              style={{
+                flex: 1,
+                minWidth: 120,
+                height: HEADER_HEIGHT,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRight: index < 6 ? `1px solid ${theme.border}` : "none",
+                background: isToday ? `${theme.accent}08` : theme.bg
+              }}
+            >
+              <span style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: isToday ? theme.accent : isWeekend ? theme.textMuted : theme.textSec,
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                marginBottom: 4
+              }}>
+                {day.toLocaleDateString('en-US', { weekday: 'short' })}
+              </span>
+              <span style={{
+                fontSize: 20,
+                fontWeight: 600,
+                width: 32,
+                height: 32,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                borderRadius: "50%",
+                background: isToday ? theme.accent : "transparent",
+                color: isToday ? "#fff" : theme.text
+              }}>
+                {day.getDate()}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Scrollable Grid Area */}
+      <div style={{
+        flex: 1,
+        display: "flex",
+        overflow: "auto"
+      }}>
+        {/* Time Column */}
+        <div style={{
+          width: TIME_COL_WIDTH,
+          flexShrink: 0,
+          position: "sticky",
+          left: 0,
+          zIndex: 10,
+          background: theme.bg
+        }}>
+          {Array.from({ length: TOTAL_HOURS }).map((_, hour) => (
+            <div
+              key={hour}
+              style={{
+                height: HOUR_HEIGHT,
+                position: "relative",
+                borderRight: `1px solid ${theme.border}`
+              }}
+            >
+              {hour > 0 && (
+                <span style={{
                   position: "absolute",
-                  top: hour * HOUR_HEIGHT,
-                  left: 0,
-                  right: 0,
-                  height: 1,
-                  background: theme.borderLight,
-                  opacity: 0.2
-                }}
-              />
-            ))}
-            
-            {isToday && (() => {
-              const currentMinutes = new Date().getHours() * 60 + new Date().getMinutes();
-              const topPosition = (currentMinutes / 60) * HOUR_HEIGHT;
-              
-              return (
-                <div style={{
-                  position: "absolute",
-                  top: topPosition,
-                  left: 0,
-                  right: 0,
-                  height: 1.5,
-                  background: theme.accent,
-                  zIndex: 3,
-                  pointerEvents: "none"
+                  top: -6,
+                  right: 8,
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: theme.textMuted,
+                  background: theme.bg,
+                  padding: "0 2px"
                 }}>
-                  <div style={{
-                    position: "absolute",
-                    left: -3,
-                    top: -2.5,
-                    width: 6,
-                    height: 6,
-                    borderRadius: "50%",
-                    background: theme.accent
-                  }} />
-                </div>
-              );
-            })()}
-            
-            {dayEvents.map(event => {
-              const tag = tags.find(t => t.id === event.category) || tags[0] || {};
-              const eventStart = new Date(event.start);
-              const eventEnd = new Date(event.end);
-              const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
-              const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
-              
-              const top = (startMinutes / 60) * HOUR_HEIGHT;
-              const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-              
-              const isShortEvent = height < 25;
-              
-              return (
+                  {config.use24Hour
+                    ? `${hour.toString().padStart(2, '0')}:00`
+                    : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
+                  }
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+
+        {/* Day Columns */}
+        {days.map((day, dayIndex) => {
+          const dayStr = day.toDateString();
+          const isToday = dayStr === todayStr;
+          const dayEvents = eventsByDay[dayStr] || [];
+
+          // Calculate overlapping events
+          const eventsWithLayout = dayEvents.map(event => {
+            const eventStart = new Date(event.start);
+            const eventEnd = new Date(event.end);
+            const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
+            const endMinutes = Math.min(eventEnd.getHours() * 60 + eventEnd.getMinutes(), 24 * 60);
+            return { ...event, startMinutes, endMinutes };
+          }).sort((a, b) => a.startMinutes - b.startMinutes);
+
+          const columns = [];
+          eventsWithLayout.forEach(event => {
+            let placed = false;
+            for (let col = 0; col < columns.length; col++) {
+              const lastInCol = columns[col][columns[col].length - 1];
+              if (event.startMinutes >= lastInCol.endMinutes) {
+                columns[col].push(event);
+                event.column = col;
+                placed = true;
+                break;
+              }
+            }
+            if (!placed) {
+              event.column = columns.length;
+              columns.push([event]);
+            }
+          });
+
+          eventsWithLayout.forEach(event => {
+            let maxCol = event.column;
+            eventsWithLayout.forEach(other => {
+              if (other.startMinutes < event.endMinutes && other.endMinutes > event.startMinutes) {
+                maxCol = Math.max(maxCol, other.column);
+              }
+            });
+            event.totalColumns = maxCol + 1;
+          });
+
+          return (
+            <div
+              key={dayIndex}
+              style={{
+                flex: 1,
+                minWidth: 120,
+                position: "relative",
+                borderRight: dayIndex < 6 ? `1px solid ${theme.border}` : "none",
+                background: isToday ? `${theme.accent}04` : "transparent",
+                height: HOUR_HEIGHT * TOTAL_HOURS,
+                overflow: "hidden"
+              }}
+            >
+              {/* Hour grid lines */}
+              {Array.from({ length: TOTAL_HOURS }).map((_, hour) => (
                 <div
-                  key={event.id}
-                  onClick={() => onEventClick(event)}
+                  key={hour}
                   style={{
                     position: "absolute",
-                    top: `${top}px`,
-                    left: "3px",
-                    right: "3px",
-                    height: `${Math.max(height, 20)}px`,
-                    background: config.darkMode 
-                      ? `${tag.color}20`
-                      : `${tag.color}10`,
-                    borderLeft: `2px solid ${tag.color}`,
-                    borderRadius: 5,
-                    padding: isShortEvent ? "2px 5px" : "5px 6px",
-                    cursor: "pointer",
-                    overflow: "hidden",
-                    zIndex: 2,
-                    boxShadow: theme.shadow,
-                    transition: "all 0.2s"
+                    top: hour * HOUR_HEIGHT,
+                    left: 0,
+                    right: 0,
+                    height: HOUR_HEIGHT,
+                    borderBottom: `1px solid ${theme.borderLight}`
                   }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "scale(1.02)";
-                    e.currentTarget.style.zIndex = 10;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "scale(1)";
-                    e.currentTarget.style.zIndex = 2;
-                  }}
-                >
-                  {!isShortEvent && (
-                    <>
-                      <div style={{
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: theme.text,
-                        marginBottom: 2,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap"
-                      }}>
-                        {event.title || 'Event'}
-                      </div>
-                      <div style={{
-                        fontSize: 8,
-                        color: theme.textSec,
-                        opacity: 0.8
-                      }}>
-                        {eventStart.toLocaleTimeString([], { 
-                          hour: 'numeric', 
-                          minute: '2-digit' 
-                        })}
-                      </div>
-                    </>
-                  )}
-                  {isShortEvent && (
+                />
+              ))}
+
+              {/* Current time indicator */}
+              {isToday && (() => {
+                const now = new Date();
+                const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                const topPosition = (currentMinutes / 60) * HOUR_HEIGHT;
+
+                return (
+                  <div style={{
+                    position: "absolute",
+                    top: topPosition,
+                    left: 0,
+                    right: 0,
+                    zIndex: 15,
+                    pointerEvents: "none"
+                  }}>
                     <div style={{
-                      fontSize: 9,
+                      position: "absolute",
+                      left: -5,
+                      top: -5,
+                      width: 10,
+                      height: 10,
+                      borderRadius: "50%",
+                      background: theme.accent,
+                      boxShadow: `0 0 0 2px ${theme.bg}`
+                    }} />
+                    <div style={{
+                      height: 2,
+                      background: theme.accent,
+                      boxShadow: `0 0 8px ${theme.accent}50`
+                    }} />
+                  </div>
+                );
+              })()}
+
+              {/* Events */}
+              {eventsWithLayout.map(event => {
+                const tag = tags.find(t => t.id === event.category) || tags[0] || {};
+                const eventStart = new Date(event.start);
+
+                const top = (event.startMinutes / 60) * HOUR_HEIGHT;
+                const height = ((event.endMinutes - event.startMinutes) / 60) * HOUR_HEIGHT;
+                const isShortEvent = height < 35;
+
+                const colWidth = (100 - 4) / event.totalColumns;
+                const left = 2 + event.column * colWidth;
+
+                return (
+                  <div
+                    key={event.id}
+                    onClick={() => onEventClick(event)}
+                    style={{
+                      position: "absolute",
+                      top: top + 1,
+                      left: `${left}%`,
+                      width: `calc(${colWidth}% - 2px)`,
+                      height: Math.max(height - 2, 20),
+                      background: `linear-gradient(135deg, ${tag.color}18 0%, ${tag.color}10 100%)`,
+                      borderLeft: `3px solid ${tag.color}`,
+                      borderRadius: 6,
+                      padding: isShortEvent ? "3px 8px" : "6px 8px",
+                      cursor: "pointer",
+                      overflow: "hidden",
+                      zIndex: 5,
+                      backdropFilter: "blur(8px)",
+                      border: `1px solid ${tag.color}20`,
+                      borderLeftWidth: 3,
+                      borderLeftColor: tag.color,
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = "translateY(-1px)";
+                      e.currentTarget.style.boxShadow = `0 4px 16px ${tag.color}25`;
+                      e.currentTarget.style.zIndex = "25";
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = "translateY(0)";
+                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.zIndex = "5";
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 11,
                       fontWeight: 600,
                       color: theme.text,
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
-                      lineHeight: "16px"
+                      lineHeight: 1.2
                     }}>
-                      {event.title?.substring(0, 1) || 'E'}
+                      {event.title || 'Event'}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      );
-    })}
-  </div>
-</div>
-);
+                    {!isShortEvent && (
+                      <div style={{
+                        fontSize: 10,
+                        color: tag.color,
+                        fontWeight: 500,
+                        marginTop: 3,
+                        opacity: 0.9
+                      }}>
+                        {eventStart.toLocaleTimeString([], {
+                          hour: 'numeric',
+                          minute: '2-digit'
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 function MonthView({ currentDate, events, theme, config, onDayClick, onEventClick }) {
 const today = useMemo(() => new Date(), []);
@@ -3043,7 +3128,7 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-const CELL_SIZE = 24;
+const CELL_SIZE = 28;
 return (
 <div style={{
 width: "100%",
@@ -3217,68 +3302,326 @@ flexShrink: 0
       );
     })}
     
-    <div style={{
-      marginTop: 16,
-      paddingTop: 12,
-      borderTop: `1px solid ${theme.border}`,
-      display: "grid",
-      gridTemplateColumns: "repeat(4, 1fr)",
-      gap: 8
-    }}>
-      {(() => {
-        const totalEvents = events.length;
-        const daysWithEvents = Object.keys(eventsByDay).length;
-        const monthCounts = Array.from({ length: 12 }).map((_, i) => ({
-          month: i,
-          count: events.filter(e => new Date(e.start).getMonth() === i && new Date(e.start).getFullYear() === year).length
-        }));
-        const busiest = monthCounts.reduce((a, b) => a.count > b.count ? a : b, { month: 0, count: 0 });
-        const progress = isCurrentYear 
-          ? Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24 * 365) * 100)
-          : year < today.getFullYear() ? 100 : 0;
-        
-        const stats = [
-          { label: "Events", value: totalEvents, sub: "total" },
-          { label: "Active", value: daysWithEvents, sub: "days" },
-          { label: "Busiest", value: monthNames[busiest.month], sub: `${busiest.count} events` },
-          { label: "Progress", value: `${progress}%`, sub: "year" }
-        ];
-        
-        return stats.map((stat, idx) => (
-          <div key={idx} style={{
-            background: theme.sidebar,
-            padding: "10px",
-            borderRadius: 8,
-            textAlign: "center"
+    {/* Premium Stats Section */}
+    {(() => {
+      const totalEvents = events.length;
+      const daysWithEvents = Object.keys(eventsByDay).length;
+      const monthCounts = Array.from({ length: 12 }).map((_, i) => ({
+        month: i,
+        count: events.filter(e => new Date(e.start).getMonth() === i && new Date(e.start).getFullYear() === year).length
+      }));
+      const maxMonthCount = Math.max(...monthCounts.map(m => m.count), 1);
+      const busiest = monthCounts.reduce((a, b) => a.count > b.count ? a : b, { month: 0, count: 0 });
+      const progress = isCurrentYear
+        ? Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24 * 365) * 100)
+        : year < today.getFullYear() ? 100 : 0;
+
+      // Category breakdown
+      const categoryBreakdown = tags.reduce((acc, tag) => {
+        acc[tag.id] = events.filter(e => e.category === tag.id).length;
+        return acc;
+      }, {});
+
+      // Upcoming events (next 7 days)
+      const upcomingEvents = events
+        .filter(e => {
+          const start = new Date(e.start);
+          const diffDays = (start - today) / (1000 * 60 * 60 * 24);
+          return diffDays >= 0 && diffDays <= 7;
+        })
+        .sort((a, b) => new Date(a.start) - new Date(b.start))
+        .slice(0, 4);
+
+      // Day of week distribution
+      const dayDistribution = [0, 0, 0, 0, 0, 0, 0];
+      events.forEach(e => {
+        const day = new Date(e.start).getDay();
+        dayDistribution[day]++;
+      });
+      const maxDayCount = Math.max(...dayDistribution, 1);
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+      return (
+        <div style={{
+          marginTop: 20,
+          paddingTop: 16,
+          borderTop: `1px solid ${theme.border}`
+        }}>
+          {/* Main Stats Row */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(4, 1fr)",
+            gap: 12,
+            marginBottom: 20
           }}>
+            {[
+              { label: "Total Events", value: totalEvents, icon: "📅" },
+              { label: "Active Days", value: daysWithEvents, icon: "⚡" },
+              { label: "Busiest Month", value: monthNames[busiest.month], icon: "🔥" },
+              { label: "Year Progress", value: `${progress}%`, icon: "📊" }
+            ].map((stat, idx) => (
+              <div key={idx} style={{
+                background: `linear-gradient(135deg, ${theme.sidebar} 0%, ${theme.hoverBg} 100%)`,
+                padding: "14px 12px",
+                borderRadius: 12,
+                textAlign: "center",
+                border: `1px solid ${theme.border}`,
+                position: "relative",
+                overflow: "hidden"
+              }}>
+                <div style={{
+                  fontSize: 18,
+                  marginBottom: 6
+                }}>{stat.icon}</div>
+                <div style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: accentColor,
+                  marginBottom: 4
+                }}>
+                  {stat.value}
+                </div>
+                <div style={{
+                  fontSize: 9,
+                  fontWeight: 600,
+                  color: theme.textMuted,
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5
+                }}>
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Activity & Categories Row */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 16,
+            marginBottom: 20
+          }}>
+            {/* Monthly Activity Chart */}
             <div style={{
-              fontSize: 9,
-              fontWeight: 700,
-              color: theme.textMuted,
-              marginBottom: 3,
-              textTransform: "uppercase",
-              letterSpacing: 0.5
+              background: theme.sidebar,
+              borderRadius: 12,
+              padding: 14,
+              border: `1px solid ${theme.border}`
             }}>
-              {stat.label}
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: theme.textSec,
+                marginBottom: 12,
+                textTransform: "uppercase",
+                letterSpacing: 0.8
+              }}>
+                Monthly Activity
+              </div>
+              <div style={{
+                display: "flex",
+                alignItems: "flex-end",
+                gap: 4,
+                height: 50
+              }}>
+                {monthCounts.map((m, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      flex: 1,
+                      height: `${Math.max((m.count / maxMonthCount) * 100, 8)}%`,
+                      background: m.month === today.getMonth() && isCurrentYear
+                        ? accentColor
+                        : `${accentColor}40`,
+                      borderRadius: 3,
+                      transition: "all 0.3s",
+                      cursor: "pointer"
+                    }}
+                    title={`${monthNames[m.month]}: ${m.count} events`}
+                  />
+                ))}
+              </div>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                marginTop: 6
+              }}>
+                {['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m, i) => (
+                  <span key={i} style={{
+                    fontSize: 7,
+                    color: theme.textMuted,
+                    flex: 1,
+                    textAlign: "center"
+                  }}>{m}</span>
+                ))}
+              </div>
             </div>
+
+            {/* Weekly Distribution */}
             <div style={{
-              fontSize: 14,
-              fontWeight: 700,
-              color: accentColor,
-              marginBottom: 2
+              background: theme.sidebar,
+              borderRadius: 12,
+              padding: 14,
+              border: `1px solid ${theme.border}`
             }}>
-              {stat.value}
-            </div>
-            <div style={{
-              fontSize: 8,
-              color: theme.textSec
-            }}>
-              {stat.sub}
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: theme.textSec,
+                marginBottom: 12,
+                textTransform: "uppercase",
+                letterSpacing: 0.8
+              }}>
+                Weekly Pattern
+              </div>
+              <div style={{
+                display: "flex",
+                alignItems: "flex-end",
+                gap: 6,
+                height: 50
+              }}>
+                {dayDistribution.map((count, i) => (
+                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
+                    <div style={{
+                      height: `${Math.max((count / maxDayCount) * 40, 4)}px`,
+                      background: (i === 0 || i === 6) ? `${accentColor}30` : accentColor,
+                      borderRadius: 3,
+                      marginBottom: 4
+                    }} />
+                    <span style={{
+                      fontSize: 8,
+                      color: theme.textMuted,
+                      fontWeight: 500
+                    }}>{dayNames[i]}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-        ));
-      })()}
-    </div>
+
+          {/* Category Breakdown & Upcoming */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: 16
+          }}>
+            {/* Categories */}
+            <div style={{
+              background: theme.sidebar,
+              borderRadius: 12,
+              padding: 14,
+              border: `1px solid ${theme.border}`
+            }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: theme.textSec,
+                marginBottom: 10,
+                textTransform: "uppercase",
+                letterSpacing: 0.8
+              }}>
+                By Category
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {tags.slice(0, 4).map(tag => {
+                  const count = categoryBreakdown[tag.id] || 0;
+                  const pct = totalEvents > 0 ? (count / totalEvents) * 100 : 0;
+                  return (
+                    <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <div style={{
+                        width: 8,
+                        height: 8,
+                        borderRadius: "50%",
+                        background: tag.color,
+                        flexShrink: 0
+                      }} />
+                      <span style={{ fontSize: 10, color: theme.text, flex: 1 }}>{tag.name}</span>
+                      <div style={{
+                        width: 60,
+                        height: 4,
+                        background: theme.hoverBg,
+                        borderRadius: 2,
+                        overflow: "hidden"
+                      }}>
+                        <div style={{
+                          width: `${pct}%`,
+                          height: "100%",
+                          background: tag.color,
+                          borderRadius: 2
+                        }} />
+                      </div>
+                      <span style={{ fontSize: 9, color: theme.textMuted, width: 20 }}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Upcoming Events */}
+            <div style={{
+              background: theme.sidebar,
+              borderRadius: 12,
+              padding: 14,
+              border: `1px solid ${theme.border}`
+            }}>
+              <div style={{
+                fontSize: 10,
+                fontWeight: 700,
+                color: theme.textSec,
+                marginBottom: 10,
+                textTransform: "uppercase",
+                letterSpacing: 0.8
+              }}>
+                Coming Up
+              </div>
+              {upcomingEvents.length > 0 ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {upcomingEvents.map(event => {
+                    const tag = tags.find(t => t.id === event.category) || tags[0];
+                    const start = new Date(event.start);
+                    const isToday = start.toDateString() === today.toDateString();
+                    return (
+                      <div key={event.id} style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 8,
+                        padding: "6px 8px",
+                        background: theme.hoverBg,
+                        borderRadius: 6,
+                        borderLeft: `3px solid ${tag?.color || accentColor}`
+                      }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{
+                            fontSize: 10,
+                            fontWeight: 600,
+                            color: theme.text,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap"
+                          }}>{event.title}</div>
+                          <div style={{ fontSize: 9, color: theme.textMuted }}>
+                            {isToday ? 'Today' : start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{
+                  fontSize: 11,
+                  color: theme.textMuted,
+                  textAlign: "center",
+                  padding: 16
+                }}>
+                  No upcoming events this week
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    })()}
   </div>
   
   {hoveredDay && (
@@ -3564,21 +3907,24 @@ bottom: 0
           </label>
           <input
             type="datetime-local"
-            value={form.start.toISOString().slice(0, 16)}
+            value={toLocalDateTimeString(form.start)}
             onChange={(e) => {
               const newStart = new Date(e.target.value);
-              const duration = form.end - form.start;
-              const newEnd = new Date(newStart.getTime() + duration);
-              setForm({ ...form, start: newStart, end: newEnd });
+              if (!isNaN(newStart.getTime())) {
+                const duration = form.end - form.start;
+                const newEnd = new Date(newStart.getTime() + duration);
+                setForm({ ...form, start: newStart, end: newEnd });
+              }
             }}
             style={{
               width: '100%',
               padding: '10px 12px',
-              fontSize: 12,
+              fontSize: 13,
               background: theme.sidebar,
               border: `1px solid ${theme.border}`,
               borderRadius: 8,
-              color: theme.text
+              color: theme.text,
+              cursor: 'pointer'
             }}
           />
         </div>
@@ -3597,16 +3943,23 @@ bottom: 0
           </label>
           <input
             type="datetime-local"
-            value={form.end.toISOString().slice(0, 16)}
-            onChange={(e) => setForm({ ...form, end: new Date(e.target.value) })}
+            value={toLocalDateTimeString(form.end)}
+            onChange={(e) => {
+              const newEnd = new Date(e.target.value);
+              if (!isNaN(newEnd.getTime())) {
+                setForm({ ...form, end: newEnd });
+              }
+            }}
+            min={toLocalDateTimeString(form.start)}
             style={{
               width: '100%',
               padding: '10px 12px',
-              fontSize: 12,
+              fontSize: 13,
               background: theme.sidebar,
               border: `1px solid ${errors.end ? theme.indicator : theme.border}`,
               borderRadius: 8,
-              color: theme.text
+              color: theme.text,
+              cursor: 'pointer'
             }}
           />
           {errors.end && (
