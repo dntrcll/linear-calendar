@@ -767,7 +767,7 @@ function TimelineOS() {
     }, 3000);
   };
   
-  if (loading && user) {
+  if (loading) {
     return (
       <div style={{
         height: "100vh",
@@ -786,6 +786,13 @@ function TimelineOS() {
         }} />
       </div>
     );
+  }
+  
+  if (!user) {
+    return <AuthScreen 
+      onLogin={handleGoogleSignIn} 
+      theme={theme} 
+    />;
   }
   
   // Inside your component, create the provider when you need it:
@@ -1603,7 +1610,7 @@ function AuthScreen({ onLogin, theme }) {
         </p>
         
         <button
-          onClick={onLogin}
+          onClick={() => onLogin()}
           style={{
             width: "100%",
             padding: "14px 20px",
