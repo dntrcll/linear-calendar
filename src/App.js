@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { 
   auth, 
-  provider, 
+  GoogleAuthProvider, 
   db,
   signInWithPopup, 
   signOut, 
@@ -788,9 +788,18 @@ function TimelineOS() {
     );
   }
   
-  if (!user) {
-    return <AuthScreen onLogin={() => signInWithPopup(auth, provider)} theme={theme} />;
+  // Inside your component, create the provider when you need it:
+const handleGoogleSignIn = async () => {
+  const provider = new GoogleAuthProvider();  // Create it here
+  
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+    console.log("User signed in:", user);
+  } catch (error) {
+    console.error("Error signing in:", error);
   }
+};
   
   return (
     <div style={{
