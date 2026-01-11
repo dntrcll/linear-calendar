@@ -466,23 +466,6 @@ const CSS = `
 `;
 
 function TimelineOS() {
-  const handleGoogleSignIn = async () => {
-    console.log("TEST: Button clicked! Starting Google sign-in...");
-    
-    try {
-      console.log("TEST: Creating Google provider...");
-      const provider = new GoogleAuthProvider();
-      
-      console.log("TEST: Calling signInWithPopup...");
-      const result = await signInWithPopup(auth, provider);
-      
-      console.log("TEST: Success! User signed in:", result.user.email);
-      alert("Signed in as: " + result.user.email);
-    } catch (error) {
-      console.error("TEST: ERROR:", error);
-      alert("Error: " + error.message);
-    }
-  };
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -541,6 +524,8 @@ function TimelineOS() {
   const scrollRef = useRef(null);
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
+
+  
   
   useEffect(() => {
     const style = document.createElement('style');
@@ -807,7 +792,10 @@ function TimelineOS() {
   
   if (!user) {
     return <AuthScreen 
-      onLogin={handleGoogleSignIn} 
+      onLogin={() => {
+        const provider = new GoogleAuthProvider();
+        signInWithPopup(auth, provider);
+      }}
       theme={theme} 
     />;
   }
