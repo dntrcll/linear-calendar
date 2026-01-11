@@ -2460,7 +2460,7 @@ WebkitBoxOrient: 'vertical'
               marginTop: 'auto',
               border: `1px solid ${tag.color}${config.darkMode ? '35' : '20'}`
             }}>
-              {tag.icon && <tag.icon width={isShortEvent ? 7 : 8} height={isShortEvent ? 7 : 8} />}
+              {tag.icon && (() => { const IconComponent = tag.icon; return <IconComponent width={isShortEvent ? 7 : 8} height={isShortEvent ? 7 : 8} />; })()}
               <span style={{ 
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
