@@ -163,7 +163,7 @@
   right: 2px;
   width: 6px;
   height: 6px;
-  borderRadius: "50%";
+  border-radius: 50%;
   background: #FFFFFF;
   animation: pulse 2s infinite;
 }
