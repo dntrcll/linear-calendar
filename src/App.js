@@ -1,22 +1,22 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { 
-  auth, 
-  provider, 
+import {
+  auth,
+  GoogleAuthProvider,
   db,
-  signInWithPopup, 
-  signOut, 
-  setPersistence, 
+  signInWithPopup,
+  signOut,
+  setPersistence,
   browserLocalPersistence,
-  collection, 
-  query, 
-  where, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  serverTimestamp, 
-  Timestamp 
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  serverTimestamp,
+  Timestamp
 } from "./firebase";
 import './components/LinearCalendar.css';
 import './App.css';
@@ -627,6 +627,21 @@ function TimelineOS() {
     
     setUpcomingEvents(upcoming);
   }, [events, context, activeTagIds]);
+
+  // Keyboard shortcut: Cmd/Ctrl + L to jump to today
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Check for Cmd (Mac) or Ctrl (Windows/Linux) + L
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'l') {
+        // Prevent default browser behavior (focusing address bar)
+        e.preventDefault();
+        setCurrentDate(new Date());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
   
   const handleSaveEvent = async (data) => {
     if (!user) {
