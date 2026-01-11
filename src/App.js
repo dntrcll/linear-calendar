@@ -2354,6 +2354,7 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
                 </>
               );
             }
+            return null;
           })()}
           
           {dropIndicator && (
@@ -2545,48 +2546,48 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
                     />
                   )}
                 </div>
-              );
-            })}
+            );
+          })}
             
-            {dayEvents.length === 0 && !isDragging && (
-              <div style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
-                color: theme.textMuted,
-                pointerEvents: 'none',
-                padding: '0 16px'
+          {dayEvents.length === 0 && !isDragging && (
+            <div style={{
+              position: 'absolute',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              textAlign: 'center',
+              color: theme.textMuted,
+              pointerEvents: 'none',
+              padding: '0 16px'
+            }}>
+              <div style={{ 
+                fontSize: 36, 
+                marginBottom: 10, 
+                opacity: 0.08
               }}>
-                <div style={{ 
-                  fontSize: 36, 
-                  marginBottom: 10, 
-                  opacity: 0.08
-                }}>
-                  📅
-                </div>
-                <div style={{ 
-                  fontSize: 14, 
-                  fontWeight: 500, 
-                  marginBottom: 6,
-                  color: theme.textSec
-                }}>
-                  No events
-                </div>
-                <div style={{ 
-                  fontSize: 11, 
-                  opacity: 0.6
-                }}>
-                  Click to add
-                </div>
+                📅
               </div>
-            )}
-          </div>
+              <div style={{ 
+                fontSize: 14, 
+                fontWeight: 500, 
+                marginBottom: 6,
+                color: theme.textSec
+              }}>
+                No events
+              </div>
+              <div style={{ 
+                fontSize: 11, 
+                opacity: 0.6
+              }}>
+                Click to add
+              </div>
+            </div>
+          )}
         </div>
       </div>
-    );
-  }
+    </div>
+  );
+}
 
 function WeekView({ currentDate, events, theme, config, tags, onEventClick, onEventDrag }) {
   const [draggedEvent, setDraggedEvent] = useState(null);
