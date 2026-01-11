@@ -381,21 +381,29 @@ const THEMES = {
 
 const DEFAULT_TAGS = {
   personal: [
-    { id: 'work', name: "Work", icon: ICONS.Briefcase, ...PALETTE.slate },
-    { id: 'health', name: "Health", icon: ICONS.Health, ...PALETTE.rose },
-    { id: 'finance', name: "Finance", icon: ICONS.Finance, ...PALETTE.emerald },
-    { id: 'personal', name: "Personal", icon: ICONS.Star, ...PALETTE.blue },
-    { id: 'travel', name: "Travel", icon: ICONS.MapPin, ...PALETTE.purple },
-    { id: 'growth', name: "Growth", icon: ICONS.TrendingUp, ...PALETTE.amber }
+    { id: 'work', name: "Work", iconName: 'Briefcase', ...PALETTE.slate },
+    { id: 'health', name: "Health", iconName: 'Health', ...PALETTE.rose },
+    { id: 'finance', name: "Finance", iconName: 'Finance', ...PALETTE.emerald },
+    { id: 'personal', name: "Personal", iconName: 'Star', ...PALETTE.blue },
+    { id: 'travel', name: "Travel", iconName: 'MapPin', ...PALETTE.purple },
+    { id: 'growth', name: "Growth", iconName: 'TrendingUp', ...PALETTE.amber }
   ],
   family: [
-    { id: 'family-events', name: "Events", icon: ICONS.Calendar, ...PALETTE.blue },
-    { id: 'kids', name: "Kids", icon: ICONS.Users, ...PALETTE.purple },
-    { id: 'household', name: "Home", icon: ICONS.Home, ...PALETTE.orange },
-    { id: 'vacation', name: "Vacation", icon: ICONS.MapPin, ...PALETTE.teal },
-    { id: 'education', name: "Education", icon: ICONS.Star, ...PALETTE.amber },
-    { id: 'healthcare', name: "Health", icon: ICONS.Health, ...PALETTE.emerald }
+    { id: 'family-events', name: "Events", iconName: 'Calendar', ...PALETTE.blue },
+    { id: 'kids', name: "Kids", iconName: 'Users', ...PALETTE.purple },
+    { id: 'household', name: "Home", iconName: 'Home', ...PALETTE.orange },
+    { id: 'vacation', name: "Vacation", iconName: 'MapPin', ...PALETTE.teal },
+    { id: 'education', name: "Education", iconName: 'Star', ...PALETTE.amber },
+    { id: 'healthcare', name: "Health", iconName: 'Health', ...PALETTE.emerald }
   ]
+};
+
+// Helper to get icon component from tag
+const getTagIcon = (tag) => {
+  if (tag.iconName && ICONS[tag.iconName]) {
+    return ICONS[tag.iconName];
+  }
+  return null;
 };
 
 const CSS = `
@@ -478,7 +486,7 @@ function TimelineOS() {
   const [upcomingEvents, setUpcomingEvents] = useState([]);
   const [tags, setTags] = useState(() => {
     try {
-      const saved = localStorage.getItem('timeline_tags_v4');
+      const saved = localStorage.getItem('timeline_tags_v5');
       return saved ? JSON.parse(saved) : DEFAULT_TAGS;
     } catch {
       return DEFAULT_TAGS;
@@ -599,7 +607,7 @@ function TimelineOS() {
   }, [config]);
   
   useEffect(() => {
-    localStorage.setItem('timeline_tags_v4', JSON.stringify(tags));
+    localStorage.setItem('timeline_tags_v5', JSON.stringify(tags));
   }, [tags]);
   
   useEffect(() => {
@@ -1086,7 +1094,7 @@ function TimelineOS() {
               }}>
                 {currentTags.map(tag => {
                   const isActive = activeTagIds.includes(tag.id);
-                  const IconComponent = tag.icon;
+                  const IconComponent = getTagIcon(tag);
                   
                   return (
                     <button
@@ -2460,7 +2468,7 @@ WebkitBoxOrient: 'vertical'
               marginTop: 'auto',
               border: `1px solid ${tag.color}${config.darkMode ? '35' : '20'}`
             }}>
-              {tag.icon && (() => { const IconComponent = tag.icon; return <IconComponent width={isShortEvent ? 7 : 8} height={isShortEvent ? 7 : 8} />; })()}
+              {(() => { const IconComponent = getTagIcon(tag); return IconComponent ? <IconComponent width={isShortEvent ? 7 : 8} height={isShortEvent ? 7 : 8} /> : null; })()}
               <span style={{ 
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
@@ -3631,7 +3639,7 @@ bottom: 0
           gap: 6
         }}>
           {tags.map(tag => {
-            const IconComponent = tag.icon;
+            const IconComponent = getTagIcon(tag);
             return (
               <button
                 key={tag.id}
@@ -4373,14 +4381,13 @@ const contextTags = tags[context] || [];
 const handleSaveTag = () => {
 if (!newTagName.trim() || !selectedIcon || !selectedPalette) return;
 const palette = PALETTE[selectedPalette];
-const IconComponent = ICONS[selectedIcon];
 
-if (!IconComponent) return;
+if (!ICONS[selectedIcon]) return;
 
 const newTag = {
   id: editingTag?.id || `tag-${Date.now()}`,
   name: newTagName.trim(),
-  icon: IconComponent,
+  iconName: selectedIcon,
   ...palette
 };
 
@@ -4420,11 +4427,7 @@ const paletteKey = Object.keys(PALETTE).find(key => {
 
 setSelectedPalette(paletteKey || Object.keys(PALETTE)[0]);
 
-const iconName = Object.keys(ICONS).find(name => {
-  return ICONS[name] === tag.icon;
-});
-
-setSelectedIcon(iconName || 'Briefcase');
+setSelectedIcon(tag.iconName || 'Briefcase');
 };
 return (
 <div style={{
@@ -4537,7 +4540,7 @@ bottom: 0
             gap: 10
           }}>
             {contextTags.map(tag => {
-              const IconComponent = tag.icon;
+              const IconComponent = getTagIcon(tag);
               return (
                 <div
                   key={tag.id}
