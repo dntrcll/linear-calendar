@@ -467,14 +467,20 @@ const CSS = `
 
 function TimelineOS() {
   const handleGoogleSignIn = async () => {
-    const provider = new GoogleAuthProvider();
+    console.log("TEST: Button clicked! Starting Google sign-in...");
     
     try {
+      console.log("TEST: Creating Google provider...");
+      const provider = new GoogleAuthProvider();
+      
+      console.log("TEST: Calling signInWithPopup...");
       const result = await signInWithPopup(auth, provider);
-      const user = result.user;
-      console.log("User signed in:", user);
+      
+      console.log("TEST: Success! User signed in:", result.user.email);
+      alert("Signed in as: " + result.user.email);
     } catch (error) {
-      console.error("Error signing in:", error);
+      console.error("TEST: ERROR:", error);
+      alert("Error: " + error.message);
     }
   };
   const [user, setUser] = useState(null);
