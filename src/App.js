@@ -525,7 +525,14 @@ function TimelineOS() {
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
 
-  
+  const notify = useCallback((message, type = "info") => {
+    const id = Date.now();
+    setNotifications(prev => [...prev, { id, message, type }]);
+    
+    setTimeout(() => {
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    }, 3000);
+  }, []);
   
   useEffect(() => {
     const style = document.createElement('style');
@@ -578,7 +585,7 @@ function TimelineOS() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [notify]);
   
   useEffect(() => {
     setPersistence(auth, browserLocalPersistence);
@@ -708,7 +715,7 @@ function TimelineOS() {
       console.error("Error rescheduling event:", error);
       notify("Failed to reschedule event", "error");
     }
-  }, [user, loadData]);
+  }, [user, loadData, notify]);
   
   const restoreEvent = async (id) => {
     try {
@@ -758,15 +765,6 @@ function TimelineOS() {
 
   const goToToday = () => {
     setCurrentDate(new Date());
-  };
-  
-  const notify = (message, type = "info") => {
-    const id = Date.now();
-    setNotifications(prev => [...prev, { id, message, type }]);
-    
-    setTimeout(() => {
-      setNotifications(prev => prev.filter(n => n.id !== id));
-    }, 3000);
   };
   
   if (loading) {
@@ -3141,7 +3139,7 @@ function LinearYearView({
     }
   };
   
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (draggedEvent && dragStartDay && dragEndDay) {
       const daysDiff = Math.round((dragEndDay - dragStartDay) / (1000 * 60 * 60 * 24));
       const newStart = new Date(draggedEvent.start);
@@ -3156,12 +3154,12 @@ function LinearYearView({
     setDraggedEvent(null);
     setDragStartDay(null);
     setDragEndDay(null);
-  };
+  }, [draggedEvent, dragStartDay, dragEndDay]);
   
   React.useEffect(() => {
     document.addEventListener('mouseup', handleMouseUp);
     return () => document.removeEventListener('mouseup', handleMouseUp);
-  }, [draggedEvent, dragStartDay, dragEndDay]);
+  }, [handleMouseUp]);
   
   const upcomingEvents = React.useMemo(() => {
     const now = new Date();
