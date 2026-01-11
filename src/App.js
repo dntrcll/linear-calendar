@@ -834,7 +834,7 @@ const handleGoogleSignIn = async () => {
               color: theme.textSec,
               marginBottom: 6
             }}>
-              {user.displayName?.split(" ")[0] || 'User'}
+              {user?.displayName?.split(" ")[0] || 'User'}
             </div>
             {config.showMotivationalQuotes && (
               <div style={{
