@@ -466,6 +466,17 @@ const CSS = `
 `;
 
 function TimelineOS() {
+  const handleGoogleSignIn = async () => {
+    const provider = new GoogleAuthProvider();
+    
+    try {
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+      console.log("User signed in:", user);
+    } catch (error) {
+      console.error("Error signing in:", error);
+    }
+  };
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => new Date());
@@ -794,19 +805,6 @@ function TimelineOS() {
       theme={theme} 
     />;
   }
-  
-  // Inside your component, create the provider when you need it:
-const handleGoogleSignIn = async () => {
-  const provider = new GoogleAuthProvider();  // Create it here
-  
-  try {
-    const result = await signInWithPopup(auth, provider);
-    const user = result.user;
-    console.log("User signed in:", user);
-  } catch (error) {
-    console.error("Error signing in:", error);
-  }
-};
   
   return (
     <div style={{
