@@ -90,12 +90,139 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-const APP_META = { 
-  name: "Timeline OS", 
-  version: "9.0.0",
+const APP_META = {
+  name: "Timeline OS",
+  version: "10.0.0",
   quoteInterval: 14400000,
   author: "Timeline Systems",
   motto: "Time is the luxury you cannot buy."
+};
+
+// Premium Logo Component with Liquid Glass effect
+const AppLogo = ({ size = 32, theme, showText = false }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: size * 0.28,
+      background: `linear-gradient(135deg, #F97316 0%, #FB923C 50%, #FDBA74 100%)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: `0 4px 16px rgba(249, 115, 22, 0.35), inset 0 1px 1px rgba(255,255,255,0.3)`,
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Glass overlay */}
+      <div style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '50%',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%)',
+        borderRadius: `${size * 0.28}px ${size * 0.28}px 0 0`
+      }} />
+      {/* Timeline icon */}
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" style={{ position: 'relative', zIndex: 1 }}>
+        <path d="M12 2L12 22M12 6L18 6M12 12L16 12M12 18L20 18" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        <circle cx="12" cy="6" r="2" fill="white"/>
+        <circle cx="12" cy="12" r="2" fill="white"/>
+        <circle cx="12" cy="18" r="2" fill="white"/>
+      </svg>
+    </div>
+    {showText && (
+      <div>
+        <div style={{
+          fontSize: 15,
+          fontWeight: 700,
+          color: theme.text,
+          letterSpacing: '-0.3px',
+          lineHeight: 1.1
+        }}>Timeline</div>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 500,
+          color: theme.accent,
+          letterSpacing: '1px',
+          textTransform: 'uppercase'
+        }}>OS</div>
+      </div>
+    )}
+  </div>
+);
+
+// Focus Modes Configuration
+const FOCUS_MODES = {
+  normal: { id: 'normal', name: 'Normal', icon: 'Calendar', filter: null },
+  work: { id: 'work', name: 'Work Focus', icon: 'Briefcase', filter: ['work'] },
+  personal: { id: 'personal', name: 'Personal', icon: 'Star', filter: ['personal', 'health', 'travel'] },
+  minimal: { id: 'minimal', name: 'Minimal', icon: 'Target', hideStats: true, hideSidebar: true }
+};
+
+// Smart Suggestions Engine
+const generateSmartSuggestions = (events, today) => {
+  const suggestions = [];
+  const now = new Date();
+  const hour = now.getHours();
+
+  // Check for busy days
+  const eventsByDate = {};
+  events.forEach(e => {
+    const dateKey = new Date(e.start).toDateString();
+    eventsByDate[dateKey] = (eventsByDate[dateKey] || 0) + 1;
+  });
+
+  const todayEvents = eventsByDate[today.toDateString()] || 0;
+  if (todayEvents >= 5) {
+    suggestions.push({
+      type: 'warning',
+      icon: 'Clock',
+      title: 'Busy Day Alert',
+      message: `You have ${todayEvents} events today. Consider blocking focus time.`,
+      action: 'Add Focus Block'
+    });
+  }
+
+  // Morning suggestion
+  if (hour >= 6 && hour < 10 && todayEvents === 0) {
+    suggestions.push({
+      type: 'tip',
+      icon: 'Star',
+      title: 'Morning Planning',
+      message: 'Start your day by planning your priorities.',
+      action: 'Add Event'
+    });
+  }
+
+  // Evening review
+  if (hour >= 18 && hour < 21) {
+    suggestions.push({
+      type: 'tip',
+      icon: 'TrendingUp',
+      title: 'Daily Review',
+      message: 'Good time to review tomorrow\'s schedule.',
+      action: 'View Tomorrow'
+    });
+  }
+
+  // Check for gaps
+  const weekEvents = events.filter(e => {
+    const diff = (new Date(e.start) - today) / (1000 * 60 * 60 * 24);
+    return diff >= 0 && diff <= 7;
+  });
+
+  if (weekEvents.length < 3) {
+    suggestions.push({
+      type: 'info',
+      icon: 'Calendar',
+      title: 'Light Week Ahead',
+      message: 'Your week looks open. Time for new goals?',
+      action: 'Plan Week'
+    });
+  }
+
+  return suggestions.slice(0, 3);
 };
 
 const LAYOUT = {
@@ -308,6 +435,94 @@ const ICONS = {
       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/>
       <line x1="7" y1="7" x2="7.01" y2="7"/>
     </svg>
+  ),
+  // Premium Icons
+  Coffee: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+      <line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/>
+    </svg>
+  ),
+  Book: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+  ),
+  Heart: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+    </svg>
+  ),
+  Zap: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+    </svg>
+  ),
+  Globe: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/>
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+    </svg>
+  ),
+  Music: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+    </svg>
+  ),
+  Camera: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+  ),
+  Gift: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/>
+      <line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
+      <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+    </svg>
+  ),
+  Laptop: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="20" x2="22" y2="20"/>
+    </svg>
+  ),
+  Plane: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>
+    </svg>
+  ),
+  Smile: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+    </svg>
+  ),
+  Target: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>
+    </svg>
+  ),
+  Award: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/>
+    </svg>
+  ),
+  Sunset: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 18a5 5 0 0 0-10 0"/><line x1="12" y1="9" x2="12" y2="2"/><line x1="4.22" y1="10.22" x2="5.64" y2="11.64"/>
+      <line x1="1" y1="18" x2="3" y2="18"/><line x1="21" y1="18" x2="23" y2="18"/><line x1="18.36" y1="11.64" x2="19.78" y2="10.22"/>
+      <line x1="23" y1="22" x2="1" y2="22"/><polyline points="16 5 12 9 8 5"/>
+    </svg>
+  ),
+  Dumbbell: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6.5 6.5L17.5 17.5M6 12H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2M18 12h2a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-2M6 12v4a2 2 0 0 0 2 2h2M18 12v4a2 2 0 0 1-2 2h-2"/>
+    </svg>
+  ),
+  Check: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="20 6 9 17 4 12"/>
+    </svg>
   )
 };
 
@@ -344,38 +559,48 @@ const THEMES = {
     selection: "rgba(249, 115, 22, 0.08)",
     shadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.04)",
     shadowLg: "0 4px 6px rgba(0,0,0,0.04), 0 10px 20px rgba(0,0,0,0.06)",
-    glass: "rgba(255, 255, 255, 0.95)",
+    glass: "rgba(255, 255, 255, 0.85)",
     indicator: "#EF4444",
     manifestoLine: "#E2E8F0",
     hoverBg: "rgba(0, 0, 0, 0.02)",
     activeBg: "rgba(0, 0, 0, 0.04)",
     pulse: "rgba(249, 115, 22, 0.15)",
-    glow: "0 0 16px rgba(249, 115, 22, 0.2)"
+    glow: "0 0 16px rgba(249, 115, 22, 0.2)",
+    cardGradient: "linear-gradient(145deg, #FFFFFF 0%, #FAFAFA 100%)",
+    subtleBorder: "rgba(0, 0, 0, 0.04)",
+    liquidGlass: "rgba(255, 255, 255, 0.72)",
+    liquidBorder: "rgba(255, 255, 255, 0.5)",
+    liquidShadow: "0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
   },
   dark: {
     id: 'dark',
-    bg: "#0A0A0A",
-    sidebar: "#111111",
-    card: "#151515",
-    text: "#FAFAFA",
-    textSec: "#A1A1AA",
-    textMuted: "#71717A",
-    border: "#27272A",
-    borderLight: "#18181B",
+    bg: "#09090B",
+    sidebar: "#0F0F12",
+    card: "#18181B",
+    text: "#FAFAF9",
+    textSec: "#A8A8B3",
+    textMuted: "#6B6B76",
+    border: "#2A2A30",
+    borderLight: "#1A1A1F",
     accent: "#F97316",
     accentHover: "#FB923C",
     familyAccent: "#10B981",
     familyAccentHover: "#34D399",
-    selection: "rgba(249, 115, 22, 0.15)",
-    shadow: "0 2px 4px rgba(0, 0, 0, 0.3), 0 8px 16px rgba(0, 0, 0, 0.4)",
-    shadowLg: "0 4px 8px rgba(0, 0, 0, 0.5), 0 16px 32px rgba(0, 0, 0, 0.6)",
-    glass: "rgba(10, 10, 10, 0.95)",
-    indicator: "#EF4444",
-    manifestoLine: "#27272A",
-    hoverBg: "rgba(255, 255, 255, 0.04)",
-    activeBg: "rgba(255, 255, 255, 0.08)",
-    pulse: "rgba(249, 115, 22, 0.2)",
-    glow: "0 0 16px rgba(249, 115, 22, 0.3)"
+    selection: "rgba(249, 115, 22, 0.18)",
+    shadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)",
+    shadowLg: "0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6)",
+    glass: "rgba(15, 15, 18, 0.9)",
+    indicator: "#F87171",
+    manifestoLine: "#2A2A30",
+    hoverBg: "rgba(255, 255, 255, 0.05)",
+    activeBg: "rgba(255, 255, 255, 0.1)",
+    pulse: "rgba(249, 115, 22, 0.25)",
+    glow: "0 0 20px rgba(249, 115, 22, 0.35)",
+    cardGradient: "linear-gradient(145deg, #1C1C20 0%, #18181B 100%)",
+    subtleBorder: "rgba(255, 255, 255, 0.06)",
+    liquidGlass: "rgba(24, 24, 27, 0.75)",
+    liquidBorder: "rgba(255, 255, 255, 0.08)",
+    liquidShadow: "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
   }
 };
 
@@ -419,12 +644,13 @@ const toLocalDateTimeString = (date) => {
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
-  
+
   :root {
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+    --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   }
-  
+
   * {
     box-sizing: border-box;
     margin: 0;
@@ -432,29 +658,59 @@ const CSS = `
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  
+
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow: hidden;
   }
-  
+
   h1, h2, h3, h4, .serif {
     font-family: 'Playfair Display', serif;
     font-weight: 500;
     letter-spacing: -0.01em;
   }
-  
+
+  /* Hide scrollbars but keep functionality */
   ::-webkit-scrollbar {
     width: 0;
     height: 0;
     background: transparent;
   }
-  
+
   * {
     scrollbar-width: none;
     -ms-overflow-style: none;
   }
-  
+
+  /* Smooth inertial scrolling for touch devices */
+  .scroll-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+
+  /* Prevent layout shift */
+  img, svg {
+    display: block;
+    max-width: 100%;
+  }
+
+  /* GPU acceleration for smooth animations */
+  .gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: transform;
+  }
+
+  /* Smooth transitions for interactive elements */
+  button, input, textarea, select {
+    transition: all 0.2s var(--ease);
+  }
+
   @keyframes fadeIn {
     from {
       opacity: 0;
@@ -465,7 +721,18 @@ const CSS = `
       transform: translateY(0);
     }
   }
-  
+
+  @keyframes fadeInScale {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
   @keyframes pulse {
     0%, 100% {
       opacity: 1;
@@ -474,14 +741,110 @@ const CSS = `
       opacity: 0.5;
     }
   }
-  
+
   @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
   }
-  
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
   .fade-enter {
     animation: fadeIn 0.3s var(--ease) forwards;
+  }
+
+  .scale-enter {
+    animation: fadeInScale 0.25s var(--ease-out) forwards;
+  }
+
+  .slide-enter {
+    animation: slideIn 0.2s var(--ease) forwards;
+  }
+
+  /* Liquid Glass Effects */
+  .liquid-glass {
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+  }
+
+  .liquid-card {
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition: all 0.3s var(--ease);
+  }
+
+  .liquid-card:hover {
+    transform: translateY(-2px);
+  }
+
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  @keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(249, 115, 22, 0.2); }
+    50% { box-shadow: 0 0 40px rgba(249, 115, 22, 0.4); }
+  }
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-4px); }
+  }
+
+  .shimmer-effect {
+    background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+  }
+
+  .glow-effect {
+    animation: glow 3s ease-in-out infinite;
+  }
+
+  .float-effect {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* Premium Button Styles */
+  .btn-premium {
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s var(--ease);
+  }
+
+  .btn-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .btn-premium:hover::before {
+    left: 100%;
+  }
+
+  /* Focus mode transition */
+  .focus-transition {
+    transition: opacity 0.3s ease, filter 0.3s ease;
+  }
+
+  .focus-dimmed {
+    opacity: 0.4;
+    filter: grayscale(50%);
   }
 `;
 
@@ -489,6 +852,7 @@ function TimelineOS() {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => new Date());
+  const [nowTime, setNowTime] = useState(() => new Date()); // Separate state for current time display
   const [viewMode, setViewMode] = useState("year");
   const [context, setContext] = useState("personal");
   const [events, setEvents] = useState([]);
@@ -537,10 +901,27 @@ function TimelineOS() {
       showUpcomingEvents: true,
       enableDragDrop: true,
       enableAnimations: true,
-      enablePulseEffects: true
+      enablePulseEffects: true,
+      focusMode: 'normal'
     };
   });
-  
+
+  // Premium Features State
+  const [selectedEvents, setSelectedEvents] = useState([]);
+  const [bulkMode, setBulkMode] = useState(false);
+  const [insightsOpen, setInsightsOpen] = useState(false);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [dateFilter, setDateFilter] = useState({ start: null, end: null });
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Smart suggestions
+  const smartSuggestions = useMemo(() => {
+    return generateSmartSuggestions(events, new Date());
+  }, [events]);
+
+  // Current focus mode
+  const currentFocusMode = FOCUS_MODES[config.focusMode] || FOCUS_MODES.normal;
+
   const scrollRef = useRef(null);
   const theme = config.darkMode ? THEMES.dark : THEMES.light;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
@@ -553,13 +934,13 @@ function TimelineOS() {
   }, []);
   
   useEffect(() => {
-    const nowInterval = setInterval(() => setCurrentDate(new Date()), 60000);
+    const nowInterval = setInterval(() => setNowTime(new Date()), 60000); // Update nowTime for time indicators
     const quoteInterval = setInterval(() => {
       if (config.showMotivationalQuotes) {
         setQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
       }
     }, 10000);
-    
+
     return () => {
       clearInterval(nowInterval);
       clearInterval(quoteInterval);
@@ -839,28 +1220,59 @@ function TimelineOS() {
       {config.showSidebar && (
         <aside style={{
           width: LAYOUT.SIDEBAR_WIDTH,
-          background: theme.sidebar,
-          borderRight: `1px solid ${theme.border}`,
+          background: config.darkMode ? theme.cardGradient : theme.sidebar,
+          borderRight: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`,
           display: "flex",
           flexDirection: "column",
           padding: "20px",
           overflow: "hidden"
         }}>
-          <div style={{ marginBottom: 24 }}>
-            <h1 className="serif" style={{
-              fontSize: 28,
-              fontWeight: 500,
-              color: theme.text,
-              marginBottom: 6
-            }}>
-              Timeline
-            </h1>
+          {/* Premium Header with Logo */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <AppLogo size={36} theme={theme} showText={true} />
+              <div style={{ display: 'flex', gap: 6 }}>
+                {/* Focus Mode Button */}
+                <button
+                  onClick={() => {
+                    const modes = Object.keys(FOCUS_MODES);
+                    const idx = modes.indexOf(config.focusMode);
+                    const next = modes[(idx + 1) % modes.length];
+                    setConfig(c => ({ ...c, focusMode: next }));
+                  }}
+                  title={`Focus: ${currentFocusMode.name}`}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: config.focusMode !== 'normal' ? `${accentColor}20` : theme.hoverBg,
+                    border: config.focusMode !== 'normal' ? `1px solid ${accentColor}40` : `1px solid ${theme.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: config.focusMode !== 'normal' ? accentColor : theme.textMuted
+                  }}
+                >
+                  <ICONS.Target width={14} height={14} />
+                </button>
+                {/* Insights Button */}
+                <button
+                  onClick={() => setInsightsOpen(true)}
+                  title="Insights"
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: theme.hoverBg,
+                    border: `1px solid ${theme.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', color: theme.textMuted
+                  }}
+                >
+                  <ICONS.TrendingUp width={14} height={14} />
+                </button>
+              </div>
+            </div>
             <div style={{
-              fontSize: 13,
+              fontSize: 12,
               color: theme.textSec,
-              marginBottom: 6
+              marginBottom: 4
             }}>
-              {user.displayName?.split(" ")[0] || 'User'}
+              Welcome, {user.displayName?.split(" ")[0] || 'User'}
             </div>
             {config.showMotivationalQuotes && (
               <div style={{
@@ -875,6 +1287,162 @@ function TimelineOS() {
               </div>
             )}
           </div>
+
+          {/* Smart Suggestions */}
+          {smartSuggestions.length > 0 && (
+            <div style={{
+              marginBottom: 16,
+              padding: 10,
+              background: theme.liquidGlass,
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderRadius: 10,
+              border: `1px solid ${theme.liquidBorder}`
+            }}>
+              <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                Suggestions
+              </div>
+              {smartSuggestions.slice(0, 2).map((s, i) => (
+                <div key={i} style={{
+                  display: 'flex', alignItems: 'center', gap: 8,
+                  padding: '6px 0',
+                  borderBottom: i < smartSuggestions.length - 1 ? `1px solid ${theme.subtleBorder}` : 'none'
+                }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: 6,
+                    background: s.type === 'warning' ? '#f5970020' : s.type === 'tip' ? '#10b98120' : '#6366f120',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    {ICONS[s.icon] && React.createElement(ICONS[s.icon], {
+                      width: 12, height: 12,
+                      style: { color: s.type === 'warning' ? '#f59700' : s.type === 'tip' ? '#10b981' : '#6366f1' }
+                    })}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 500, color: theme.text }}>{s.title}</div>
+                    <div style={{ fontSize: 9, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.message}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Search & Filter Bar */}
+          <div style={{
+            marginBottom: 16,
+            display: 'flex',
+            gap: 8
+          }}>
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 12px',
+              background: theme.hoverBg,
+              borderRadius: 8,
+              border: `1px solid ${theme.border}`
+            }}>
+              <ICONS.Calendar width={14} height={14} style={{ color: theme.textMuted }} />
+              <input
+                type="text"
+                placeholder="Search events..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  flex: 1, border: 'none', background: 'transparent',
+                  color: theme.text, fontSize: 12, outline: 'none'
+                }}
+              />
+            </div>
+            <button
+              onClick={() => setFilterOpen(!filterOpen)}
+              style={{
+                width: 36, height: 36, borderRadius: 8,
+                background: filterOpen || dateFilter.start ? `${accentColor}15` : theme.hoverBg,
+                border: `1px solid ${filterOpen || dateFilter.start ? accentColor : theme.border}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                cursor: 'pointer', color: filterOpen || dateFilter.start ? accentColor : theme.textMuted
+              }}
+            >
+              <ICONS.Settings width={14} height={14} />
+            </button>
+          </div>
+
+          {/* Filter Panel */}
+          {filterOpen && (
+            <div style={{
+              marginBottom: 16,
+              padding: 12,
+              background: theme.card,
+              borderRadius: 10,
+              border: `1px solid ${theme.border}`
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 10 }}>Filter by Date</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                <input
+                  type="date"
+                  value={dateFilter.start || ''}
+                  onChange={e => setDateFilter(f => ({ ...f, start: e.target.value }))}
+                  style={{
+                    flex: 1, padding: '6px 8px', fontSize: 11,
+                    background: theme.bg, border: `1px solid ${theme.border}`,
+                    borderRadius: 6, color: theme.text, outline: 'none'
+                  }}
+                />
+                <input
+                  type="date"
+                  value={dateFilter.end || ''}
+                  onChange={e => setDateFilter(f => ({ ...f, end: e.target.value }))}
+                  style={{
+                    flex: 1, padding: '6px 8px', fontSize: 11,
+                    background: theme.bg, border: `1px solid ${theme.border}`,
+                    borderRadius: 6, color: theme.text, outline: 'none'
+                  }}
+                />
+              </div>
+              <button
+                onClick={() => { setDateFilter({ start: null, end: null }); setFilterOpen(false); }}
+                style={{
+                  width: '100%', padding: '6px', fontSize: 11,
+                  background: theme.hoverBg, border: `1px solid ${theme.border}`,
+                  borderRadius: 6, color: theme.textSec, cursor: 'pointer'
+                }}
+              >
+                Clear Filters
+              </button>
+            </div>
+          )}
+
+          {/* Bulk Actions Bar */}
+          {bulkMode && selectedEvents.length > 0 && (
+            <div style={{
+              marginBottom: 16,
+              padding: 10,
+              background: `${accentColor}15`,
+              borderRadius: 10,
+              border: `1px solid ${accentColor}40`
+            }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: accentColor, marginBottom: 8 }}>
+                {selectedEvents.length} events selected
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button style={{
+                  flex: 1, padding: '6px', fontSize: 10, fontWeight: 600,
+                  background: theme.indicator, color: '#fff', border: 'none',
+                  borderRadius: 6, cursor: 'pointer'
+                }}>Delete All</button>
+                <button
+                  onClick={() => { setSelectedEvents([]); setBulkMode(false); }}
+                  style={{
+                    padding: '6px 10px', fontSize: 10,
+                    background: 'transparent', color: theme.textSec,
+                    border: `1px solid ${theme.border}`, borderRadius: 6, cursor: 'pointer'
+                  }}
+                >Cancel</button>
+              </div>
+            </div>
+          )}
           
           <div style={{
             display: "flex",
@@ -1094,98 +1662,113 @@ function TimelineOS() {
               </button>
             </div>
             
-            <div style={{ 
-              flex: 1,
-              overflowY: "auto"
+            {/* Compact horizontal tag pills with Liquid Glass */}
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 6,
+              marginBottom: 12
             }}>
-              <div style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 6
-              }}>
-                {currentTags.map(tag => {
-                  const isActive = activeTagIds.includes(tag.id);
-                  const IconComponent = getTagIcon(tag);
-                  
-                  return (
-                    <button
-                      key={tag.id}
-                      onClick={() => {
-                        setActiveTagIds(prev =>
-                          prev.includes(tag.id)
-                            ? prev.filter(id => id !== tag.id)
-                            : [...prev, tag.id]
-                        );
-                      }}
-                      style={{
-                        padding: "5px 10px",
-                        borderRadius: 6,
-                        cursor: "pointer",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 5,
-                        background: isActive ? tag.color + '15' : theme.hoverBg,
-                        border: `1px solid ${isActive ? tag.color + '40' : theme.border}`,
-                        transition: "all 0.2s",
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: isActive ? tag.color : theme.textSec
-                      }}
-                      onMouseEnter={e => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = theme.activeBg;
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        if (!isActive) {
-                          e.currentTarget.style.background = theme.hoverBg;
-                        }
-                      }}
-                    >
-                      {IconComponent && <IconComponent width={10} height={10} />}
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-              
-              <div style={{
-                display: "flex",
-                gap: 6,
-                marginTop: 10,
-                paddingTop: 10,
-                borderTop: `1px solid ${theme.borderLight}`
-              }}>
-                <button
-                  onClick={() => {
-                    const allTagIds = currentTags.map(t => t.id);
-                    setActiveTagIds(activeTagIds.length === allTagIds.length ? [] : allTagIds);
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "5px",
-                    borderRadius: 6,
-                    border: `1px solid ${theme.border}`,
-                    background: "transparent",
-                    color: theme.textSec,
-                    fontSize: 9,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.2s"
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.hoverBg;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = "transparent";
-                  }}
-                >
-                  {activeTagIds.length === currentTags.length ? "Clear" : "All"}
-                </button>
-              </div>
+              {currentTags.map(tag => {
+                const isActive = activeTagIds.includes(tag.id);
+
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => {
+                      setActiveTagIds(prev =>
+                        prev.includes(tag.id)
+                          ? prev.filter(id => id !== tag.id)
+                          : [...prev, tag.id]
+                      );
+                    }}
+                    style={{
+                      padding: "4px 8px",
+                      borderRadius: 20,
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 5,
+                      // Enhanced Liquid Glass
+                      background: isActive
+                        ? `linear-gradient(135deg, ${tag.color}30 0%, ${tag.color}15 100%)`
+                        : config.darkMode
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'rgba(255, 255, 255, 0.7)',
+                      backdropFilter: 'blur(20px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                      border: isActive
+                        ? `1px solid ${tag.color}60`
+                        : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
+                      boxShadow: isActive
+                        ? `0 2px 12px ${tag.color}25, inset 0 1px 0 rgba(255,255,255,0.2)`
+                        : `0 1px 3px ${config.darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)'}, inset 0 1px 0 rgba(255,255,255,${config.darkMode ? '0.05' : '0.8'})`,
+                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: isActive ? tag.color : theme.textSec
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.transform = 'scale(1.02)';
+                      if (!isActive) {
+                        e.currentTarget.style.background = config.darkMode
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(255, 255, 255, 0.9)';
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.transform = 'scale(1)';
+                      if (!isActive) {
+                        e.currentTarget.style.background = config.darkMode
+                          ? 'rgba(255, 255, 255, 0.05)'
+                          : 'rgba(255, 255, 255, 0.7)';
+                      }
+                    }}
+                  >
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: tag.color,
+                      flexShrink: 0,
+                      boxShadow: isActive ? `0 0 6px ${tag.color}` : 'none'
+                    }} />
+                    <span>{tag.name}</span>
+                  </button>
+                );
+              })}
+
+              {/* All/Clear toggle */}
+              <button
+                onClick={() => {
+                  const allTagIds = currentTags.map(t => t.id);
+                  setActiveTagIds(activeTagIds.length === allTagIds.length ? [] : allTagIds);
+                }}
+                style={{
+                  padding: "4px 8px",
+                  borderRadius: 20,
+                  border: `1px dashed ${theme.border}`,
+                  background: "transparent",
+                  color: theme.textMuted,
+                  fontSize: 9,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  transition: "all 0.2s"
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderStyle = 'solid';
+                  e.currentTarget.style.color = theme.textSec;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderStyle = 'dashed';
+                  e.currentTarget.style.color = theme.textMuted;
+                }}
+              >
+                {activeTagIds.length === currentTags.length ? "Clear" : "All"}
+              </button>
             </div>
           </div>
-          
+
           <div style={{
             marginTop: "auto",
             paddingTop: 16,
@@ -1381,6 +1964,7 @@ function TimelineOS() {
         
         <div
           ref={scrollRef}
+          className="scroll-container"
           style={{
             flex: 1,
             overflow: "auto",
@@ -1401,6 +1985,7 @@ function TimelineOS() {
           ) : viewMode === 'day' ? (
             <DayView
               currentDate={currentDate}
+              nowTime={nowTime}
               events={filteredEvents}
               theme={theme}
               config={config}
@@ -1412,10 +1997,12 @@ function TimelineOS() {
               onEventDrag={handleEventDrag}
               context={context}
               accentColor={accentColor}
+              parentScrollRef={scrollRef}
             />
           ) : viewMode === 'week' ? (
             <WeekView
               currentDate={currentDate}
+              nowTime={nowTime}
               events={filteredEvents}
               theme={theme}
               config={config}
@@ -1447,15 +2034,10 @@ function TimelineOS() {
               theme={theme}
               config={config}
               tags={currentTags}
-              context={context}
               accentColor={accentColor}
               onDayClick={(date) => {
                 setCurrentDate(date);
                 setViewMode('day');
-              }}
-              onEventClick={(event) => {
-                setEditingEvent(event);
-                setModalOpen(true);
               }}
             />
           ) : null}
@@ -1478,7 +2060,106 @@ function TimelineOS() {
           }}
         />
       )}
-      
+
+      {/* Premium Insights Modal */}
+      {insightsOpen && (
+        <div className="scale-enter" style={{
+          position: "fixed", inset: 0, zIndex: 1000,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)"
+        }} onClick={() => setInsightsOpen(false)}>
+          <div onClick={e => e.stopPropagation()} style={{
+            width: 600, maxHeight: "80vh", overflow: "auto",
+            background: theme.liquidGlass, backdropFilter: "blur(24px)",
+            borderRadius: 20, border: `1px solid ${theme.liquidBorder}`,
+            boxShadow: theme.liquidShadow, padding: 24
+          }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div>
+                <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.text, marginBottom: 4 }}>Insights</h2>
+                <p style={{ fontSize: 12, color: theme.textMuted }}>Analytics & patterns from your calendar</p>
+              </div>
+              <button onClick={() => setInsightsOpen(false)} style={{
+                width: 32, height: 32, borderRadius: 8, background: theme.hoverBg,
+                border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
+              }}><ICONS.Close width={16} height={16} style={{ color: theme.textMuted }} /></button>
+            </div>
+
+            {/* Stats Grid */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
+              {[
+                { label: "Total Events", value: events.length, color: "#6366f1", icon: "Calendar" },
+                { label: "This Month", value: events.filter(e => new Date(e.start).getMonth() === new Date().getMonth()).length, color: "#10b981", icon: "TrendingUp" },
+                { label: "Categories", value: currentTags.length, color: "#f59700", icon: "Star" }
+              ].map((stat, i) => (
+                <div key={i} style={{
+                  padding: 16, borderRadius: 12,
+                  background: config.darkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
+                  border: `1px solid ${theme.subtleBorder}`
+                }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                    <div style={{
+                      width: 24, height: 24, borderRadius: 6, background: `${stat.color}20`,
+                      display: "flex", alignItems: "center", justifyContent: "center"
+                    }}>
+                      {ICONS[stat.icon] && React.createElement(ICONS[stat.icon], { width: 12, height: 12, style: { color: stat.color } })}
+                    </div>
+                    <span style={{ fontSize: 11, color: theme.textMuted }}>{stat.label}</span>
+                  </div>
+                  <div style={{ fontSize: 28, fontWeight: 700, color: stat.color }}>{stat.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Category Breakdown */}
+            <div style={{ marginBottom: 20 }}>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Events by Category</h3>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {currentTags.map(tag => {
+                  const count = events.filter(e => e.category === tag.id).length;
+                  const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
+                  return (
+                    <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{
+                        width: 28, height: 28, borderRadius: 6, background: `${tag.color}20`,
+                        display: "flex", alignItems: "center", justifyContent: "center"
+                      }}>
+                        {ICONS[tag.iconName] && React.createElement(ICONS[tag.iconName], { width: 12, height: 12, style: { color: tag.color } })}
+                      </div>
+                      <span style={{ fontSize: 12, color: theme.text, width: 80 }}>{tag.name}</span>
+                      <div style={{ flex: 1, height: 8, background: theme.hoverBg, borderRadius: 4, overflow: "hidden" }}>
+                        <div style={{ width: `${pct}%`, height: "100%", background: tag.color, borderRadius: 4 }} />
+                      </div>
+                      <span style={{ fontSize: 11, color: theme.textMuted, width: 40, textAlign: "right" }}>{count}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Activity Heatmap Preview */}
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Weekly Activity</h3>
+              <div style={{ display: "flex", gap: 4 }}>
+                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
+                  const dayEvents = events.filter(e => new Date(e.start).getDay() === (i + 1) % 7).length;
+                  const intensity = Math.min(dayEvents / 3, 1);
+                  return (
+                    <div key={day} style={{ flex: 1, textAlign: "center" }}>
+                      <div style={{
+                        height: 40, borderRadius: 6, marginBottom: 4,
+                        background: `rgba(249, 115, 22, ${0.1 + intensity * 0.6})`
+                      }} />
+                      <span style={{ fontSize: 9, color: theme.textMuted }}>{day}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {modalOpen && (
         <EventEditor
           event={editingEvent}
@@ -1487,7 +2168,6 @@ function TimelineOS() {
           onSave={handleSaveEvent}
           onDelete={editingEvent?.id ? () => softDeleteEvent(editingEvent.id) : null}
           onCancel={() => setModalOpen(false)}
-          config={config}
           context={context}
         />
       )}
@@ -1823,14 +2503,15 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
   );
 }
 
-function DayView({ currentDate, events, theme, config, tags, onEventClick, onEventDrag, context, accentColor }) {
+function DayView({ currentDate, nowTime, events, theme, config, tags, onEventClick, onEventDrag, context, accentColor, parentScrollRef }) {
   const [draggedEvent, setDraggedEvent] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dropIndicator, setDropIndicator] = useState(null);
   const [isExtending, setIsExtending] = useState(false);
-  
+
   const eventsColumnRef = useRef(null);
-  const currentTime = new Date();
+  const autoScrollRef = useRef(null);
+  const currentTime = nowTime || new Date();
   const isToday = currentDate.toDateString() === currentTime.toDateString();
   
   const dayEvents = useMemo(() => {
@@ -1843,78 +2524,80 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
     return filtered.sort((a, b) => new Date(a.start) - new Date(b.start));
   }, [events, currentDate]);
   
-  const HOUR_HEIGHT = 60;
+  const HOUR_HEIGHT = 52;
   const START_HOUR = 0;
   const END_HOUR = 23;
   const TOTAL_HOURS = 24;
   
   const calculateEventPositions = useMemo(() => {
-    const positions = [];
-    const eventGroups = [];
-    
-    dayEvents.forEach(event => {
+    if (!dayEvents.length) return [];
+
+    // Prepare events with timing info
+    const eventsWithTimes = dayEvents.map(event => {
       const eventStart = new Date(event.start);
       const eventEnd = new Date(event.end);
       const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
       const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
-      
+      return {
+        event,
+        startMinutes,
+        endMinutes: Math.max(endMinutes, startMinutes + 30), // Min 30 min duration for display
+        startTime: eventStart,
+        endTime: eventEnd
+      };
+    }).sort((a, b) => a.startMinutes - b.startMinutes || b.endMinutes - a.endMinutes);
+
+    // Assign columns - find first column where event doesn't overlap
+    const columns = [];
+    eventsWithTimes.forEach(evt => {
       let placed = false;
-      
-      for (let group of eventGroups) {
-        const overlaps = group.some(existing => {
-          const existingStart = new Date(existing.event.start);
-          const existingEnd = new Date(existing.event.end);
-          const existingStartMinutes = existingStart.getHours() * 60 + existingStart.getMinutes();
-          const existingEndMinutes = existingEnd.getHours() * 60 + existingEnd.getMinutes();
-          
-          return !(endMinutes <= existingStartMinutes || startMinutes >= existingEndMinutes);
-        });
-        
-        if (!overlaps) {
-          group.push({ event, startMinutes, endMinutes });
+      for (let colIdx = 0; colIdx < columns.length; colIdx++) {
+        const col = columns[colIdx];
+        const lastInCol = col[col.length - 1];
+        // No overlap if this event starts after last event ends
+        if (evt.startMinutes >= lastInCol.endMinutes) {
+          col.push(evt);
+          evt.column = colIdx;
           placed = true;
-          
-          const groupSize = group.length;
-          const groupIndex = group.findIndex(item => item.event.id === event.id);
-          const widthPercentage = 100 / groupSize;
-          const leftOffset = groupIndex * widthPercentage;
-          
-          positions.push({
-            event,
-            top: (startMinutes / 60) * HOUR_HEIGHT,
-            height: Math.max(50, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT),
-            left: `${leftOffset}%`,
-            width: `${widthPercentage}%`,
-            groupIndex,
-            groupSize,
-            startTime: eventStart,
-            endTime: eventEnd,
-            durationMinutes: endMinutes - startMinutes
-          });
           break;
         }
       }
-      
       if (!placed) {
-        const newGroup = [{ event, startMinutes, endMinutes }];
-        eventGroups.push(newGroup);
-        
-        positions.push({
-          event,
-          top: (startMinutes / 60) * HOUR_HEIGHT,
-          height: Math.max(50, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT),
-          left: '0%',
-          width: '100%',
-          groupIndex: 0,
-          groupSize: 1,
-          startTime: eventStart,
-          endTime: eventEnd,
-          durationMinutes: endMinutes - startMinutes
-        });
+        evt.column = columns.length;
+        columns.push([evt]);
       }
     });
-    
-    return positions;
+
+    // Find max columns that overlap with each event
+    eventsWithTimes.forEach(evt => {
+      let maxOverlappingCols = evt.column + 1;
+      eventsWithTimes.forEach(other => {
+        // Check if they overlap in time
+        if (other.startMinutes < evt.endMinutes && other.endMinutes > evt.startMinutes) {
+          maxOverlappingCols = Math.max(maxOverlappingCols, other.column + 1);
+        }
+      });
+      evt.totalColumns = maxOverlappingCols;
+    });
+
+    // Calculate positions
+    return eventsWithTimes.map(evt => {
+      const widthPercent = (100 - 8) / evt.totalColumns; // 8px padding total
+      const leftPercent = 4 + (evt.column * widthPercent); // 4px left padding
+
+      return {
+        event: evt.event,
+        top: (evt.startMinutes / 60) * HOUR_HEIGHT,
+        height: Math.max(45, ((evt.endMinutes - evt.startMinutes) / 60) * HOUR_HEIGHT),
+        left: `${leftPercent}%`,
+        width: `calc(${widthPercent}% - 4px)`,
+        groupIndex: evt.column,
+        groupSize: evt.totalColumns,
+        startTime: evt.startTime,
+        endTime: evt.endTime,
+        durationMinutes: evt.endMinutes - evt.startMinutes
+      };
+    });
   }, [dayEvents]);
   
   const handleTimelineClick = (e) => {
@@ -1944,28 +2627,62 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
     });
   };
   
+  // Auto-scroll while dragging near edges
+  const startAutoScroll = (direction, speed) => {
+    if (autoScrollRef.current) return;
+    autoScrollRef.current = setInterval(() => {
+      if (parentScrollRef?.current) {
+        parentScrollRef.current.scrollTop += direction * speed;
+      }
+    }, 16);
+  };
+
+  const stopAutoScroll = () => {
+    if (autoScrollRef.current) {
+      clearInterval(autoScrollRef.current);
+      autoScrollRef.current = null;
+    }
+  };
+
   const handleMouseMove = (e) => {
     if (!eventsColumnRef.current || !isDragging || !draggedEvent) return;
-    
+
+    // Auto-scroll when near edges
+    if (parentScrollRef?.current) {
+      const scrollRect = parentScrollRef.current.getBoundingClientRect();
+      const edgeThreshold = 80;
+      const scrollSpeed = 10;
+
+      if (e.clientY < scrollRect.top + edgeThreshold) {
+        const intensity = 1 - (e.clientY - scrollRect.top) / edgeThreshold;
+        startAutoScroll(-1, scrollSpeed * Math.max(0.3, intensity));
+      } else if (e.clientY > scrollRect.bottom - edgeThreshold) {
+        const intensity = 1 - (scrollRect.bottom - e.clientY) / edgeThreshold;
+        startAutoScroll(1, scrollSpeed * Math.max(0.3, intensity));
+      } else {
+        stopAutoScroll();
+      }
+    }
+
     const columnRect = eventsColumnRef.current.getBoundingClientRect();
     const mouseY = Math.max(0, Math.min(columnRect.height, e.clientY - columnRect.top));
-    
+
     const totalMinutes = (mouseY / HOUR_HEIGHT) * 60;
     const targetHour = Math.floor(totalMinutes / 60);
     const targetMinute = Math.floor((totalMinutes % 60) / 15) * 15;
-    
+
     const validHour = Math.max(START_HOUR, Math.min(END_HOUR, targetHour));
     const validMinute = Math.max(0, Math.min(45, targetMinute));
-    
+
     const eventStart = new Date(draggedEvent.start);
     const eventEnd = new Date(draggedEvent.end);
-    
+
     let newStart, newEnd, duration;
-    
+
     if (isExtending) {
       const newEndTime = new Date(currentDate);
       newEndTime.setHours(validHour, validMinute, 0, 0);
-      
+
       if (newEndTime > eventStart) {
         newStart = eventStart;
         newEnd = newEndTime;
@@ -1977,24 +2694,24 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
       }
     } else {
       duration = eventEnd - eventStart;
-      
+
       newStart = new Date(currentDate);
       newStart.setHours(validHour, validMinute, 0, 0);
-      
+
       newEnd = new Date(newStart.getTime() + duration);
     }
-    
-    const startMinutes = isExtending ? 
-      (eventStart.getHours() * 60 + eventStart.getMinutes()) : 
+
+    const startMinutes = isExtending ?
+      (eventStart.getHours() * 60 + eventStart.getMinutes()) :
       (validHour * 60 + validMinute);
-    
-    const endMinutes = isExtending ? 
-      (validHour * 60 + validMinute) : 
+
+    const endMinutes = isExtending ?
+      (validHour * 60 + validMinute) :
       (startMinutes + (duration / (1000 * 60)));
-    
+
     const topPosition = (startMinutes / 60) * HOUR_HEIGHT;
     const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
-    
+
     setDropIndicator({
       top: topPosition,
       height: Math.max(40, height),
@@ -2005,35 +2722,37 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
   };
   
   const handleMouseUp = () => {
+    stopAutoScroll();
+
     if (isDragging && draggedEvent && dropIndicator) {
       const { hour, minute, isExtending } = dropIndicator;
       const eventStart = new Date(draggedEvent.start);
       const eventEnd = new Date(draggedEvent.end);
-      
+
       let newStart, newEnd;
-      
+
       if (isExtending) {
         newStart = eventStart;
         newEnd = new Date(currentDate);
         newEnd.setHours(hour, minute, 0, 0);
-        
+
         if (newEnd <= newStart) {
           newEnd = new Date(newStart.getTime() + (15 * 60 * 1000));
         }
       } else {
         const duration = eventEnd - eventStart;
-        
+
         newStart = new Date(currentDate);
         newStart.setHours(hour, minute, 0, 0);
-        
+
         newEnd = new Date(newStart.getTime() + duration);
       }
-      
+
       if (newEnd > newStart && onEventDrag) {
         onEventDrag(draggedEvent.id, newStart, newEnd);
       }
     }
-    
+
     resetState();
   };
   
@@ -2070,6 +2789,11 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
   };
   
   const formatTime = (date) => {
+    if (config.use24Hour) {
+      const hours = date.getHours().toString().padStart(2, '0');
+      const minutes = date.getMinutes().toString().padStart(2, '0');
+      return `${hours}:${minutes}`;
+    }
     return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
   };
 
@@ -2184,7 +2908,7 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
               fontWeight: 600,
               letterSpacing: '0.2px'
             }}>
-              {currentTime.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+              {formatTime(currentTime)}
             </div>
           </div>
         )}
@@ -2201,7 +2925,7 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
       }}>
         
         <div style={{
-          width: 70,
+          width: 56,
           flexShrink: 0,
           borderRight: `1px solid ${theme.border}`,
           background: theme.sidebar,
@@ -2209,7 +2933,7 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
         }}>
           {Array.from({ length: TOTAL_HOURS }).map((_, hour) => {
             const isMajorHour = hour % 3 === 0;
-            
+
             return (
               <div
                 key={`hour-${hour}`}
@@ -2217,21 +2941,22 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
                   height: HOUR_HEIGHT,
                   borderBottom: `1px solid ${theme.borderLight}`,
                   position: 'relative',
-                  padding: '0 10px',
+                  padding: '0 6px',
                   display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'flex-end'
+                  alignItems: 'flex-start',
+                  justifyContent: 'flex-end',
+                  paddingTop: 2
                 }}
               >
                 <div style={{
-                  fontSize: 10,
+                  fontSize: 9,
                   fontWeight: isMajorHour ? 600 : 500,
                   color: isMajorHour ? theme.text : theme.textMuted,
-                  letterSpacing: '0.3px'
+                  letterSpacing: '0.2px'
                 }}>
-                  {config.use24Hour 
+                  {config.use24Hour
                     ? `${hour.toString().padStart(2, '0')}:00`
-                    : `${hour % 12 || 12} ${hour < 12 ? 'AM' : 'PM'}`
+                    : `${hour % 12 || 12}${hour < 12 ? 'a' : 'p'}`
                   }
                 </div>
               </div>
@@ -2289,59 +3014,71 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
           {isToday && (() => {
             const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes();
             const topPosition = (currentMinutes / 60) * HOUR_HEIGHT;
-            
+            const timeStr = config.use24Hour
+              ? `${currentTime.getHours().toString().padStart(2, '0')}:${currentTime.getMinutes().toString().padStart(2, '0')}`
+              : `${currentTime.getHours() % 12 || 12}:${currentTime.getMinutes().toString().padStart(2, '0')}`;
+
             if (topPosition >= 0 && topPosition <= TOTAL_HOURS * HOUR_HEIGHT) {
               return (
-                <>
+                <div style={{
+                  position: "absolute",
+                  top: topPosition,
+                  left: 0,
+                  right: 0,
+                  zIndex: 1,
+                  pointerEvents: "none"
+                }}>
+                  {/* Time badge */}
                   <div style={{
                     position: "absolute",
-                    top: topPosition,
+                    left: 4,
+                    top: -8,
+                    background: theme.indicator,
+                    color: "#fff",
+                    fontSize: 8,
+                    fontWeight: 700,
+                    padding: "2px 5px",
+                    borderRadius: 3,
+                    boxShadow: `0 1px 4px ${theme.indicator}40`,
+                    zIndex: 2
+                  }}>{timeStr}</div>
+                  {/* Line - behind events */}
+                  <div style={{
+                    position: "absolute",
                     left: 0,
                     right: 0,
                     height: 1.5,
-                    background: accentColor,
-                    zIndex: 8,
-                    pointerEvents: "none",
-                    boxShadow: `0 0 0 1px ${theme.card}`
+                    background: `linear-gradient(90deg, ${theme.indicator} 0%, ${theme.indicator}30 100%)`,
+                    borderRadius: 1
                   }} />
-                  <div style={{
-                    position: "absolute",
-                    left: -6,
-                    top: topPosition - 4,
-                    width: 8,
-                    height: 8,
-                    borderRadius: "50%",
-                    background: accentColor,
-                    border: `1.5px solid ${theme.card}`,
-                    zIndex: 9,
-                    pointerEvents: "none"
-                  }} />
-                </>
+                </div>
               );
             }
           })()}
           
           {dropIndicator && (
             <div
+              className="gpu-accelerated"
               style={{
                 position: "absolute",
                 top: dropIndicator.top,
                 left: 6,
                 right: 6,
                 height: dropIndicator.height,
-                background: isExtending 
-                  ? `${accentColor}15` 
+                background: isExtending
+                  ? `${accentColor}15`
                   : `${accentColor}10`,
                 border: `1.5px dashed ${accentColor}`,
                 borderRadius: 8,
                 pointerEvents: "none",
-                zIndex: 10
+                zIndex: 10,
+                transition: 'top 0.05s ease-out, height 0.05s ease-out'
               }}
             />
           )}
           
           {calculateEventPositions.map((pos) => {
-            const { event, top, height, left, width, groupSize } = pos;
+            const { event, top, height, left, width } = pos;
             const tag = tags.find(t => t.id === event.category) || tags[0] || {};
             const isDragged = draggedEvent?.id === event.id;
             const isShortEvent = height < 60;
@@ -2360,135 +3097,151 @@ function DayView({ currentDate, events, theme, config, tags, onEventClick, onEve
                   position: "absolute",
                   top: top,
                   left: left,
-                  width: `calc(${width} - 12px)`,
-                  height: Math.max(50, height),
-                  background: config.darkMode 
-                    ? `${tag.color}15`
-                    : `${tag.color}08`,
+                  width: `calc(${width} - 8px)`,
+                  height: Math.max(45, height),
+                  background: config.darkMode
+                    ? `linear-gradient(135deg, ${tag.color}22 0%, ${tag.color}15 100%)`
+                    : `linear-gradient(135deg, ${theme.card}f5 0%, ${tag.color}18 100%)`,
                   borderLeft: `3px solid ${tag.color}`,
-                  borderRadius: 8,
-                  padding: isShortEvent ? "6px 8px" : "8px 10px",
+                  borderRadius: 6,
+                  padding: isShortEvent ? "4px 8px" : "6px 10px",
                   cursor: 'pointer',
                   opacity: isDragged ? 0.3 : 1,
-                  boxShadow: isDragged ? 'none' : theme.shadow,
-                  transition: 'all 0.2s',
+                  boxShadow: `0 1px 3px ${tag.color}15`,
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
                   overflow: "hidden",
-                  zIndex: isDragged ? 1 : (groupSize > 1 ? 2 : 1),
+                  zIndex: isDragged ? 1 : 5,
                   userSelect: 'none',
-                  border: `1px solid ${config.darkMode ? `${tag.color}25` : `${tag.color}12`}`,
+                  border: `1px solid ${tag.color}20`,
+                  borderLeftWidth: 3,
                   display: 'flex',
                   flexDirection: 'column',
-                  margin: '0 6px'
+                  margin: '0 4px',
+                  backdropFilter: "blur(8px)",
+                  transform: 'translateZ(0)',
+                  willChange: 'transform, box-shadow',
+                  contain: 'layout style'
                 }}
                 onMouseEnter={(e) => {
                   if (!isDragged && !isDragging) {
                     e.currentTarget.style.transform = "translateY(-1px)";
-                    e.currentTarget.style.boxShadow = theme.shadowLg;
-                    e.currentTarget.style.zIndex = 20;
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${tag.color}25`;
+                    e.currentTarget.style.zIndex = "20";
                   }
                 }}
                 onMouseLeave={(e) => {
                   if (!isDragged && !isDragging) {
                     e.currentTarget.style.transform = "translateY(0)";
-                    e.currentTarget.style.boxShadow = theme.shadow;
-                    e.currentTarget.style.zIndex = (groupSize > 1 ? 2 : 1);
+                    e.currentTarget.style.boxShadow = `0 1px 3px ${tag.color}15`;
+                    e.currentTarget.style.zIndex = "5";
                   }
                 }}>
+                {/* Header: Title + Tag (top-right) */}
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 6,
+                  marginBottom: isShortEvent ? 1 : 4
+                }}>
                   <div style={{
-                    display: 'flex',
-alignItems: 'flex-start',
-marginBottom: isShortEvent ? 3 : 5
-}}>
-<div style={{
-fontSize: isShortEvent ? 11 : 12,
-fontWeight: 600,
-color: theme.text,
-lineHeight: 1.2,
-flex: 1,
-overflow: 'hidden',
-textOverflow: 'ellipsis',
-whiteSpace: isShortEvent ? 'nowrap' : 'normal',
-display: '-webkit-box',
-WebkitLineClamp: isShortEvent ? 1 : 2,
-WebkitBoxOrient: 'vertical'
-}}>
-{event.title || 'Event'}
-</div>
-</div>
-            {!isShortEvent && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: 5
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 4, 
-                  fontWeight: 500,
-                  fontSize: 10,
-                  color: theme.textSec,
-                  opacity: 0.9
-                }}>
-                  <ICONS.Clock width={9} height={9} />
-                  {formatTime(pos.startTime)} – {formatTime(pos.endTime)}
-                </div>
-              </div>
-            )}
-            
-            {!isShortEvent && event.location && (
-              <div style={{ 
-                display: 'flex', 
-                alignItems: 'center',
-                marginBottom: 5
-              }}>
-                <div style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: 4, 
-                  fontWeight: 500,
-                  fontSize: 9,
-                  color: theme.textSec,
-                  opacity: 0.8
-                }}>
-                  <ICONS.MapPin width={8} height={8} />
-                  <span style={{
+                    fontSize: isShortEvent ? 11 : 13,
+                    fontWeight: 600,
+                    color: theme.text,
+                    lineHeight: 1.25,
+                    flex: 1,
+                    minWidth: 0,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
+                    whiteSpace: isShortEvent ? 'nowrap' : 'normal',
+                    display: '-webkit-box',
+                    WebkitLineClamp: isShortEvent ? 1 : 2,
+                    WebkitBoxOrient: 'vertical'
+                  }}>
+                    {event.title || 'Event'}
+                  </div>
+                  {/* Tag badge - top right (compact dot for short events) */}
+                  {isShortEvent ? (
+                    <div style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: tag.color,
+                      flexShrink: 0,
+                      boxShadow: `0 0 0 2px ${tag.color}20`
+                    }} title={tag.name} />
+                  ) : (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 3,
+                      background: `${tag.color}${config.darkMode ? '20' : '10'}`,
+                      padding: '3px 7px',
+                      borderRadius: 4,
+                      fontSize: 9,
+                      fontWeight: 600,
+                      color: tag.color,
+                      lineHeight: 1,
+                      letterSpacing: '0.2px',
+                      flexShrink: 0,
+                      maxWidth: 80,
+                      border: `1px solid ${tag.color}${config.darkMode ? '30' : '18'}`
+                    }}>
+                      {(() => { const IconComponent = getTagIcon(tag); return IconComponent ? <IconComponent width={8} height={8} /> : null; })()}
+                      <span style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                      }}>
+                        {tag.name}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Time - always visible, compact for short events */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: isShortEvent ? 3 : 4,
+                  marginBottom: isShortEvent ? 0 : 4
+                }}>
+                  <ICONS.Clock
+                    width={isShortEvent ? 8 : 10}
+                    height={isShortEvent ? 8 : 10}
+                    style={{ color: theme.textMuted, flexShrink: 0 }}
+                  />
+                  <span style={{
+                    fontSize: isShortEvent ? 9 : 10,
+                    fontWeight: 500,
+                    color: theme.textSec,
+                    letterSpacing: '0.1px',
                     whiteSpace: 'nowrap'
                   }}>
-                    {event.location}
+                    {formatTime(pos.startTime)}{isShortEvent ? '' : ` – ${formatTime(pos.endTime)}`}
                   </span>
                 </div>
-              </div>
-            )}
-            
-            <div style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 3,
-              background: `${tag.color}${config.darkMode ? '25' : '12'}`,
-              padding: isShortEvent ? '2px 5px' : '3px 6px',
-              borderRadius: 4,
-              fontSize: isShortEvent ? 8 : 9,
-              fontWeight: 600,
-              color: tag.color,
-              width: 'fit-content',
-              lineHeight: 1,
-              letterSpacing: '0.1px',
-              marginTop: 'auto',
-              border: `1px solid ${tag.color}${config.darkMode ? '35' : '20'}`
-            }}>
-              {(() => { const IconComponent = getTagIcon(tag); return IconComponent ? <IconComponent width={isShortEvent ? 7 : 8} height={isShortEvent ? 7 : 8} /> : null; })()}
-              <span style={{ 
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                maxWidth: isShortEvent ? '40px' : '70px'
-              }}>
-                {tag.name}
-              </span>
-            </div>
+
+                {/* Location - only for longer events */}
+                {!isShortEvent && event.location && (
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4
+                  }}>
+                    <ICONS.MapPin width={9} height={9} style={{ color: theme.textMuted, flexShrink: 0 }} />
+                    <span style={{
+                      fontSize: 9,
+                      fontWeight: 500,
+                      color: theme.textMuted,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>
+                      {event.location}
+                    </span>
+                  </div>
+                )}
             
             {config.enableDragDrop && !isShortEvent && (
               <div 
@@ -2555,11 +3308,14 @@ WebkitBoxOrient: 'vertical'
 </div>
 );
 }
-function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
-  const HOUR_HEIGHT = 48;
-  const HEADER_HEIGHT = 56;
-  const TIME_COL_WIDTH = 56;
+function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventClick }) {
+  const HOUR_HEIGHT = 52;
+  const HEADER_HEIGHT = 60;
+  const TIME_COL_WIDTH = 50;
   const TOTAL_HOURS = 24;
+
+  const now = nowTime || new Date();
+  const todayStr = now.toDateString();
 
   const days = useMemo(() => {
     const startOfWeek = new Date(currentDate);
@@ -2582,8 +3338,6 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
     });
     return grouped;
   }, [events, days]);
-
-  const todayStr = new Date().toDateString();
 
   return (
     <div style={{
@@ -2621,31 +3375,31 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
               key={index}
               style={{
                 flex: 1,
-                minWidth: 120,
+                minWidth: 100,
                 height: HEADER_HEIGHT,
                 display: "flex",
                 flexDirection: "column",
                 alignItems: "center",
                 justifyContent: "center",
                 borderRight: index < 6 ? `1px solid ${theme.border}` : "none",
-                background: isToday ? `${theme.accent}08` : theme.bg
+                background: isToday ? `${theme.accent}06` : theme.bg
               }}
             >
               <span style={{
-                fontSize: 11,
-                fontWeight: 600,
+                fontSize: 10,
+                fontWeight: 700,
                 color: isToday ? theme.accent : isWeekend ? theme.textMuted : theme.textSec,
                 textTransform: "uppercase",
-                letterSpacing: 1,
-                marginBottom: 4
+                letterSpacing: 0.8,
+                marginBottom: 3
               }}>
                 {day.toLocaleDateString('en-US', { weekday: 'short' })}
               </span>
               <span style={{
-                fontSize: 20,
+                fontSize: 18,
                 fontWeight: 600,
-                width: 32,
-                height: 32,
+                width: 30,
+                height: 30,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -2776,37 +3530,22 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
                 />
               ))}
 
-              {/* Current time indicator */}
+              {/* Current time line - simple, behind events */}
               {isToday && (() => {
-                const now = new Date();
                 const currentMinutes = now.getHours() * 60 + now.getMinutes();
                 const topPosition = (currentMinutes / 60) * HOUR_HEIGHT;
-
                 return (
                   <div style={{
                     position: "absolute",
                     top: topPosition,
                     left: 0,
                     right: 0,
-                    zIndex: 15,
-                    pointerEvents: "none"
-                  }}>
-                    <div style={{
-                      position: "absolute",
-                      left: -5,
-                      top: -5,
-                      width: 10,
-                      height: 10,
-                      borderRadius: "50%",
-                      background: theme.accent,
-                      boxShadow: `0 0 0 2px ${theme.bg}`
-                    }} />
-                    <div style={{
-                      height: 2,
-                      background: theme.accent,
-                      boxShadow: `0 0 8px ${theme.accent}50`
-                    }} />
-                  </div>
+                    height: 2,
+                    background: theme.indicator,
+                    zIndex: 0,
+                    pointerEvents: "none",
+                    opacity: 0.6
+                  }} />
                 );
               })()}
 
@@ -2817,47 +3556,47 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
 
                 const top = (event.startMinutes / 60) * HOUR_HEIGHT;
                 const height = ((event.endMinutes - event.startMinutes) / 60) * HOUR_HEIGHT;
-                const isShortEvent = height < 35;
+                const showTime = height >= 32;
 
                 const colWidth = (100 - 4) / event.totalColumns;
                 const left = 2 + event.column * colWidth;
+
+                const timeStr = config.use24Hour
+                  ? `${eventStart.getHours().toString().padStart(2, '0')}:${eventStart.getMinutes().toString().padStart(2, '0')}`
+                  : `${eventStart.getHours() % 12 || 12}:${eventStart.getMinutes().toString().padStart(2, '0')}`;
 
                 return (
                   <div
                     key={event.id}
                     onClick={() => onEventClick(event)}
+                    title={`${event.title || 'Event'} - ${timeStr}`}
                     style={{
                       position: "absolute",
-                      top: top + 1,
+                      top: top + 2,
                       left: `${left}%`,
-                      width: `calc(${colWidth}% - 2px)`,
-                      height: Math.max(height - 2, 20),
-                      background: `linear-gradient(135deg, ${tag.color}18 0%, ${tag.color}10 100%)`,
+                      width: `calc(${colWidth}% - 4px)`,
+                      height: Math.max(height - 4, 18),
+                      background: theme.card,
                       borderLeft: `3px solid ${tag.color}`,
-                      borderRadius: 6,
-                      padding: isShortEvent ? "3px 8px" : "6px 8px",
+                      borderRadius: 4,
+                      padding: "4px 6px",
                       cursor: "pointer",
                       overflow: "hidden",
                       zIndex: 5,
-                      backdropFilter: "blur(8px)",
-                      border: `1px solid ${tag.color}20`,
-                      borderLeftWidth: 3,
-                      borderLeftColor: tag.color,
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)"
+                      boxShadow: `0 1px 3px ${theme.text}08`,
+                      transition: "box-shadow 0.15s ease"
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.transform = "translateY(-1px)";
-                      e.currentTarget.style.boxShadow = `0 4px 16px ${tag.color}25`;
+                      e.currentTarget.style.boxShadow = `0 2px 8px ${theme.text}15`;
                       e.currentTarget.style.zIndex = "25";
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.transform = "translateY(0)";
-                      e.currentTarget.style.boxShadow = "none";
+                      e.currentTarget.style.boxShadow = `0 1px 3px ${theme.text}08`;
                       e.currentTarget.style.zIndex = "5";
                     }}
                   >
                     <div style={{
-                      fontSize: 11,
+                      fontSize: 10,
                       fontWeight: 600,
                       color: theme.text,
                       overflow: "hidden",
@@ -2867,19 +3606,12 @@ function WeekView({ currentDate, events, theme, config, tags, onEventClick }) {
                     }}>
                       {event.title || 'Event'}
                     </div>
-                    {!isShortEvent && (
+                    {showTime && (
                       <div style={{
-                        fontSize: 10,
-                        color: tag.color,
-                        fontWeight: 500,
-                        marginTop: 3,
-                        opacity: 0.9
-                      }}>
-                        {eventStart.toLocaleTimeString([], {
-                          hour: 'numeric',
-                          minute: '2-digit'
-                        })}
-                      </div>
+                        fontSize: 9,
+                        color: theme.textMuted,
+                        marginTop: 2
+                      }}>{timeStr}</div>
                     )}
                   </div>
                 );
@@ -2923,7 +3655,7 @@ const weekDays = config.weekStartMon
 ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 return (
-<div style={{ maxWidth: 1200, margin: "0 auto" }}>
+<div style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px" }}>
 <div style={{
 display: "grid",
 gridTemplateColumns: "repeat(7, 1fr)",
@@ -2936,7 +3668,7 @@ paddingBottom: 10
 key={day}
 style={{
 textAlign: "center",
-fontSize: 10,
+fontSize: 11,
 fontWeight: 700,
 color: theme.textMuted,
 textTransform: "uppercase",
@@ -2950,7 +3682,7 @@ letterSpacing: 0.8
   <div style={{
     display: "grid",
     gridTemplateColumns: "repeat(7, 1fr)",
-    gap: 6
+    gap: 8
   }}>
     {days.map((dayInfo, index) => {
       const { date, isCurrentMonth } = dayInfo;
@@ -2964,9 +3696,9 @@ letterSpacing: 0.8
           key={index}
           onClick={() => isCurrentMonth && onDayClick(date)}
           style={{
-            minHeight: 100,
-            padding: 8,
-            borderRadius: 8,
+            minHeight: 110,
+            padding: 10,
+            borderRadius: 10,
             background: isCurrentMonth ? (isToday ? theme.selection : theme.hoverBg) : theme.bg,
             border: `1px solid ${isToday ? theme.accent + '40' : theme.border}`,
             cursor: isCurrentMonth ? "pointer" : "default",
@@ -3059,16 +3791,61 @@ events,
 theme,
 config,
 tags,
-context,
 accentColor,
-onDayClick,
-onEventClick
+onDayClick
 }) {
 const year = currentDate.getFullYear();
 const today = React.useMemo(() => new Date(), []);
 const isCurrentYear = year === today.getFullYear();
 const [hoveredDay, setHoveredDay] = React.useState(null);
 const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
+
+// Focus Timer State
+const [timerSeconds, setTimerSeconds] = React.useState(25 * 60);
+const [timerRunning, setTimerRunning] = React.useState(false);
+const timerRef = React.useRef(null);
+
+// Daily Goals State
+const [goals, setGoals] = React.useState([
+  { id: 1, text: 'Morning routine', done: false },
+  { id: 2, text: 'Deep work session', done: false },
+  { id: 3, text: 'Exercise', done: false }
+]);
+const [newGoal, setNewGoal] = React.useState('');
+
+// Focus Timer Effect
+React.useEffect(() => {
+  if (timerRunning && timerSeconds > 0) {
+    timerRef.current = setInterval(() => {
+      setTimerSeconds(prev => prev - 1);
+    }, 1000);
+  } else if (timerSeconds === 0) {
+    setTimerRunning(false);
+  }
+  return () => clearInterval(timerRef.current);
+}, [timerRunning, timerSeconds]);
+
+const formatTimer = (secs) => {
+  const mins = Math.floor(secs / 60);
+  const s = secs % 60;
+  return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+};
+
+const toggleGoal = (id) => {
+  setGoals(prev => prev.map(g => g.id === id ? { ...g, done: !g.done } : g));
+};
+
+const addGoal = () => {
+  if (newGoal.trim()) {
+    setGoals(prev => [...prev, { id: Date.now(), text: newGoal.trim(), done: false }]);
+    setNewGoal('');
+  }
+};
+
+const removeGoal = (id) => {
+  setGoals(prev => prev.filter(g => g.id !== id));
+};
+
 React.useEffect(() => {
 if (isCurrentYear) {
 const interval = setInterval(() => {
@@ -3141,6 +3918,8 @@ paddingBottom: 12
 }}>
 <div style={{
 width: "100%",
+maxWidth: 1200,
+margin: "0 auto",
 display: "flex",
 flexDirection: "column",
 gap: 0
@@ -3302,25 +4081,13 @@ flexShrink: 0
       );
     })}
     
-    {/* Premium Stats Section */}
+    {/* Productivity Tools Section */}
     {(() => {
-      const totalEvents = events.length;
-      const daysWithEvents = Object.keys(eventsByDay).length;
-      const monthCounts = Array.from({ length: 12 }).map((_, i) => ({
-        month: i,
-        count: events.filter(e => new Date(e.start).getMonth() === i && new Date(e.start).getFullYear() === year).length
-      }));
-      const maxMonthCount = Math.max(...monthCounts.map(m => m.count), 1);
-      const busiest = monthCounts.reduce((a, b) => a.count > b.count ? a : b, { month: 0, count: 0 });
       const progress = isCurrentYear
         ? Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24 * 365) * 100)
         : year < today.getFullYear() ? 100 : 0;
-
-      // Category breakdown
-      const categoryBreakdown = tags.reduce((acc, tag) => {
-        acc[tag.id] = events.filter(e => e.category === tag.id).length;
-        return acc;
-      }, {});
+      const totalEvents = events.length;
+      const daysWithEvents = Object.keys(eventsByDay).length;
 
       // Upcoming events (next 7 days)
       const upcomingEvents = events
@@ -3330,277 +4097,285 @@ flexShrink: 0
           return diffDays >= 0 && diffDays <= 7;
         })
         .sort((a, b) => new Date(a.start) - new Date(b.start))
-        .slice(0, 4);
+        .slice(0, 5);
 
-      // Day of week distribution
-      const dayDistribution = [0, 0, 0, 0, 0, 0, 0];
-      events.forEach(e => {
-        const day = new Date(e.start).getDay();
-        dayDistribution[day]++;
-      });
-      const maxDayCount = Math.max(...dayDistribution, 1);
-      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      const goalsCompleted = goals.filter(g => g.done).length;
+      const goalsProgress = goals.length > 0 ? Math.round((goalsCompleted / goals.length) * 100) : 0;
 
       return (
         <div style={{
-          marginTop: 20,
-          paddingTop: 16,
-          borderTop: `1px solid ${theme.border}`
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
         }}>
-          {/* Main Stats Row */}
+          {/* Compact Stats + Tools Row */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(4, 1fr)",
-            gap: 12,
-            marginBottom: 20
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: 10,
+            marginBottom: 12
           }}>
-            {[
-              { label: "Total Events", value: totalEvents, icon: "📅" },
-              { label: "Active Days", value: daysWithEvents, icon: "⚡" },
-              { label: "Busiest Month", value: monthNames[busiest.month], icon: "🔥" },
-              { label: "Year Progress", value: `${progress}%`, icon: "📊" }
-            ].map((stat, idx) => (
-              <div key={idx} style={{
-                background: `linear-gradient(135deg, ${theme.sidebar} 0%, ${theme.hoverBg} 100%)`,
-                padding: "14px 12px",
-                borderRadius: 12,
-                textAlign: "center",
-                border: `1px solid ${theme.border}`,
-                position: "relative",
-                overflow: "hidden"
-              }}>
-                <div style={{
-                  fontSize: 18,
-                  marginBottom: 6
-                }}>{stat.icon}</div>
-                <div style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: accentColor,
-                  marginBottom: 4
-                }}>
-                  {stat.value}
-                </div>
-                <div style={{
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: theme.textMuted,
-                  textTransform: "uppercase",
-                  letterSpacing: 0.5
-                }}>
-                  {stat.label}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Activity & Categories Row */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 16,
-            marginBottom: 20
-          }}>
-            {/* Monthly Activity Chart */}
+            {/* Year Progress */}
             <div style={{
-              background: theme.sidebar,
-              borderRadius: 12,
-              padding: 14,
-              border: `1px solid ${theme.border}`
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
             }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: theme.textSec,
-                marginBottom: 12,
-                textTransform: "uppercase",
-                letterSpacing: 0.8
-              }}>
-                Monthly Activity
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: `${accentColor}20`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.TrendingUp width={11} height={11} style={{ color: accentColor }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Progress</span>
               </div>
-              <div style={{
-                display: "flex",
-                alignItems: "flex-end",
-                gap: 4,
-                height: 50
-              }}>
-                {monthCounts.map((m, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      flex: 1,
-                      height: `${Math.max((m.count / maxMonthCount) * 100, 8)}%`,
-                      background: m.month === today.getMonth() && isCurrentYear
-                        ? accentColor
-                        : `${accentColor}40`,
-                      borderRadius: 3,
-                      transition: "all 0.3s",
-                      cursor: "pointer"
-                    }}
-                    title={`${monthNames[m.month]}: ${m.count} events`}
-                  />
-                ))}
-              </div>
-              <div style={{
-                display: "flex",
-                justifyContent: "space-between",
-                marginTop: 6
-              }}>
-                {['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'].map((m, i) => (
-                  <span key={i} style={{
-                    fontSize: 7,
-                    color: theme.textMuted,
-                    flex: 1,
-                    textAlign: "center"
-                  }}>{m}</span>
-                ))}
+              <div style={{ fontSize: 22, fontWeight: 700, color: theme.text }}>{progress}%</div>
+              <div style={{ width: '100%', height: 3, background: config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2, marginTop: 6 }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: accentColor, borderRadius: 2 }} />
               </div>
             </div>
 
-            {/* Weekly Distribution */}
+            {/* Events */}
             <div style={{
-              background: theme.sidebar,
-              borderRadius: 12,
-              padding: 14,
-              border: `1px solid ${theme.border}`
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
             }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: theme.textSec,
-                marginBottom: 12,
-                textTransform: "uppercase",
-                letterSpacing: 0.8
-              }}>
-                Weekly Pattern
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#6366f120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Calendar width={11} height={11} style={{ color: '#6366f1' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Events</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#6366f1' }}>{totalEvents}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>This year</div>
+            </div>
+
+            {/* Active Days */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#10b98120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Check width={11} height={11} style={{ color: '#10b981' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Active</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#10b981' }}>{daysWithEvents}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Days busy</div>
+            </div>
+
+            {/* This Week */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#f5970020',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Star width={11} height={11} style={{ color: '#f59700' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Week</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#f59700' }}>{upcomingEvents.length}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Coming up</div>
+            </div>
+
+            {/* Focus Timer - Compact */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: `${accentColor}20`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Clock width={11} height={11} style={{ color: accentColor }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Focus</span>
               </div>
               <div style={{
-                display: "flex",
-                alignItems: "flex-end",
-                gap: 6,
-                height: 50
-              }}>
-                {dayDistribution.map((count, i) => (
-                  <div key={i} style={{ flex: 1, textAlign: "center" }}>
-                    <div style={{
-                      height: `${Math.max((count / maxDayCount) * 40, 4)}px`,
-                      background: (i === 0 || i === 6) ? `${accentColor}30` : accentColor,
-                      borderRadius: 3,
-                      marginBottom: 4
-                    }} />
+                fontSize: 18,
+                fontWeight: 600,
+                color: timerRunning ? accentColor : theme.text,
+                fontFamily: 'monospace',
+                marginBottom: 6
+              }}>{formatTimer(timerSeconds)}</div>
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button onClick={() => setTimerRunning(!timerRunning)} style={{
+                  flex: 1, padding: '4px', fontSize: 9, fontWeight: 600,
+                  background: timerRunning ? theme.indicator : accentColor,
+                  color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer'
+                }}>{timerRunning ? 'Stop' : 'Start'}</button>
+                <button onClick={() => { setTimerRunning(false); setTimerSeconds(25 * 60); }} style={{
+                  padding: '4px 6px', fontSize: 9,
+                  background: 'transparent', color: theme.textMuted,
+                  border: `1px solid ${theme.border}`, borderRadius: 4, cursor: 'pointer'
+                }}>↻</button>
+              </div>
+            </div>
+
+            {/* Avg Events/Day */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#8b5cf620',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Target width={11} height={11} style={{ color: '#8b5cf6' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Avg/Day</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#8b5cf6' }}>
+                {daysWithEvents > 0 ? (totalEvents / daysWithEvents).toFixed(1) : '0'}
+              </div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Events</div>
+            </div>
+          </div>
+
+          {/* Goals + Upcoming Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Daily Goals - Inline Compact */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#10b98120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Target width={11} height={11} style={{ color: '#10b981' }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Daily Goals</span>
+                <span style={{ marginLeft: 'auto', fontSize: 10, color: goalsProgress === 100 ? '#10b981' : theme.textMuted }}>
+                  {goalsCompleted}/{goals.length}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
+                {goals.slice(0, 3).map(goal => (
+                  <div key={goal.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 8,
+                    padding: '6px 8px',
+                    background: goal.done ? (config.darkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.08)') : 'transparent',
+                    borderRadius: 6
+                  }}>
+                    <div onClick={() => toggleGoal(goal.id)} style={{
+                      width: 14, height: 14, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
+                      border: `1.5px solid ${goal.done ? '#10b981' : theme.border}`,
+                      background: goal.done ? '#10b981' : 'transparent',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      {goal.done && <svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/></svg>}
+                    </div>
                     <span style={{
-                      fontSize: 8,
-                      color: theme.textMuted,
-                      fontWeight: 500
-                    }}>{dayNames[i]}</span>
+                      fontSize: 11, flex: 1,
+                      color: goal.done ? theme.textMuted : theme.text,
+                      textDecoration: goal.done ? 'line-through' : 'none',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                    }}>{goal.text}</span>
+                    <button onClick={() => removeGoal(goal.id)} style={{
+                      background: 'none', border: 'none', color: theme.textMuted,
+                      fontSize: 12, cursor: 'pointer', opacity: 0.5, padding: 0
+                    }}>×</button>
                   </div>
                 ))}
               </div>
-            </div>
-          </div>
-
-          {/* Category Breakdown & Upcoming */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 16
-          }}>
-            {/* Categories */}
-            <div style={{
-              background: theme.sidebar,
-              borderRadius: 12,
-              padding: 14,
-              border: `1px solid ${theme.border}`
-            }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: theme.textSec,
-                marginBottom: 10,
-                textTransform: "uppercase",
-                letterSpacing: 0.8
-              }}>
-                By Category
-              </div>
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {tags.slice(0, 4).map(tag => {
-                  const count = categoryBreakdown[tag.id] || 0;
-                  const pct = totalEvents > 0 ? (count / totalEvents) * 100 : 0;
-                  return (
-                    <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: "50%",
-                        background: tag.color,
-                        flexShrink: 0
-                      }} />
-                      <span style={{ fontSize: 10, color: theme.text, flex: 1 }}>{tag.name}</span>
-                      <div style={{
-                        width: 60,
-                        height: 4,
-                        background: theme.hoverBg,
-                        borderRadius: 2,
-                        overflow: "hidden"
-                      }}>
-                        <div style={{
-                          width: `${pct}%`,
-                          height: "100%",
-                          background: tag.color,
-                          borderRadius: 2
-                        }} />
-                      </div>
-                      <span style={{ fontSize: 9, color: theme.textMuted, width: 20 }}>{count}</span>
-                    </div>
-                  );
-                })}
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input
+                  type="text" value={newGoal} onChange={e => setNewGoal(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addGoal()}
+                  placeholder="Add goal..."
+                  style={{
+                    flex: 1, padding: '6px 10px', fontSize: 11,
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                    border: 'none', borderRadius: 6, color: theme.text, outline: 'none'
+                  }}
+                />
+                <button onClick={addGoal} style={{
+                  padding: '6px 10px', fontSize: 10, fontWeight: 600,
+                  background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer'
+                }}>Add</button>
               </div>
             </div>
 
-            {/* Upcoming Events */}
+            {/* Upcoming Events - Compact */}
             <div style={{
-              background: theme.sidebar,
-              borderRadius: 12,
-              padding: 14,
-              border: `1px solid ${theme.border}`
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
             }}>
-              <div style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: theme.textSec,
-                marginBottom: 10,
-                textTransform: "uppercase",
-                letterSpacing: 0.8
-              }}>
-                Coming Up
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#6366f120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Calendar width={11} height={11} style={{ color: '#6366f1' }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Upcoming</span>
               </div>
               {upcomingEvents.length > 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {upcomingEvents.map(event => {
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {upcomingEvents.slice(0, 3).map(event => {
                     const tag = tags.find(t => t.id === event.category) || tags[0];
                     const start = new Date(event.start);
                     const isToday = start.toDateString() === today.toDateString();
                     return (
                       <div key={event.id} style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        padding: "6px 8px",
-                        background: theme.hoverBg,
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 8px',
+                        background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         borderRadius: 6,
-                        borderLeft: `3px solid ${tag?.color || accentColor}`
+                        borderLeft: `2px solid ${tag?.color || accentColor}`
                       }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                          background: `${tag?.color || accentColor}15`,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: tag?.color || accentColor, lineHeight: 1 }}>{start.getDate()}</span>
+                          <span style={{ fontSize: 7, color: tag?.color || accentColor, textTransform: 'uppercase' }}>{start.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                        </div>
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{
-                            fontSize: 10,
-                            fontWeight: 600,
-                            color: theme.text,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap"
-                          }}>{event.title}</div>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</div>
                           <div style={{ fontSize: 9, color: theme.textMuted }}>
-                            {isToday ? 'Today' : start.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                            {isToday ? <span style={{ color: accentColor }}>Today</span> : start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {' • '}{start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
                           </div>
                         </div>
                       </div>
@@ -3608,13 +4383,9 @@ flexShrink: 0
                   })}
                 </div>
               ) : (
-                <div style={{
-                  fontSize: 11,
-                  color: theme.textMuted,
-                  textAlign: "center",
-                  padding: 16
-                }}>
-                  No upcoming events this week
+                <div style={{ textAlign: 'center', padding: '16px 0', color: theme.textMuted }}>
+                  <ICONS.Calendar width={18} height={18} style={{ opacity: 0.3, marginBottom: 4 }} />
+                  <div style={{ fontSize: 10 }}>No events this week</div>
                 </div>
               )}
             </div>
@@ -3724,7 +4495,7 @@ flexShrink: 0
 </div>
 );
 }
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, config, context }) {
+function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }) {
 const [form, setForm] = React.useState({
 title: event?.title || '',
 category: event?.category || (tags[0]?.id || ''),
@@ -3773,6 +4544,7 @@ onSave({
   ...form
 });
 };
+const isDark = theme.id === 'dark';
 return (
 <div style={{
 position: 'fixed',
@@ -3780,13 +4552,13 @@ top: 0,
 left: 0,
 right: 0,
 bottom: 0,
-background: 'rgba(0, 0, 0, 0.5)',
+background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
 display: 'flex',
 alignItems: 'center',
 justifyContent: 'center',
 zIndex: 1000,
-padding: 16,
-backdropFilter: 'blur(3px)'
+padding: 20,
+backdropFilter: 'blur(8px)'
 }}>
 <div
 onClick={onCancel}
@@ -3798,62 +4570,76 @@ right: 0,
 bottom: 0
 }}
 />
-  <div style={{
-    background: theme.card,
-    borderRadius: 16,
+  <div
+    className="scale-enter scroll-container"
+    style={{
+    background: isDark ? theme.cardGradient : theme.card,
+    borderRadius: 20,
     width: '100%',
-    maxWidth: 460,
-    maxHeight: '90vh',
+    maxWidth: 480,
+    maxHeight: '85vh',
     overflow: 'auto',
-    boxShadow: theme.shadowLg,
-    position: 'relative',
-    border: `1px solid ${theme.border}`
+    boxShadow: isDark
+      ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+      : '0 24px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
+    position: 'relative'
   }}>
     <div style={{
-      padding: '20px',
-      borderBottom: `1px solid ${theme.border}`,
+      padding: '20px 24px',
+      borderBottom: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
       display: 'flex',
       justifyContent: 'space-between',
-      alignItems: 'center'
+      alignItems: 'center',
+      background: isDark ? 'rgba(255,255,255,0.02)' : 'transparent'
     }}>
-      <h3 className="serif" style={{
-        fontSize: 18,
-        fontWeight: 500,
-        color: theme.text
-      }}>
-        {event?.id ? 'Edit Event' : 'New Event'}
-      </h3>
+      <div>
+        <h3 style={{
+          fontSize: 18,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 2
+        }}>
+          {event?.id ? 'Edit Event' : 'New Event'}
+        </h3>
+        <span style={{ fontSize: 11, color: theme.textMuted }}>
+          {context === 'family' ? 'Family calendar' : 'Personal calendar'}
+        </span>
+      </div>
       <button
         onClick={onCancel}
         style={{
-          background: 'transparent',
+          background: theme.hoverBg,
           border: 'none',
           color: theme.textSec,
           cursor: 'pointer',
-          padding: 6,
-          borderRadius: 6,
+          padding: 8,
+          borderRadius: 8,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'all 0.2s'
         }}
-        onMouseEnter={e => e.currentTarget.style.color = theme.text}
-        onMouseLeave={e => e.currentTarget.style.color = theme.textSec}
+        onMouseEnter={e => {
+          e.currentTarget.style.background = theme.activeBg;
+          e.currentTarget.style.color = theme.text;
+        }}
+        onMouseLeave={e => {
+          e.currentTarget.style.background = theme.hoverBg;
+          e.currentTarget.style.color = theme.textSec;
+        }}
       >
-        <ICONS.Close width={18} height={18} />
+        <ICONS.Close width={16} height={16} />
       </button>
     </div>
     
-    <form onSubmit={handleSubmit} style={{ padding: 20 }}>
-      <div style={{ marginBottom: 16 }}>
+    <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
+      <div style={{ marginBottom: 20 }}>
         <label style={{
           display: 'block',
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 600,
           color: theme.textSec,
-          marginBottom: 6,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
+          marginBottom: 8
         }}>
           Title
         </label>
@@ -3864,23 +4650,29 @@ bottom: 0
           placeholder="Event name"
           style={{
             width: '100%',
-            padding: '10px 12px',
+            padding: '12px 14px',
             fontSize: 14,
-            background: theme.sidebar,
-            border: `1px solid ${errors.title ? theme.indicator : theme.border}`,
-            borderRadius: 8,
+            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+            border: `1px solid ${errors.title ? theme.indicator : isDark ? theme.subtleBorder : theme.border}`,
+            borderRadius: 10,
             color: theme.text,
             transition: 'all 0.2s'
           }}
-          onFocus={(e) => e.target.style.borderColor = theme.accent}
-          onBlur={(e) => e.target.style.borderColor = errors.title ? theme.indicator : theme.border}
+          onFocus={(e) => {
+            e.target.style.borderColor = theme.accent;
+            e.target.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = errors.title ? theme.indicator : isDark ? theme.subtleBorder : theme.border;
+            e.target.style.boxShadow = 'none';
+          }}
           autoFocus
         />
         {errors.title && (
           <div style={{
             fontSize: 10,
             color: theme.indicator,
-            marginTop: 3
+            marginTop: 4
           }}>
             {errors.title}
           </div>
@@ -3891,17 +4683,15 @@ bottom: 0
         display: 'grid',
         gridTemplateColumns: '1fr 1fr',
         gap: 12,
-        marginBottom: 16
+        marginBottom: 20
       }}>
         <div>
           <label style={{
             display: 'block',
-            fontSize: 10,
-            fontWeight: 700,
+            fontSize: 11,
+            fontWeight: 600,
             color: theme.textSec,
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 0.8
+            marginBottom: 8
           }}>
             Start
           </label>
@@ -3918,26 +4708,24 @@ bottom: 0
             }}
             style={{
               width: '100%',
-              padding: '10px 12px',
+              padding: '12px 14px',
               fontSize: 13,
-              background: theme.sidebar,
-              border: `1px solid ${theme.border}`,
-              borderRadius: 8,
+              background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+              border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+              borderRadius: 10,
               color: theme.text,
               cursor: 'pointer'
             }}
           />
         </div>
-        
+
         <div>
           <label style={{
             display: 'block',
-            fontSize: 10,
-            fontWeight: 700,
+            fontSize: 11,
+            fontWeight: 600,
             color: theme.textSec,
-            marginBottom: 6,
-            textTransform: 'uppercase',
-            letterSpacing: 0.8
+            marginBottom: 8
           }}>
             End
           </label>
@@ -3953,11 +4741,11 @@ bottom: 0
             min={toLocalDateTimeString(form.start)}
             style={{
               width: '100%',
-              padding: '10px 12px',
+              padding: '12px 14px',
               fontSize: 13,
-              background: theme.sidebar,
-              border: `1px solid ${errors.end ? theme.indicator : theme.border}`,
-              borderRadius: 8,
+              background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+              border: `1px solid ${errors.end ? theme.indicator : isDark ? theme.subtleBorder : theme.border}`,
+              borderRadius: 10,
               color: theme.text,
               cursor: 'pointer'
             }}
@@ -3966,66 +4754,67 @@ bottom: 0
             <div style={{
               fontSize: 10,
               color: theme.indicator,
-              marginTop: 3
+              marginTop: 4
             }}>
               {errors.end}
             </div>
           )}
         </div>
       </div>
-      
-      <div style={{ marginBottom: 16 }}>
+
+      <div style={{ marginBottom: 20 }}>
         <label style={{
           display: 'block',
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 600,
           color: theme.textSec,
-          marginBottom: 6,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
+          marginBottom: 10
         }}>
           Category
         </label>
         <div style={{
           display: 'flex',
           flexWrap: 'wrap',
-          gap: 6
+          gap: 8
         }}>
           {tags.map(tag => {
             const IconComponent = getTagIcon(tag);
+            const isSelected = form.category === tag.id;
             return (
               <button
                 key={tag.id}
                 type="button"
                 onClick={() => setForm({ ...form, category: tag.id })}
                 style={{
-                  padding: '7px 10px',
-                  background: form.category === tag.id 
-                    ? tag.color + '15' 
-                    : theme.sidebar,
-                  border: `1px solid ${form.category === tag.id ? tag.color + '40' : theme.border}`,
-                  borderRadius: 6,
-                  color: form.category === tag.id ? tag.color : theme.textSec,
+                  padding: '8px 12px',
+                  background: isSelected
+                    ? `${tag.color}18`
+                    : isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+                  border: `1px solid ${isSelected ? `${tag.color}50` : isDark ? theme.subtleBorder : theme.border}`,
+                  borderRadius: 8,
+                  color: isSelected ? tag.color : theme.textSec,
                   fontSize: 11,
                   fontWeight: 600,
                   cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: 5,
+                  gap: 6,
                   transition: 'all 0.2s'
                 }}
                 onMouseEnter={e => {
-                  if (form.category !== tag.id) {
+                  if (!isSelected) {
                     e.currentTarget.style.background = theme.hoverBg;
+                    e.currentTarget.style.borderColor = isDark ? theme.border : theme.border;
                   }
                 }}
                 onMouseLeave={e => {
-                  if (form.category !== tag.id) {
-                    e.currentTarget.style.background = theme.sidebar;
+                  if (!isSelected) {
+                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar;
+                    e.currentTarget.style.borderColor = isDark ? theme.subtleBorder : theme.border;
                   }
                 }}
               >
-                {IconComponent && <IconComponent width={11} height={11} />}
+                {IconComponent && <IconComponent width={12} height={12} />}
                 {tag.name}
               </button>
             );
@@ -4035,24 +4824,22 @@ bottom: 0
           <div style={{
             fontSize: 10,
             color: theme.indicator,
-            marginTop: 3
+            marginTop: 4
           }}>
             {errors.category}
           </div>
         )}
       </div>
-      
-      <div style={{ marginBottom: 16 }}>
+
+      <div style={{ marginBottom: 20 }}>
         <label style={{
           display: 'block',
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 600,
           color: theme.textSec,
-          marginBottom: 6,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
+          marginBottom: 8
         }}>
-          Location (Optional)
+          Location <span style={{ fontWeight: 400, color: theme.textMuted }}>(Optional)</span>
         </label>
         <input
           type="text"
@@ -4061,65 +4848,65 @@ bottom: 0
           placeholder="Where?"
           style={{
             width: '100%',
-            padding: '10px 12px',
-            fontSize: 12,
-            background: theme.sidebar,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 13,
+            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+            borderRadius: 10,
             color: theme.text
           }}
         />
       </div>
-      
-      <div style={{ marginBottom: 20 }}>
+
+      <div style={{ marginBottom: 24 }}>
         <label style={{
           display: 'block',
-          fontSize: 10,
-          fontWeight: 700,
+          fontSize: 11,
+          fontWeight: 600,
           color: theme.textSec,
-          marginBottom: 6,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
+          marginBottom: 8
         }}>
-          Notes (Optional)
+          Notes <span style={{ fontWeight: 400, color: theme.textMuted }}>(Optional)</span>
         </label>
         <textarea
           value={form.description}
           onChange={(e) => setForm({ ...form, description: e.target.value })}
-          placeholder="Details..."
+          placeholder="Additional details..."
           rows={3}
           style={{
             width: '100%',
-            padding: '10px 12px',
-            fontSize: 12,
-            background: theme.sidebar,
-            border: `1px solid ${theme.border}`,
-            borderRadius: 8,
+            padding: '12px 14px',
+            fontSize: 13,
+            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
+            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+            borderRadius: 10,
             color: theme.text,
             resize: 'vertical',
-            minHeight: 80
+            minHeight: 80,
+            lineHeight: 1.5
           }}
         />
       </div>
-      
+
       <div style={{
         display: 'flex',
         gap: 10,
         justifyContent: 'flex-end',
-        borderTop: `1px solid ${theme.border}`,
-        paddingTop: 16
+        borderTop: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+        paddingTop: 20,
+        marginTop: 4
       }}>
         {onDelete && (
           <button
             type="button"
             onClick={onDelete}
             style={{
-              padding: '10px 18px',
+              padding: '11px 20px',
               background: 'transparent',
-              border: `1px solid ${theme.indicator}`,
-              borderRadius: 8,
+              border: `1px solid ${theme.indicator}50`,
+              borderRadius: 10,
               color: theme.indicator,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'all 0.2s'
@@ -4127,47 +4914,52 @@ bottom: 0
             onMouseEnter={e => {
               e.currentTarget.style.background = theme.indicator;
               e.currentTarget.style.color = '#fff';
+              e.currentTarget.style.borderColor = theme.indicator;
             }}
             onMouseLeave={e => {
               e.currentTarget.style.background = 'transparent';
               e.currentTarget.style.color = theme.indicator;
+              e.currentTarget.style.borderColor = `${theme.indicator}50`;
             }}
           >
             Delete
           </button>
         )}
-        
+
         <button
           type="button"
           onClick={onCancel}
           style={{
-            padding: '10px 18px',
+            padding: '11px 20px',
             background: 'transparent',
-            border: `1px solid ${theme.border}`,
-            borderRadius: 8,
+            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+            borderRadius: 10,
             color: theme.textSec,
-            fontSize: 12,
+            fontSize: 13,
             fontWeight: 600,
             cursor: 'pointer',
             transition: 'all 0.2s'
           }}
           onMouseEnter={e => {
             e.currentTarget.style.background = theme.hoverBg;
+            e.currentTarget.style.borderColor = theme.border;
           }}
           onMouseLeave={e => {
             e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = isDark ? theme.subtleBorder : theme.border;
           }}
         >
           Cancel
         </button>
-        
+
         <button
           type="submit"
           style={{
-            padding: '10px 24px',
-            background: context === 'family' ? theme.familyAccent : theme.accent,
+            padding: '11px 28px',
+            background: `linear-gradient(135deg, ${context === 'family' ? theme.familyAccent : theme.accent} 0%, ${context === 'family' ? theme.familyAccentHover : theme.accentHover} 100%)`,
             border: 'none',
-            borderRadius: 8,
+            borderRadius: 10,
+            boxShadow: `0 4px 12px ${context === 'family' ? theme.familyAccent : theme.accent}30`,
             color: '#fff',
             fontSize: 12,
             fontWeight: 600,
@@ -4186,336 +4978,375 @@ bottom: 0
 );
 }
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
-const handleToggle = (key) => {
-setConfig(prev => ({ ...prev, [key]: !prev[key] }));
-};
-const ToggleSwitch = ({ value }) => (
-<div style={{
-width: 36,
-height: 20,
-background: value ? theme.accent : theme.border,
-borderRadius: 10,
-position: 'relative',
-cursor: 'pointer',
-transition: 'all 0.2s'
-}}>
-<div style={{
-position: 'absolute',
-top: 2,
-left: value ? 18 : 2,
-width: 16,
-height: 16,
-borderRadius: '50%',
-background: '#fff',
-transition: 'left 0.2s'
-}} />
-</div>
-);
-return (
-<div style={{
-position: 'fixed',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-background: 'rgba(0, 0, 0, 0.5)',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-zIndex: 1000,
-padding: 16,
-backdropFilter: 'blur(3px)'
-}}>
-<div
-onClick={onClose}
-style={{
-position: 'absolute',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0
-}}
-/>
-  <div style={{
-    background: theme.card,
-    borderRadius: 16,
-    width: '100%',
-    maxWidth: 460,
-    maxHeight: '90vh',
-    overflow: 'auto',
-    boxShadow: theme.shadowLg,
-    position: 'relative',
-    border: `1px solid ${theme.border}`
-  }}>
-    <div style={{
-      padding: '20px',
-      borderBottom: `1px solid ${theme.border}`,
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    }}>
-      <h3 className="serif" style={{
-        fontSize: 18,
-        fontWeight: 500,
-        color: theme.text
+  const [activeTab, setActiveTab] = React.useState('appearance');
+
+  const handleToggle = (key) => {
+    setConfig(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  // Premium Toggle Switch Component
+  const ToggleSwitch = ({ value }) => (
+    <div
+      onClick={() => {}}
+      style={{
+        width: 44,
+        height: 24,
+        background: value
+          ? `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`
+          : theme.id === 'dark' ? '#2A2A30' : '#E2E8F0',
+        borderRadius: 12,
+        position: 'relative',
+        cursor: 'pointer',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: value
+          ? `0 2px 8px ${theme.accent}40, inset 0 1px 1px rgba(255,255,255,0.2)`
+          : `inset 0 1px 3px rgba(0,0,0,${theme.id === 'dark' ? '0.3' : '0.1'})`
+      }}
+    >
+      <div style={{
+        position: 'absolute',
+        top: 2,
+        left: value ? 22 : 2,
+        width: 20,
+        height: 20,
+        borderRadius: '50%',
+        background: '#FFFFFF',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: value
+          ? '0 2px 4px rgba(0,0,0,0.2)'
+          : '0 1px 3px rgba(0,0,0,0.15)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
       }}>
-        Settings
-      </h3>
-      <button
+        {value && (
+          <svg width="10" height="10" viewBox="0 0 12 12" fill="none">
+            <path d="M2 6L5 9L10 3" stroke={theme.accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        )}
+      </div>
+    </div>
+  );
+
+  const tabs = [
+    { id: 'appearance', label: 'Appearance', icon: '◐' },
+    { id: 'interface', label: 'Interface', icon: '▣' },
+    { id: 'features', label: 'Features', icon: '⚡' }
+  ];
+
+  const settingsGroups = {
+    appearance: [
+      { key: 'darkMode', label: 'Dark Mode', desc: 'Switch to dark theme' },
+      { key: 'use24Hour', label: '24-Hour Time', desc: 'Use military time format' },
+      { key: 'weekStartMon', label: 'Week Starts Monday', desc: 'Change first day of week' }
+    ],
+    interface: [
+      { key: 'showSidebar', label: 'Show Sidebar', desc: 'Display navigation sidebar' },
+      { key: 'showMotivationalQuotes', label: 'Show Quotes', desc: 'Daily motivational quotes' },
+      { key: 'showUpcomingEvents', label: 'Show Upcoming', desc: 'Preview upcoming events' }
+    ],
+    features: [
+      { key: 'enableDragDrop', label: 'Drag & Drop', desc: 'Move events by dragging' },
+      { key: 'enableAnimations', label: 'Animations', desc: 'Enable UI animations' },
+      { key: 'enablePulseEffects', label: 'Pulse Effects', desc: 'Highlight active events' }
+    ]
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: 20,
+      backdropFilter: 'blur(8px)'
+    }}>
+      <div
         onClick={onClose}
         style={{
-          background: 'transparent',
-          border: 'none',
-          color: theme.textSec,
-          cursor: 'pointer',
-          padding: 6,
-          borderRadius: 6,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          transition: 'all 0.2s'
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0
         }}
-        onMouseEnter={e => e.currentTarget.style.color = theme.text}
-        onMouseLeave={e => e.currentTarget.style.color = theme.textSec}
-      >
-        <ICONS.Close width={18} height={18} />
-      </button>
-    </div>
-    
-    <div style={{ padding: 20 }}>
-      {user && (
+      />
+      <div
+        className="scale-enter"
+        style={{
+        background: theme.id === 'dark' ? theme.cardGradient : theme.card,
+        borderRadius: 20,
+        width: '100%',
+        maxWidth: 480,
+        maxHeight: '85vh',
+        overflow: 'hidden',
+        boxShadow: theme.id === 'dark'
+          ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+          : '0 24px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column'
+      }}>
+        {/* Header */}
         <div style={{
-          padding: 12,
-          background: theme.sidebar,
-          borderRadius: 8,
-          marginBottom: 20,
+          padding: '20px 24px',
+          borderBottom: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
           display: 'flex',
+          justifyContent: 'space-between',
           alignItems: 'center',
-          gap: 10
+          background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'transparent'
         }}>
-          <div style={{
-            width: 36,
-            height: 36,
-            borderRadius: '50%',
-            background: theme.accent,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#fff',
-            fontWeight: 600,
-            fontSize: 14
-          }}>
-            {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{
-              fontSize: 12,
+          <div>
+            <h3 style={{
+              fontSize: 18,
               fontWeight: 600,
-              color: theme.text
+              color: theme.text,
+              marginBottom: 2
             }}>
-              {user.displayName || 'User'}
-            </div>
-            <div style={{
-              fontSize: 10,
-              color: theme.textSec
-            }}>
-              {user.email}
-            </div>
+              Settings
+            </h3>
+            <span style={{ fontSize: 11, color: theme.textMuted }}>
+              Customize your experience
+            </span>
           </div>
           <button
-            onClick={handleLogout}
+            onClick={onClose}
             style={{
-              padding: '6px 12px',
-              background: 'transparent',
-              border: `1px solid ${theme.border}`,
-              borderRadius: 6,
+              background: theme.hoverBg,
+              border: 'none',
               color: theme.textSec,
-              fontSize: 10,
-              fontWeight: 600,
               cursor: 'pointer',
+              padding: 8,
+              borderRadius: 8,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
               transition: 'all 0.2s'
             }}
-            onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
-            onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = theme.activeBg;
+              e.currentTarget.style.color = theme.text;
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = theme.hoverBg;
+              e.currentTarget.style.color = theme.textSec;
+            }}
           >
-            Sign Out
+            <ICONS.Close width={16} height={16} />
           </button>
         </div>
-      )}
-      
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: theme.text,
-          marginBottom: 12,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
-        }}>
-          Appearance
-        </h4>
-        
+
+        {/* Tabs */}
         <div style={{
           display: 'flex',
-          flexDirection: 'column',
-          gap: 10
+          padding: '12px 24px',
+          gap: 6,
+          borderBottom: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`
         }}>
-          {[
-            { key: 'darkMode', label: 'Dark Mode' },
-            { key: 'use24Hour', label: '24-Hour Time' },
-            { key: 'weekStartMon', label: 'Week Starts Monday' }
-          ].map(({ key, label }) => (
-            <div key={key} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{
-                fontSize: 12,
-                color: theme.text
-              }}>
-                {label}
-              </span>
-              <button
-                onClick={() => handleToggle(key)}
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'pointer',
-                  padding: 0
-                }}
-              >
-                <ToggleSwitch value={config[key]} />
-              </button>
-            </div>
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: activeTab === tab.id
+                  ? theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
+                  : 'transparent',
+                border: 'none',
+                borderRadius: 10,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 6,
+                transition: 'all 0.2s',
+                color: activeTab === tab.id ? theme.text : theme.textMuted
+              }}
+              onMouseEnter={e => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.background = theme.hoverBg;
+                }
+              }}
+              onMouseLeave={e => {
+                if (activeTab !== tab.id) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              <span style={{ fontSize: 12 }}>{tab.icon}</span>
+              <span style={{ fontSize: 11, fontWeight: 600 }}>{tab.label}</span>
+            </button>
           ))}
         </div>
-      </div>
-      
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: theme.text,
-          marginBottom: 12,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
-        }}>
-          Interface
-        </h4>
-        
+
+        {/* Content */}
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
+          flex: 1,
+          overflow: 'auto',
+          padding: '20px 24px'
         }}>
-          {[
-            { key: 'showSidebar', label: 'Show Sidebar' },
-            { key: 'showMotivationalQuotes', label: 'Show Quotes' },
-            { key: 'showUpcomingEvents', label: 'Show Upcoming' }
-          ].map(({ key, label }) => (
-            <div key={key} style={{
+          {/* User Card */}
+          {user && activeTab === 'appearance' && (
+            <div style={{
+              padding: 16,
+              background: theme.id === 'dark' ? 'rgba(255,255,255,0.03)' : theme.sidebar,
+              borderRadius: 12,
+              marginBottom: 24,
               display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              gap: 12,
+              border: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`
             }}>
-              <span style={{
-                fontSize: 12,
-                color: theme.text
+              <div style={{
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: `0 4px 12px ${theme.accent}30`
               }}>
-                {label}
-              </span>
+                {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  color: theme.text,
+                  marginBottom: 2
+                }}>
+                  {user.displayName || 'User'}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: theme.textMuted
+                }}>
+                  {user.email}
+                </div>
+              </div>
               <button
-                onClick={() => handleToggle(key)}
+                onClick={handleLogout}
                 style={{
+                  padding: '8px 14px',
                   background: 'transparent',
-                  border: 'none',
+                  border: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
+                  borderRadius: 8,
+                  color: theme.textSec,
+                  fontSize: 11,
+                  fontWeight: 600,
                   cursor: 'pointer',
-                  padding: 0
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = theme.hoverBg;
+                  e.currentTarget.style.borderColor = theme.border;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = theme.id === 'dark' ? theme.subtleBorder : theme.border;
                 }}
               >
-                <ToggleSwitch value={config[key]} />
+                Sign Out
               </button>
             </div>
-          ))}
-        </div>
-      </div>
-      
-      <div style={{ marginBottom: 20 }}>
-        <h4 style={{
-          fontSize: 10,
-          fontWeight: 700,
-          color: theme.text,
-          marginBottom: 12,
-          textTransform: 'uppercase',
-          letterSpacing: 0.8
-        }}>
-          Features
-        </h4>
-        
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 10
-        }}>
-          {[
-            { key: 'enableDragDrop', label: 'Drag & Drop' },
-            { key: 'enableAnimations', label: 'Animations' },
-            { key: 'enablePulseEffects', label: 'Pulse Effects' }
-          ].map(({ key, label }) => (
-            <div key={key} style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}>
-              <span style={{
-                fontSize: 12,
-                color: theme.text
-              }}>
-                {label}
-              </span>
-              <button
+          )}
+
+          {/* Settings List */}
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4
+          }}>
+            {settingsGroups[activeTab].map(({ key, label, desc }) => (
+              <div
+                key={key}
                 onClick={() => handleToggle(key)}
                 style={{
-                  background: 'transparent',
-                  border: 'none',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 16px',
+                  borderRadius: 12,
                   cursor: 'pointer',
-                  padding: 0
+                  transition: 'all 0.2s',
+                  background: 'transparent'
                 }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <ToggleSwitch value={config[key]} />
-              </button>
+                <div>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 500,
+                    color: theme.text,
+                    marginBottom: 2
+                  }}>
+                    {label}
+                  </div>
+                  <div style={{
+                    fontSize: 11,
+                    color: theme.textMuted
+                  }}>
+                    {desc}
+                  </div>
+                </div>
+                <ToggleSwitch value={config[key]} label={label} />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px',
+          borderTop: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
+          background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
+        }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            <div>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: theme.textSec
+              }}>
+                Timeline OS
+              </div>
+              <div style={{
+                fontSize: 10,
+                color: theme.textMuted
+              }}>
+                v{APP_META.version}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
-      
-      <div style={{
-        padding: 12,
-        background: theme.sidebar,
-        borderRadius: 8,
-        marginTop: 20
-      }}>
-        <div style={{
-          fontSize: 10,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 3
-        }}>
-          Timeline OS v{APP_META.version}
-        </div>
-        <div style={{
-          fontSize: 9,
-          color: theme.textMuted,
-          lineHeight: 1.4
-        }}>
-          {APP_META.motto}
+            <div style={{
+              fontSize: 10,
+              color: theme.textMuted,
+              fontStyle: 'italic',
+              maxWidth: 200,
+              textAlign: 'right'
+            }}>
+              {APP_META.motto}
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
-);
+  );
 }
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
 return (
@@ -4729,18 +5560,17 @@ function TagManager({ tags, setTags, theme, context, onClose }) {
 const [editingTag, setEditingTag] = React.useState(null);
 const [newTagName, setNewTagName] = React.useState('');
 const [selectedPalette, setSelectedPalette] = React.useState(Object.keys(PALETTE)[0]);
-const [selectedIcon, setSelectedIcon] = React.useState('Briefcase');
+const [selectedIcon, setSelectedIcon] = React.useState('Briefcase'); // null = color-only tag
 const contextTags = tags[context] || [];
 const handleSaveTag = () => {
-if (!newTagName.trim() || !selectedIcon || !selectedPalette) return;
+if (!newTagName.trim() || !selectedPalette) return;
 const palette = PALETTE[selectedPalette];
 
-if (!ICONS[selectedIcon]) return;
-
+// Icon is now optional - allows color-only tags
 const newTag = {
   id: editingTag?.id || `tag-${Date.now()}`,
   name: newTagName.trim(),
-  iconName: selectedIcon,
+  iconName: selectedIcon && ICONS[selectedIcon] ? selectedIcon : null, // null for color-only
   ...palette
 };
 
@@ -4780,7 +5610,8 @@ const paletteKey = Object.keys(PALETTE).find(key => {
 
 setSelectedPalette(paletteKey || Object.keys(PALETTE)[0]);
 
-setSelectedIcon(tag.iconName || 'Briefcase');
+// Support color-only tags (null iconName)
+setSelectedIcon(tag.iconName || null);
 };
 return (
 <div style={{
@@ -4811,15 +5642,13 @@ bottom: 0
     background: theme.card,
     borderRadius: 16,
     width: '100%',
-    maxWidth: 540,
-    maxHeight: '90vh',
-    overflow: 'auto',
+    maxWidth: 720,
     boxShadow: theme.shadowLg,
     position: 'relative',
     border: `1px solid ${theme.border}`
   }}>
     <div style={{
-      padding: '20px',
+      padding: '12px 16px',
       borderBottom: `1px solid ${theme.border}`,
       display: 'flex',
       justifyContent: 'space-between',
@@ -4827,16 +5656,16 @@ bottom: 0
     }}>
       <div>
         <h3 className="serif" style={{
-          fontSize: 18,
+          fontSize: 14,
           fontWeight: 500,
           color: theme.text
         }}>
           Categories
         </h3>
         <div style={{
-          fontSize: 10,
+          fontSize: 9,
           color: theme.textMuted,
-          marginTop: 3
+          marginTop: 2
         }}>
           Manage {context} tags
         </div>
@@ -4848,7 +5677,7 @@ bottom: 0
           border: 'none',
           color: theme.textSec,
           cursor: 'pointer',
-          padding: 6,
+          padding: 4,
           borderRadius: 6,
           display: 'flex',
           alignItems: 'center',
@@ -4858,256 +5687,339 @@ bottom: 0
         onMouseEnter={e => e.currentTarget.style.color = theme.text}
         onMouseLeave={e => e.currentTarget.style.color = theme.textSec}
       >
-        <ICONS.Close width={18} height={18} />
+        <ICONS.Close width={16} height={16} />
       </button>
     </div>
     
-    <div style={{ padding: 20 }}>
-      <div style={{ marginBottom: 24 }}>
+    {/* Side-by-side layout */}
+    <div style={{ display: 'flex' }}>
+      {/* Left: Existing tags */}
+      <div style={{
+        flex: '0 0 200px',
+        padding: '12px',
+        borderRight: `1px solid ${theme.border}`,
+        maxHeight: 320,
+        overflowY: 'auto'
+      }}>
         <h4 style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 700,
-          color: theme.text,
-          marginBottom: 12,
+          color: theme.textMuted,
+          marginBottom: 8,
           textTransform: 'uppercase',
           letterSpacing: 0.8
         }}>
-          Existing
+          Existing ({contextTags.length})
         </h4>
-        
+
         {contextTags.length === 0 ? (
           <div style={{
             textAlign: 'center',
-            padding: '16px',
-            background: theme.sidebar,
-            borderRadius: 8,
+            padding: '10px',
             color: theme.textMuted,
-            fontSize: 11
+            fontSize: 10
           }}>
             No tags yet
           </div>
         ) : (
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-            gap: 10
-          }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {contextTags.map(tag => {
               const IconComponent = getTagIcon(tag);
               return (
                 <div
                   key={tag.id}
                   style={{
-                    padding: 10,
+                    padding: '6px 8px',
                     background: tag.color + '10',
-                    border: `1px solid ${tag.color}30`,
-                    borderRadius: 8,
+                    border: `1px solid ${tag.color}25`,
+                    borderRadius: 6,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8
+                    gap: 6
                   }}
                 >
-                  <div style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: tag.color + '20',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}>
-                    {IconComponent && (
-                      <IconComponent width={14} height={14} color={tag.color} />
-                    )}
-                  </div>
-                  
-                  <div style={{ flex: 1, minWidth: 0 }}>
+                  {IconComponent ? (
+                    <IconComponent width={10} height={10} style={{ color: tag.color, flexShrink: 0 }} />
+                  ) : (
                     <div style={{
-                      fontSize: 12,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: tag.color,
+                      flexShrink: 0
+                    }} />
+                  )}
+
+                  <span style={{
+                    flex: 1,
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: theme.text,
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap'
+                  }}>
+                    {tag.name}
+                  </span>
+
+                  <button
+                    onClick={() => handleEditTag(tag)}
+                    style={{
+                      padding: '2px 5px',
+                      background: 'transparent',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 3,
+                      color: theme.textMuted,
+                      fontSize: 8,
                       fontWeight: 600,
-                      color: theme.text,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}>
-                      {tag.name}
-                    </div>
-                  </div>
-                  
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={() => handleEditTag(tag)}
-                      style={{
-                        padding: '3px 7px',
-                        background: 'transparent',
-                        border: `1px solid ${theme.border}`,
-                        borderRadius: 4,
-                        color: theme.textSec,
-                        fontSize: 9,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
-                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDeleteTag(tag.id)}
-                      style={{
-                        padding: '3px 7px',
-                        background: theme.indicator,
-                        border: 'none',
-                        borderRadius: 4,
-                        color: '#fff',
-                        fontSize: 9,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-                      onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                    >
-                      Del
-                    </button>
-                  </div>
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTag(tag.id)}
+                    style={{
+                      padding: '2px 5px',
+                      background: 'transparent',
+                      border: `1px solid ${theme.indicator}40`,
+                      borderRadius: 3,
+                      color: theme.indicator,
+                      fontSize: 8,
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    ×
+                  </button>
                 </div>
               );
             })}
           </div>
         )}
       </div>
-      
-      <div style={{ 
-        padding: 16,
-        background: theme.sidebar,
-        borderRadius: 8
+
+      {/* Right: Create/Edit form */}
+      <div style={{
+        flex: 1,
+        padding: '12px 16px'
       }}>
         <h4 style={{
-          fontSize: 10,
+          fontSize: 9,
           fontWeight: 700,
-          color: theme.text,
-          marginBottom: 12,
+          color: theme.textMuted,
+          marginBottom: 8,
           textTransform: 'uppercase',
           letterSpacing: 0.8
         }}>
-          {editingTag ? 'Edit' : 'Create'}
+          {editingTag ? 'Edit Tag' : 'New Tag'}
         </h4>
-        
+
         <div style={{
           display: 'flex',
           flexDirection: 'column',
-          gap: 12
+          gap: 8
         }}>
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 10,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 6
-            }}>
-              Name
-            </label>
-            <input
-              type="text"
-              value={newTagName}
-              onChange={(e) => setNewTagName(e.target.value)}
-              placeholder="Tag name"
-              style={{
-                width: '100%',
-                padding: '8px 10px',
-                fontSize: 12,
-                background: theme.card,
-                border: `1px solid ${theme.border}`,
-                borderRadius: 6,
-                color: theme.text
-              }}
-            />
+          {/* Name and Style row */}
+          <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ flex: '0 0 140px' }}>
+              <label style={{
+                display: 'block',
+                fontSize: 9,
+                fontWeight: 600,
+                color: theme.textSec,
+                marginBottom: 4
+              }}>
+                Name
+              </label>
+              <input
+                type="text"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Tag name"
+                style={{
+                  width: '100%',
+                  padding: '6px 8px',
+                  fontSize: 11,
+                  background: theme.card,
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 6,
+                  color: theme.text
+                }}
+              />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{
+                display: 'block',
+                fontSize: 9,
+                fontWeight: 600,
+                color: theme.textSec,
+                marginBottom: 4
+              }}>
+                Style
+              </label>
+              {/* Color Only vs Icon toggle */}
+              <div style={{ display: 'flex', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => setSelectedIcon(null)}
+                  style={{
+                    flex: 1,
+                    padding: '5px 8px',
+                    background: selectedIcon === null
+                      ? `linear-gradient(135deg, ${PALETTE[selectedPalette]?.color}20 0%, ${PALETTE[selectedPalette]?.color}08 100%)`
+                      : 'transparent',
+                    border: `1.5px solid ${selectedIcon === null ? PALETTE[selectedPalette]?.color + '50' : theme.border}`,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <div style={{
+                    width: 10,
+                    height: 10,
+                    borderRadius: '50%',
+                    background: PALETTE[selectedPalette]?.color || theme.accent
+                  }} />
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: selectedIcon === null ? PALETTE[selectedPalette]?.color : theme.textSec
+                  }}>
+                    Color Only
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => !selectedIcon && setSelectedIcon('Briefcase')}
+                  style={{
+                    flex: 1,
+                    padding: '5px 8px',
+                    background: selectedIcon !== null
+                      ? `linear-gradient(135deg, ${theme.accent}20 0%, ${theme.accent}08 100%)`
+                      : 'transparent',
+                    border: `1.5px solid ${selectedIcon !== null ? theme.accent + '50' : theme.border}`,
+                    borderRadius: 6,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 4,
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <ICONS.Star width={10} height={10} style={{ color: selectedIcon !== null ? theme.accent : theme.textSec }} />
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: selectedIcon !== null ? theme.accent : theme.textSec
+                  }}>
+                    With Icon
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
-          
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 10,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 6
-            }}>
-              Icon
-            </label>
+
+          {/* Icon grid - compact, only when With Icon selected */}
+          {selectedIcon !== null && (
             <div style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: 6
+              display: 'grid',
+              gridTemplateColumns: 'repeat(10, 1fr)',
+              gap: 3,
+              padding: 6,
+              background: theme.sidebar,
+              borderRadius: 6,
+              border: `1px solid ${theme.border}`
             }}>
-              {Object.keys(ICONS).slice(0, 12).map(iconName => {
+              {Object.keys(ICONS).filter(name => !['Settings', 'Trash', 'Plus', 'ChevronLeft', 'ChevronRight', 'Close'].includes(name)).map(iconName => {
                 const IconComponent = ICONS[iconName];
+                const isSelected = selectedIcon === iconName;
                 return (
                   <button
                     key={iconName}
                     type="button"
                     onClick={() => setSelectedIcon(iconName)}
+                    title={iconName}
                     style={{
-                      width: 32,
-                      height: 32,
-                      background: selectedIcon === iconName ? theme.accent : theme.card,
-                      border: `1px solid ${selectedIcon === iconName ? theme.accent : theme.border}`,
-                      borderRadius: 6,
+                      width: 24,
+                      height: 24,
+                      background: isSelected ? theme.accent : 'transparent',
+                      border: 'none',
+                      borderRadius: 4,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       cursor: 'pointer',
-                      transition: 'all 0.2s'
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) e.currentTarget.style.background = theme.hoverBg;
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) e.currentTarget.style.background = 'transparent';
                     }}
                   >
-                    <IconComponent width={14} height={14} color={selectedIcon === iconName ? '#fff' : theme.text} />
+                    <IconComponent width={12} height={12} style={{ color: isSelected ? '#fff' : theme.text }} />
                   </button>
                 );
               })}
             </div>
-          </div>
-          
+          )}
+
+          {/* Color picker row */}
           <div>
             <label style={{
               display: 'block',
-              fontSize: 10,
+              fontSize: 9,
               fontWeight: 600,
               color: theme.textSec,
-              marginBottom: 6
+              marginBottom: 4
             }}>
               Color
             </label>
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(6, 1fr)',
-              gap: 6
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 4
             }}>
               {Object.keys(PALETTE).map(paletteName => {
                 const palette = PALETTE[paletteName];
+                const isSelected = selectedPalette === paletteName;
                 return (
                   <button
                     key={paletteName}
                     type="button"
                     onClick={() => setSelectedPalette(paletteName)}
+                    title={paletteName.charAt(0).toUpperCase() + paletteName.slice(1)}
                     style={{
-                      padding: '8px',
-                      background: palette.bg,
-                      border: `2px solid ${selectedPalette === paletteName ? palette.color : 'transparent'}`,
+                      width: 24,
+                      height: 24,
+                      background: isSelected ? `${palette.color}20` : 'transparent',
+                      border: `2px solid ${isSelected ? palette.color : 'transparent'}`,
                       borderRadius: 6,
                       cursor: 'pointer',
                       display: 'flex',
-                      flexDirection: 'column',
                       alignItems: 'center',
-                      gap: 4,
-                      transition: 'all 0.2s'
+                      justifyContent: 'center',
+                      transition: 'all 0.15s'
+                    }}
+                    onMouseEnter={e => {
+                      if (!isSelected) e.currentTarget.style.border = `2px solid ${palette.color}50`;
+                    }}
+                    onMouseLeave={e => {
+                      if (!isSelected) e.currentTarget.style.border = '2px solid transparent';
                     }}
                   >
                     <div style={{
-                      width: 16,
-                      height: 16,
-                      borderRadius: 3,
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
                       background: palette.color
                     }} />
                   </button>
@@ -5115,12 +6027,13 @@ bottom: 0
               })}
             </div>
           </div>
-          
+
+          {/* Action buttons */}
           <div style={{
             display: 'flex',
-            gap: 8,
+            gap: 6,
             justifyContent: 'flex-end',
-            marginTop: 8
+            marginTop: 4
           }}>
             {editingTag && (
               <button
@@ -5130,12 +6043,12 @@ bottom: 0
                   setNewTagName('');
                 }}
                 style={{
-                  padding: '8px 14px',
+                  padding: '6px 12px',
                   background: 'transparent',
                   border: `1px solid ${theme.border}`,
                   borderRadius: 6,
                   color: theme.textSec,
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.2s'
@@ -5146,18 +6059,18 @@ bottom: 0
                 Cancel
               </button>
             )}
-            
+
             <button
               type="button"
               onClick={handleSaveTag}
               disabled={!newTagName.trim()}
               style={{
-                padding: '8px 16px',
+                padding: '6px 14px',
                 background: newTagName.trim() ? theme.accent : theme.border,
                 border: 'none',
                 borderRadius: 6,
                 color: '#fff',
-                fontSize: 11,
+                fontSize: 10,
                 fontWeight: 600,
                 cursor: newTagName.trim() ? 'pointer' : 'not-allowed',
                 opacity: newTagName.trim() ? 1 : 0.5,
