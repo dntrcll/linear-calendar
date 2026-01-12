@@ -2378,14 +2378,6 @@ function TimelineOS() {
                 toggleTimer={toggleTimer}
                 formatTimer={formatTimer}
                 resetTimer={resetTimer}
-                updateTimer={updateTimer}
-                addTimerFromPreset={addTimerFromPreset}
-                removeTimer={removeTimer}
-                floatingTimerVisible={floatingTimerVisible}
-                setFloatingTimerVisible={setFloatingTimerVisible}
-                customizingTimer={customizingTimer}
-                setCustomizingTimer={setCustomizingTimer}
-                runningTimersCount={runningTimersCount}
                 goals={goals}
                 setGoals={setGoals}
                 toggleGoal={toggleGoal}
@@ -2747,6 +2739,329 @@ function TimelineOS() {
         >
           <ICONS.ChevronRight width={16} height={16} />
         </button>
+      )}
+
+      {/* Floating Timer Popup - Global */}
+      {floatingTimerVisible && (
+        <div style={{
+          position: 'fixed',
+          bottom: 80,
+          right: 20,
+          width: 280,
+          background: config.darkMode
+            ? 'rgba(30,30,35,0.95)'
+            : 'rgba(255,255,255,0.98)',
+          backdropFilter: 'blur(20px)',
+          borderRadius: 16,
+          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+          boxShadow: config.darkMode
+            ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
+            : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
+          zIndex: 10000,
+          overflow: 'hidden',
+        }}>
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 14px',
+            borderBottom: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <ICONS.Timer width={14} height={14} style={{ color: theme.accent }} />
+              <span style={{ fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>Timers</span>
+              {runningTimersCount > 0 && (
+                <span style={{
+                  fontSize: 9,
+                  padding: '2px 6px',
+                  background: `${theme.accent}20`,
+                  color: theme.accent,
+                  borderRadius: 8,
+                  fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}>
+                  {runningTimersCount} active
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setFloatingTimerVisible(false)}
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: theme.textMuted,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
+              <ICONS.X width={14} height={14} />
+            </button>
+          </div>
+
+          {/* Timer List */}
+          <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {timers.slice(0, 4).map(timer => {
+              const TimerIcon = ICONS[timer.icon] || ICONS.Clock;
+              const isCustomizing = customizingTimer === timer.id;
+              return (
+                <div key={timer.id}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: '10px 12px',
+                      background: timer.running
+                        ? `${timer.color}12`
+                        : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 12,
+                      border: timer.running
+                        ? `1px solid ${timer.color}30`
+                        : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                    }}
+                  >
+                    {/* Icon */}
+                    <div
+                      onClick={() => setCustomizingTimer(isCustomizing ? null : timer.id)}
+                      style={{
+                        width: 36,
+                        height: 36,
+                        borderRadius: 10,
+                        background: `${timer.color}18`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        transition: 'transform 0.15s',
+                      }}
+                    >
+                      <TimerIcon width={18} height={18} style={{ color: timer.color }} />
+                    </div>
+
+                    {/* Time & Name */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{
+                        fontSize: 22,
+                        fontWeight: 700,
+                        fontFamily: 'SF Mono, Menlo, monospace',
+                        color: timer.running ? timer.color : theme.text,
+                        letterSpacing: '-0.5px',
+                        lineHeight: 1,
+                      }}>
+                        {formatTimer(timer.seconds)}
+                      </div>
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        color: theme.textMuted,
+                        marginTop: 2,
+                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                      }}>
+                        {timer.name}
+                      </div>
+                    </div>
+
+                    {/* Controls */}
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <button
+                        onClick={() => toggleTimer(timer.id)}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          background: timer.running ? `${timer.color}20` : timer.color,
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: timer.running ? timer.color : '#fff',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.15s',
+                        }}
+                      >
+                        {timer.running ? <ICONS.Pause width={14} height={14} /> : <ICONS.Play width={14} height={14} />}
+                      </button>
+                      <button
+                        onClick={() => resetTimer(timer.id)}
+                        style={{
+                          width: 34,
+                          height: 34,
+                          borderRadius: 10,
+                          background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: theme.textMuted,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}
+                        title="Reset"
+                      >
+                        <ICONS.Clock width={14} height={14} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Customization Panel */}
+                  {isCustomizing && (
+                    <div style={{
+                      marginTop: 6,
+                      padding: 10,
+                      background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 10,
+                      border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                    }}>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em' }}>
+                        Color
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                        {TIMER_COLORS.map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => updateTimer(timer.id, { color: c.color })}
+                            style={{
+                              width: 22,
+                              height: 22,
+                              borderRadius: 6,
+                              background: c.color,
+                              border: timer.color === c.color ? '2px solid #fff' : '2px solid transparent',
+                              boxShadow: timer.color === c.color ? `0 0 0 1px ${c.color}` : 'none',
+                              cursor: 'pointer',
+                            }}
+                          />
+                        ))}
+                      </div>
+                      <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em' }}>
+                        Icon
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                        {TIMER_ICONS.map(ic => {
+                          const IconComp = ICONS[ic.icon];
+                          const isSelected = timer.icon === ic.icon;
+                          return (
+                            <button
+                              key={ic.id}
+                              onClick={() => updateTimer(timer.id, { icon: ic.icon })}
+                              style={{
+                                width: 26,
+                                height: 26,
+                                borderRadius: 6,
+                                background: isSelected ? `${timer.color}20` : config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                                border: isSelected ? `1px solid ${timer.color}` : '1px solid transparent',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                              }}
+                            >
+                              <IconComp width={12} height={12} style={{ color: isSelected ? timer.color : theme.textSec }} />
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div style={{ display: 'flex', gap: 4 }}>
+                        <button
+                          onClick={() => {
+                            const mins = prompt('Duration (minutes):', Math.floor(timer.originalSeconds / 60));
+                            if (mins && !isNaN(mins)) {
+                              const secs = Math.max(1, parseInt(mins)) * 60;
+                              updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
+                            }
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '6px',
+                            fontSize: 9,
+                            fontWeight: 600,
+                            color: theme.textSec,
+                            background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                            border: 'none',
+                            borderRadius: 6,
+                            cursor: 'pointer',
+                            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                          }}
+                        >
+                          Edit Time
+                        </button>
+                        {timers.length > 1 && (
+                          <button
+                            onClick={() => { removeTimer(timer.id); setCustomizingTimer(null); }}
+                            style={{
+                              padding: '6px 10px',
+                              fontSize: 9,
+                              fontWeight: 600,
+                              color: '#EF4444',
+                              background: 'rgba(239,68,68,0.1)',
+                              border: 'none',
+                              borderRadius: 6,
+                              cursor: 'pointer',
+                              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                            }}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Quick Add Presets */}
+          {timers.length < 5 && (
+            <div style={{
+              padding: '0 12px 12px',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}>
+              {TIMER_PRESETS.slice(0, 4).map(preset => {
+                const PresetIcon = ICONS[preset.icon] || ICONS.Clock;
+                return (
+                  <button
+                    key={preset.name}
+                    onClick={() => addTimerFromPreset(preset)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 4,
+                      padding: '5px 10px',
+                      fontSize: 10,
+                      fontWeight: 500,
+                      color: theme.textSec,
+                      background: 'transparent',
+                      border: `1px dashed ${theme.border}`,
+                      borderRadius: 8,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.borderColor = preset.color;
+                      e.currentTarget.style.color = preset.color;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.borderColor = theme.border;
+                      e.currentTarget.style.color = theme.textSec;
+                    }}
+                  >
+                    <PresetIcon width={11} height={11} />
+                    {preset.name} ({preset.mins}m)
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -4291,19 +4606,11 @@ config,
 tags,
 accentColor,
 onDayClick,
-// Multi-timer props
+// Timer props (for compact display)
 timers,
 toggleTimer,
 formatTimer,
 resetTimer,
-updateTimer,
-addTimerFromPreset,
-removeTimer,
-floatingTimerVisible,
-setFloatingTimerVisible,
-customizingTimer,
-setCustomizingTimer,
-runningTimersCount,
 // Goals props
 goals,
 setGoals,
@@ -5096,324 +5403,6 @@ flexShrink: 0
           </div>
         )}
       </div>
-    </div>
-  )}
-
-  {/* Floating Timer Popup */}
-  {floatingTimerVisible && (
-    <div style={{
-      position: 'fixed',
-      bottom: 80,
-      right: 20,
-      width: 280,
-      background: config.darkMode
-        ? 'rgba(30,30,35,0.95)'
-        : 'rgba(255,255,255,0.98)',
-      backdropFilter: 'blur(20px)',
-      borderRadius: 16,
-      border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-      boxShadow: config.darkMode
-        ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
-        : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
-      zIndex: 10000,
-      overflow: 'hidden',
-    }}>
-      {/* Header */}
-      <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '12px 14px',
-        borderBottom: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <ICONS.Timer width={14} height={14} style={{ color: theme.accent }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>Timers</span>
-          {runningTimersCount > 0 && (
-            <span style={{
-              fontSize: 9,
-              padding: '2px 6px',
-              background: `${theme.accent}20`,
-              color: theme.accent,
-              borderRadius: 8,
-              fontWeight: 600,
-            }}>
-              {runningTimersCount} active
-            </span>
-          )}
-        </div>
-        <button
-          onClick={() => setFloatingTimerVisible(false)}
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: 6,
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: theme.textMuted,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-        >
-          <ICONS.X width={14} height={14} />
-        </button>
-      </div>
-
-      {/* Timer List */}
-      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
-        {timers.slice(0, 4).map(timer => {
-          const TimerIcon = ICONS[timer.icon] || ICONS.Clock;
-          const isCustomizing = customizingTimer === timer.id;
-          return (
-            <div key={timer.id}>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '10px 12px',
-                  background: timer.running
-                    ? `${timer.color}12`
-                    : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  borderRadius: 12,
-                  border: timer.running
-                    ? `1px solid ${timer.color}30`
-                    : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                }}
-              >
-                {/* Icon */}
-                <div
-                  onClick={() => setCustomizingTimer(isCustomizing ? null : timer.id)}
-                  style={{
-                    width: 36,
-                    height: 36,
-                    borderRadius: 10,
-                    background: `${timer.color}18`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    transition: 'transform 0.15s',
-                  }}
-                >
-                  <TimerIcon width={18} height={18} style={{ color: timer.color }} />
-                </div>
-
-                {/* Time & Name */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: 22,
-                    fontWeight: 700,
-                    fontFamily: 'SF Mono, Menlo, monospace',
-                    color: timer.running ? timer.color : theme.text,
-                    letterSpacing: '-0.5px',
-                    lineHeight: 1,
-                  }}>
-                    {formatTimer(timer.seconds)}
-                  </div>
-                  <div style={{
-                    fontSize: 10,
-                    fontWeight: 500,
-                    color: theme.textMuted,
-                    marginTop: 2,
-                  }}>
-                    {timer.name}
-                  </div>
-                </div>
-
-                {/* Controls */}
-                <div style={{ display: 'flex', gap: 6 }}>
-                  <button
-                    onClick={() => toggleTimer(timer.id)}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      background: timer.running ? `${timer.color}20` : timer.color,
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: timer.running ? timer.color : '#fff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {timer.running ? <ICONS.Pause width={14} height={14} /> : <ICONS.Play width={14} height={14} />}
-                  </button>
-                  <button
-                    onClick={() => resetTimer(timer.id)}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 10,
-                      background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                      border: 'none',
-                      cursor: 'pointer',
-                      color: theme.textMuted,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                    title="Reset"
-                  >
-                    <ICONS.Clock width={14} height={14} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Customization Panel */}
-              {isCustomizing && (
-                <div style={{
-                  marginTop: 6,
-                  padding: 10,
-                  background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  borderRadius: 10,
-                  border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
-                }}>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
-                    Color
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                    {TIMER_COLORS.map(c => (
-                      <button
-                        key={c.id}
-                        onClick={() => updateTimer(timer.id, { color: c.color })}
-                        style={{
-                          width: 22,
-                          height: 22,
-                          borderRadius: 6,
-                          background: c.color,
-                          border: timer.color === c.color ? '2px solid #fff' : '2px solid transparent',
-                          boxShadow: timer.color === c.color ? `0 0 0 1px ${c.color}` : 'none',
-                          cursor: 'pointer',
-                        }}
-                      />
-                    ))}
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
-                    Icon
-                  </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
-                    {TIMER_ICONS.map(ic => {
-                      const IconComp = ICONS[ic.icon];
-                      const isSelected = timer.icon === ic.icon;
-                      return (
-                        <button
-                          key={ic.id}
-                          onClick={() => updateTimer(timer.id, { icon: ic.icon })}
-                          style={{
-                            width: 26,
-                            height: 26,
-                            borderRadius: 6,
-                            background: isSelected ? `${timer.color}20` : config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                            border: isSelected ? `1px solid ${timer.color}` : '1px solid transparent',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                          }}
-                        >
-                          <IconComp width={12} height={12} style={{ color: isSelected ? timer.color : theme.textSec }} />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    <button
-                      onClick={() => {
-                        const mins = prompt('Duration (minutes):', Math.floor(timer.originalSeconds / 60));
-                        if (mins && !isNaN(mins)) {
-                          const secs = Math.max(1, parseInt(mins)) * 60;
-                          updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
-                        }
-                      }}
-                      style={{
-                        flex: 1,
-                        padding: '6px',
-                        fontSize: 9,
-                        fontWeight: 600,
-                        color: theme.textSec,
-                        background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-                        border: 'none',
-                        borderRadius: 6,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      Edit Time
-                    </button>
-                    {timers.length > 1 && (
-                      <button
-                        onClick={() => { removeTimer(timer.id); setCustomizingTimer(null); }}
-                        style={{
-                          padding: '6px 10px',
-                          fontSize: 9,
-                          fontWeight: 600,
-                          color: '#EF4444',
-                          background: 'rgba(239,68,68,0.1)',
-                          border: 'none',
-                          borderRadius: 6,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Quick Add Presets */}
-      {timers.length < 5 && (
-        <div style={{
-          padding: '0 12px 12px',
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: 6,
-        }}>
-          {TIMER_PRESETS.slice(0, 4).map(preset => {
-            const PresetIcon = ICONS[preset.icon] || ICONS.Clock;
-            return (
-              <button
-                key={preset.name}
-                onClick={() => addTimerFromPreset(preset)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                  padding: '5px 10px',
-                  fontSize: 10,
-                  fontWeight: 500,
-                  color: theme.textSec,
-                  background: 'transparent',
-                  border: `1px dashed ${theme.border}`,
-                  borderRadius: 8,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = preset.color;
-                  e.currentTarget.style.color = preset.color;
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = theme.border;
-                  e.currentTarget.style.color = theme.textSec;
-                }}
-              >
-                <PresetIcon width={11} height={11} />
-                {preset.name} ({preset.mins}m)
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   )}
 </div>
