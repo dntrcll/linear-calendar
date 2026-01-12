@@ -1,32 +1,29 @@
 {
-  "name": "Timeline Calendar",
-  "short_name": "Timeline",
-  "description": "Your linear calendar experience",
+  "name": "Timeline OS",
+  "short_name": "Timeline OS",
+  "description": "Your intelligent calendar for time management and productivity",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#2563eb",
+  "background_color": "#0F172A",
+  "theme_color": "#F97316",
   "orientation": "portrait",
   "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
     {
       "src": "favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
-    },
-    {
-      "src": "logo192.png",
-      "type": "image/png",
-      "sizes": "192x192"
-    },
-    {
-      "src": "logo512.png",
-      "type": "image/png",
-      "sizes": "512x512"
-    },
-    {
-      "src": "icon-180.png",
-      "type": "image/png",
-      "sizes": "180x180"
     }
   ]
 }

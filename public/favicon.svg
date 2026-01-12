@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#F97316"/>
+      <stop offset="50%" style="stop-color:#FB923C"/>
+      <stop offset="100%" style="stop-color:#FDBA74"/>
+    </linearGradient>
+    <linearGradient id="glassOverlay" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:rgba(255,255,255,0.4)"/>
+      <stop offset="50%" style="stop-color:rgba(255,255,255,0)"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background with rounded corners -->
+  <rect width="512" height="512" rx="114" ry="114" fill="url(#bgGradient)"/>
+
+  <!-- Glass overlay effect -->
+  <rect width="512" height="256" rx="114" ry="114" fill="url(#glassOverlay)"/>
+
+  <!-- Timeline icon -->
+  <g transform="translate(256, 256)">
+    <!-- Vertical line -->
+    <line x1="0" y1="-140" x2="0" y2="140" stroke="white" stroke-width="28" stroke-linecap="round"/>
+
+    <!-- Horizontal branches -->
+    <line x1="0" y1="-100" x2="80" y2="-100" stroke="white" stroke-width="28" stroke-linecap="round"/>
+    <line x1="0" y1="0" x2="55" y2="0" stroke="white" stroke-width="28" stroke-linecap="round"/>
+    <line x1="0" y1="100" x2="110" y2="100" stroke="white" stroke-width="28" stroke-linecap="round"/>
+
+    <!-- Dots at branch points -->
+    <circle cx="0" cy="-100" r="22" fill="white"/>
+    <circle cx="0" cy="0" r="22" fill="white"/>
+    <circle cx="0" cy="100" r="22" fill="white"/>
+  </g>
+</svg>

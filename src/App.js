@@ -195,71 +195,6 @@ const TIMER_PRESETS = [
   { name: 'Reading', mins: 20, color: '#14B8A6', icon: 'Book' },
 ];
 
-// Smart Suggestions Engine
-const generateSmartSuggestions = (events, today) => {
-  const suggestions = [];
-  const now = new Date();
-  const hour = now.getHours();
-
-  // Check for busy days
-  const eventsByDate = {};
-  events.forEach(e => {
-    const dateKey = new Date(e.start).toDateString();
-    eventsByDate[dateKey] = (eventsByDate[dateKey] || 0) + 1;
-  });
-
-  const todayEvents = eventsByDate[today.toDateString()] || 0;
-  if (todayEvents >= 5) {
-    suggestions.push({
-      type: 'warning',
-      icon: 'Clock',
-      title: 'Busy Day Alert',
-      message: `You have ${todayEvents} events today. Consider blocking focus time.`,
-      action: 'Add Focus Block'
-    });
-  }
-
-  // Morning suggestion
-  if (hour >= 6 && hour < 10 && todayEvents === 0) {
-    suggestions.push({
-      type: 'tip',
-      icon: 'Star',
-      title: 'Morning Planning',
-      message: 'Start your day by planning your priorities.',
-      action: 'Add Event'
-    });
-  }
-
-  // Evening review
-  if (hour >= 18 && hour < 21) {
-    suggestions.push({
-      type: 'tip',
-      icon: 'TrendingUp',
-      title: 'Daily Review',
-      message: 'Good time to review tomorrow\'s schedule.',
-      action: 'View Tomorrow'
-    });
-  }
-
-  // Check for gaps
-  const weekEvents = events.filter(e => {
-    const diff = (new Date(e.start) - today) / (1000 * 60 * 60 * 24);
-    return diff >= 0 && diff <= 7;
-  });
-
-  if (weekEvents.length < 3) {
-    suggestions.push({
-      type: 'info',
-      icon: 'Calendar',
-      title: 'Light Week Ahead',
-      message: 'Your week looks open. Time for new goals?',
-      action: 'Plan Week'
-    });
-  }
-
-  return suggestions.slice(0, 3);
-};
-
 const LAYOUT = {
   SIDEBAR_WIDTH: 340,
   HEADER_HEIGHT: 72,
@@ -594,6 +529,23 @@ const ICONS = {
   Timer: (props) => (
     <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3L2 6"/><path d="M22 6l-3-3"/><line x1="12" y1="1" x2="12" y2="3"/>
+    </svg>
+  ),
+  GripVertical: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/>
+      <circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/>
+    </svg>
+  ),
+  List: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+      <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+    </svg>
+  ),
+  Search: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
     </svg>
   )
 };
@@ -946,10 +898,11 @@ function TimelineOS() {
     return getCurrentTags().map(t => t.id);
   });
   
-  const [quote, setQuote] = useState(MOTIVATIONAL_QUOTES[0]);
+  const [quote, setQuote] = useState({ text: MOTIVATIONAL_QUOTES[0], author: null });
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
+  const [eventListOpen, setEventListOpen] = useState(true);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -1076,6 +1029,11 @@ function TimelineOS() {
     localStorage.setItem('timeline_goals', JSON.stringify(goals));
   }, [goals]);
 
+  // Set document title
+  useEffect(() => {
+    document.title = APP_META.name;
+  }, []);
+
   // Timer helpers
   const formatTimer = (secs) => {
     const hrs = Math.floor(secs / 3600);
@@ -1143,11 +1101,6 @@ function TimelineOS() {
   // Get running timers count for floating indicator
   const runningTimersCount = timers.filter(t => t.running).length;
 
-  // Smart suggestions
-  const smartSuggestions = useMemo(() => {
-    return generateSmartSuggestions(events, new Date());
-  }, [events]);
-
   // Current focus mode
   const currentFocusMode = FOCUS_MODES[config.focusMode] || FOCUS_MODES.normal;
 
@@ -1162,19 +1115,43 @@ function TimelineOS() {
     return () => style.remove();
   }, []);
   
+  // Fetch quote from live API
+  const fetchLiveQuote = useCallback(async () => {
+    try {
+      // Try ZenQuotes API (via proxy to avoid CORS)
+      const response = await fetch('https://api.quotable.io/random?tags=inspirational|motivational|success|wisdom');
+      if (response.ok) {
+        const data = await response.json();
+        setQuote({ text: data.content, author: data.author });
+        return;
+      }
+    } catch (e) {
+      // Fallback to local quotes if API fails
+      const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+      setQuote({ text: randomQuote, author: null });
+    }
+  }, []);
+
   useEffect(() => {
-    const nowInterval = setInterval(() => setNowTime(new Date()), 60000); // Update nowTime for time indicators
+    const nowInterval = setInterval(() => setNowTime(new Date()), 60000);
+
+    // Fetch initial quote
+    if (config.showMotivationalQuotes) {
+      fetchLiveQuote();
+    }
+
+    // Refresh quote every 4 hours
     const quoteInterval = setInterval(() => {
       if (config.showMotivationalQuotes) {
-        setQuote(MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)]);
+        fetchLiveQuote();
       }
-    }, 10000);
+    }, APP_META.quoteInterval);
 
     return () => {
       clearInterval(nowInterval);
       clearInterval(quoteInterval);
     };
-  }, [config.showMotivationalQuotes]);
+  }, [config.showMotivationalQuotes, fetchLiveQuote]);
   
   const loadData = useCallback(async (u) => {
     setLoading(true);
@@ -1237,25 +1214,35 @@ function TimelineOS() {
   }, [context, tags]);
   
   useEffect(() => {
+    const currentFocus = FOCUS_MODES[config.focusMode] || FOCUS_MODES.normal;
+    const searchLower = searchQuery.toLowerCase().trim();
+
     const filtered = events.filter(e => {
       const matchesContext = e.context === context;
       const matchesCategory = activeTagIds.length === 0 || activeTagIds.includes(e.category);
-      return matchesContext && matchesCategory && !e.deleted;
+      // Apply Focus Mode filter - if focus mode has a filter array, only show matching categories
+      const matchesFocusMode = !currentFocus.filter || currentFocus.filter.includes(e.category);
+      // Apply search filter - search in title, description, and notes
+      const matchesSearch = !searchLower ||
+        (e.title && e.title.toLowerCase().includes(searchLower)) ||
+        (e.description && e.description.toLowerCase().includes(searchLower)) ||
+        (e.notes && e.notes.toLowerCase().includes(searchLower));
+      return matchesContext && matchesCategory && matchesFocusMode && matchesSearch && !e.deleted;
     });
-    
+
     setFilteredEvents(filtered);
-    
+
     const now = new Date();
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
-    
+
     const upcoming = filtered
       .filter(e => e.start >= now && e.start <= nextWeek)
       .sort((a, b) => a.start - b.start)
       .slice(0, 5);
-    
+
     setUpcomingEvents(upcoming);
-  }, [events, context, activeTagIds]);
+  }, [events, context, activeTagIds, config.focusMode, searchQuery]);
 
   // Keyboard shortcut: Cmd/Ctrl + L to jump to today
   useEffect(() => {
@@ -1528,20 +1515,24 @@ function TimelineOS() {
             <div style={{
               fontSize: 12,
               color: theme.textSec,
-              marginBottom: 4
+              marginBottom: 4,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              letterSpacing: '0.01em'
             }}>
               Welcome, {user.displayName?.split(" ")[0] || 'User'}
             </div>
-            {config.showMotivationalQuotes && (
-              <div style={{
-                fontSize: 10,
+            {config.showMotivationalQuotes && quote && (
+              <div className="serif" style={{
+                fontSize: 11,
                 color: theme.textMuted,
                 fontStyle: "italic",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                whiteSpace: "nowrap"
+                lineHeight: 1.5,
+                maxWidth: 280,
+                letterSpacing: '0.01em'
               }}>
-                "{quote}"
+                "{quote.text}"
+                {quote.author && <span style={{ fontStyle: 'normal', opacity: 0.7 }}> — {quote.author}</span>}
               </div>
             )}
           </div>
@@ -1578,15 +1569,19 @@ function TimelineOS() {
               <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: 12,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   color: accentColor,
-                  marginBottom: 1
+                  marginBottom: 2,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.01em'
                 }}>
                   {currentFocusMode.name}
                 </div>
                 <div style={{
                   fontSize: 10,
-                  color: theme.textMuted
+                  color: theme.textMuted,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 500
                 }}>
                   {currentFocusMode.id === 'work' && 'Showing work events only'}
                   {currentFocusMode.id === 'personal' && 'Showing personal events'}
@@ -1611,60 +1606,7 @@ function TimelineOS() {
             </div>
           )}
 
-          {/* Smart Suggestions - Compact */}
-          {smartSuggestions.length > 0 && (
-            <div style={{
-              marginBottom: 12,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6
-            }}>
-              {smartSuggestions.slice(0, 2).map((s, i) => (
-                <div key={i} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 10px',
-                  background: s.type === 'warning'
-                    ? (config.darkMode ? 'rgba(245,151,0,0.08)' : 'rgba(245,151,0,0.06)')
-                    : s.type === 'tip'
-                    ? (config.darkMode ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.06)')
-                    : (config.darkMode ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.06)'),
-                  borderRadius: 8,
-                  border: `1px solid ${
-                    s.type === 'warning' ? 'rgba(245,151,0,0.15)'
-                    : s.type === 'tip' ? 'rgba(16,185,129,0.15)'
-                    : 'rgba(99,102,241,0.15)'
-                  }`
-                }}>
-                  <div style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: 5,
-                    background: s.type === 'warning' ? '#f5970020' : s.type === 'tip' ? '#10b98120' : '#6366f120',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {ICONS[s.icon] && React.createElement(ICONS[s.icon], {
-                      width: 10, height: 10,
-                      style: { color: s.type === 'warning' ? '#f59700' : s.type === 'tip' ? '#10b981' : '#6366f1' }
-                    })}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{
-                      fontSize: 10,
-                      fontWeight: 600,
-                      color: s.type === 'warning' ? '#f59700' : s.type === 'tip' ? '#10b981' : '#6366f1'
-                    }}>{s.title}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Search & Filter Bar */}
+          {/* Search Bar */}
           <div style={{
             marginBottom: 16,
             display: 'flex',
@@ -1688,7 +1630,9 @@ function TimelineOS() {
                 onChange={e => setSearchQuery(e.target.value)}
                 style={{
                   flex: 1, border: 'none', background: 'transparent',
-                  color: theme.text, fontSize: 12, outline: 'none'
+                  color: theme.text, fontSize: 12, outline: 'none',
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 500
                 }}
               />
             </div>
@@ -1715,7 +1659,7 @@ function TimelineOS() {
               borderRadius: 10,
               border: `1px solid ${theme.border}`
             }}>
-              <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 10 }}>Filter by Date</div>
+              <div style={{ fontSize: 11, fontWeight: 600, color: theme.text, marginBottom: 10, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.02em' }}>Filter by Date</div>
               <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                 <input
                   type="date"
@@ -1799,6 +1743,8 @@ function TimelineOS() {
                 color: context === 'personal' ? theme.accent : theme.textSec,
                 fontWeight: 600,
                 fontSize: 12,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.02em',
                 cursor: "pointer",
                 transition: "all 0.2s"
               }}
@@ -1816,6 +1762,8 @@ function TimelineOS() {
                 color: context === 'family' ? theme.familyAccent : theme.textSec,
                 fontWeight: 600,
                 fontSize: 12,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.02em',
                 cursor: "pointer",
                 transition: "all 0.2s"
               }}
@@ -1823,7 +1771,7 @@ function TimelineOS() {
               Family
             </button>
           </div>
-          
+
           <button
             onClick={() => {
               setEditingEvent(null);
@@ -1838,6 +1786,8 @@ function TimelineOS() {
               border: "none",
               fontSize: 13,
               fontWeight: 600,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              letterSpacing: '0.02em',
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
@@ -1871,15 +1821,16 @@ function TimelineOS() {
               flexDirection: "column"
             }}>
               <div style={{
-                fontSize: 9,
-                fontWeight: 700,
+                fontSize: 10,
+                fontWeight: 600,
                 color: theme.textMuted,
                 textTransform: "uppercase",
-                letterSpacing: 1,
+                letterSpacing: 1.5,
                 marginBottom: 8,
                 display: "flex",
                 justifyContent: "space-between",
-                alignItems: "center"
+                alignItems: "center",
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
               }}>
                 <span>Upcoming</span>
               </div>
@@ -2173,38 +2124,43 @@ function TimelineOS() {
           height: LAYOUT.HEADER_HEIGHT,
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
           padding: "0 24px",
           borderBottom: `1px solid ${theme.border}`,
           background: theme.bg,
-          flexShrink: 0
+          flexShrink: 0,
+          position: 'relative'
         }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <h2 className="serif" style={{ 
-              fontSize: 22, 
-              fontWeight: 500
+          {/* Left Section - Date & Navigation */}
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+            <h2 className="serif" style={{
+              fontSize: 20,
+              fontWeight: 500,
+              letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
             }}>
-              {viewMode === 'year' 
+              {viewMode === 'year'
                 ? currentDate.getFullYear()
                 : viewMode === 'month'
-                ? currentDate.toLocaleDateString('en-US', { 
-                    month: 'long', 
-                    year: 'numeric' 
+                ? currentDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
                   })
                 : viewMode === 'week'
-                ? `Week of ${currentDate.toLocaleDateString('en-US', { 
-                    month: 'short', 
-                    day: 'numeric' 
+                ? `Week of ${currentDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
                   })}`
-                : currentDate.toLocaleDateString('en-US', { 
-                    weekday: 'long', 
-                    month: 'long', 
+                : currentDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
                     day: 'numeric',
-                    year: 'numeric' 
+                    year: 'numeric'
                   })
               }
             </h2>
-            
+
             <div style={{ display: "flex", gap: 6 }}>
               <button
                 onClick={() => navigateDate(-1)}
@@ -2219,18 +2175,19 @@ function TimelineOS() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  transition: "all 0.2s"
+                  transition: "all 0.2s",
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
                 onMouseLeave={e => e.currentTarget.style.background = theme.card}
               >
                 <ICONS.ChevronLeft width={16} height={16} />
               </button>
-              
+
               <button
                 onClick={goToToday}
                 style={{
-                  padding: "0 12px",
+                  padding: "0 14px",
                   height: 30,
                   borderRadius: 15,
                   border: `1px solid ${theme.border}`,
@@ -2238,6 +2195,8 @@ function TimelineOS() {
                   color: theme.text,
                   fontSize: 11,
                   fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.02em',
                   cursor: "pointer",
                   transition: "all 0.2s"
                 }}
@@ -2246,7 +2205,7 @@ function TimelineOS() {
               >
                 Today
               </button>
-              
+
               <button
                 onClick={() => navigateDate(1)}
                 style={{
@@ -2260,7 +2219,8 @@ function TimelineOS() {
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  transition: "all 0.2s"
+                  transition: "all 0.2s",
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
                 onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
                 onMouseLeave={e => e.currentTarget.style.background = theme.card}
@@ -2269,134 +2229,205 @@ function TimelineOS() {
               </button>
             </div>
           </div>
-          
+
+          {/* Center Section - View Mode Tabs (Always Centered) */}
           <div style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
             display: "flex",
             background: theme.borderLight,
             padding: 3,
-            borderRadius: 10
+            borderRadius: 10,
+            boxShadow: `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
             {['day', 'week', 'month', 'year'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
                 style={{
-                  padding: "6px 12px",
+                  padding: "7px 16px",
                   borderRadius: 7,
                   border: "none",
                   background: viewMode === mode ? theme.card : "transparent",
                   color: viewMode === mode ? theme.text : theme.textSec,
                   fontSize: 11,
                   fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.02em',
                   cursor: "pointer",
                   textTransform: "capitalize",
-                  transition: "all 0.2s"
+                  transition: "all 0.2s",
+                  boxShadow: viewMode === mode ? `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}` : 'none'
                 }}
               >
                 {mode}
               </button>
             ))}
           </div>
+
+          {/* Right Section - Event List Toggle */}
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+            {viewMode === 'year' && (
+              <button
+                onClick={() => setEventListOpen(!eventListOpen)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 14px',
+                  background: eventListOpen ? `${accentColor}12` : theme.card,
+                  border: `1px solid ${eventListOpen ? accentColor : theme.border}`,
+                  borderRadius: 10,
+                  color: eventListOpen ? accentColor : theme.textSec,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.02em',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ICONS.List width={14} height={14} />
+                Events
+              </button>
+            )}
+          </div>
         </header>
-        
-        <div
-          ref={scrollRef}
-          className="scroll-container"
-          style={{
-            flex: 1,
-            overflow: "auto",
-            padding: "20px",
-            background: theme.bg
-          }}
-        >
-          {loading ? (
-            <div style={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              height: "100%",
-              color: theme.textMuted
-            }}>
-              Loading...
-            </div>
-          ) : viewMode === 'day' ? (
-            <DayView
-              currentDate={currentDate}
-              nowTime={nowTime}
-              events={filteredEvents}
+
+        {/* Main Content Area with optional Event List Panel */}
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
+          <div
+            ref={scrollRef}
+            className="scroll-container"
+            style={{
+              flex: 1,
+              overflow: "auto",
+              padding: "20px",
+              background: theme.bg
+            }}
+          >
+            {loading ? (
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                height: "100%",
+                color: theme.textMuted
+              }}>
+                Loading...
+              </div>
+            ) : viewMode === 'day' ? (
+              <DayView
+                currentDate={currentDate}
+                nowTime={nowTime}
+                events={filteredEvents}
+                theme={theme}
+                config={config}
+                tags={currentTags}
+                onEventClick={(event) => {
+                  setEditingEvent(event);
+                  setModalOpen(true);
+                }}
+                onEventDrag={handleEventDrag}
+                context={context}
+                accentColor={accentColor}
+                parentScrollRef={scrollRef}
+              />
+            ) : viewMode === 'week' ? (
+              <WeekView
+                currentDate={currentDate}
+                nowTime={nowTime}
+                events={filteredEvents}
+                theme={theme}
+                config={config}
+                tags={currentTags}
+                onEventClick={(event) => {
+                  setEditingEvent(event);
+                  setModalOpen(true);
+                }}
+              />
+            ) : viewMode === 'month' ? (
+              <MonthView
+                currentDate={currentDate}
+                events={filteredEvents}
+                theme={theme}
+                config={config}
+                onDayClick={(date) => {
+                  setCurrentDate(date);
+                  setViewMode('day');
+                }}
+                onEventClick={(event) => {
+                  setEditingEvent(event);
+                  setModalOpen(true);
+                }}
+              />
+            ) : viewMode === 'year' ? (
+              <LinearYearView
+                currentDate={currentDate}
+                events={filteredEvents}
+                theme={theme}
+                config={config}
+                tags={currentTags}
+                accentColor={accentColor}
+                onDayClick={(date) => {
+                  setCurrentDate(date);
+                  setViewMode('day');
+                }}
+                timers={timers}
+                toggleTimer={toggleTimer}
+                formatTimer={formatTimer}
+                resetTimer={resetTimer}
+                updateTimer={updateTimer}
+                addTimerFromPreset={addTimerFromPreset}
+                removeTimer={removeTimer}
+                floatingTimerVisible={floatingTimerVisible}
+                setFloatingTimerVisible={setFloatingTimerVisible}
+                customizingTimer={customizingTimer}
+                setCustomizingTimer={setCustomizingTimer}
+                runningTimersCount={runningTimersCount}
+                goals={goals}
+                setGoals={setGoals}
+                toggleGoal={toggleGoal}
+                addGoal={addGoal}
+                removeGoal={removeGoal}
+                newGoal={newGoal}
+                setNewGoal={setNewGoal}
+              />
+            ) : null}
+          </div>
+
+          {/* Event List Panel - Shows in Year View */}
+          {viewMode === 'year' && eventListOpen && (
+            <EventListPanel
+              events={events}
               theme={theme}
-              config={config}
               tags={currentTags}
-              onEventClick={(event) => {
-                setEditingEvent(event);
-                setModalOpen(true);
-              }}
-              onEventDrag={handleEventDrag}
-              context={context}
+              config={config}
               accentColor={accentColor}
-              parentScrollRef={scrollRef}
-            />
-          ) : viewMode === 'week' ? (
-            <WeekView
-              currentDate={currentDate}
-              nowTime={nowTime}
-              events={filteredEvents}
-              theme={theme}
-              config={config}
-              tags={currentTags}
+              onClose={() => setEventListOpen(false)}
               onEventClick={(event) => {
                 setEditingEvent(event);
                 setModalOpen(true);
               }}
-            />
-          ) : viewMode === 'month' ? (
-            <MonthView
-              currentDate={currentDate}
-              events={filteredEvents}
-              theme={theme}
-              config={config}
-              onDayClick={(date) => {
-                setCurrentDate(date);
-                setViewMode('day');
+              onEventReschedule={async (updatedEvent) => {
+                try {
+                  await handleSaveEvent({
+                    id: updatedEvent.id,
+                    title: updatedEvent.title,
+                    category: updatedEvent.category,
+                    description: updatedEvent.description,
+                    location: updatedEvent.location,
+                    start: updatedEvent.start,
+                    end: updatedEvent.end
+                  });
+                  notify('Event rescheduled', 'success');
+                } catch (error) {
+                  notify('Failed to reschedule', 'error');
+                }
               }}
-              onEventClick={(event) => {
-                setEditingEvent(event);
-                setModalOpen(true);
-              }}
             />
-          ) : viewMode === 'year' ? (
-            <LinearYearView
-              currentDate={currentDate}
-              events={filteredEvents}
-              theme={theme}
-              config={config}
-              tags={currentTags}
-              accentColor={accentColor}
-              onDayClick={(date) => {
-                setCurrentDate(date);
-                setViewMode('day');
-              }}
-              timers={timers}
-              toggleTimer={toggleTimer}
-              formatTimer={formatTimer}
-              resetTimer={resetTimer}
-              updateTimer={updateTimer}
-              addTimerFromPreset={addTimerFromPreset}
-              removeTimer={removeTimer}
-              floatingTimerVisible={floatingTimerVisible}
-              setFloatingTimerVisible={setFloatingTimerVisible}
-              customizingTimer={customizingTimer}
-              setCustomizingTimer={setCustomizingTimer}
-              runningTimersCount={runningTimersCount}
-              goals={goals}
-              setGoals={setGoals}
-              toggleGoal={toggleGoal}
-              addGoal={addGoal}
-              removeGoal={removeGoal}
-              newGoal={newGoal}
-              setNewGoal={setNewGoal}
-            />
-          ) : null}
+          )}
         </div>
       </div>
       
@@ -5388,487 +5419,774 @@ flexShrink: 0
 </div>
 );
 }
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }) {
-const [form, setForm] = React.useState({
-title: event?.title || '',
-category: event?.category || (tags[0]?.id || ''),
-description: event?.description || '',
-location: event?.location || '',
-start: event?.start ? new Date(event.start) : new Date(),
-end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 60 * 60 * 1000)
-});
-const [errors, setErrors] = React.useState({});
-React.useEffect(() => {
-if (!event?.id) {
-const now = new Date();
-const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
-const start = new Date(now);
-start.setMinutes(roundedMinutes, 0, 0);
-const end = new Date(start.getTime() + 60 * 60 * 1000);
-  setForm(prev => ({
-    ...prev,
-    start,
-    end
-  }));
-}
-}, [event?.id]);
-const validateForm = () => {
-const newErrors = {};
-if (!form.title.trim()) {
-  newErrors.title = 'Title required';
-}
 
-if (form.end <= form.start) {
-  newErrors.end = 'End must be after start';
-}
+// Premium Event List Panel - Birdseye-inspired
+function EventListPanel({
+  events,
+  theme,
+  tags,
+  config,
+  onEventClick,
+  onEventReschedule,
+  onClose,
+  accentColor
+}) {
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [filterCategory, setFilterCategory] = React.useState('all');
+  const [draggedEvent, setDraggedEvent] = React.useState(null);
+  const [dropTarget, setDropTarget] = React.useState(null);
+  const isDark = theme.id === 'dark';
 
-if (!form.category) {
-  newErrors.category = 'Select a category';
-}
+  // Group events by date
+  const groupedEvents = React.useMemo(() => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
 
-setErrors(newErrors);
-return Object.keys(newErrors).length === 0;
-};
-const handleSubmit = (e) => {
-e.preventDefault();
-if (!validateForm()) return;
-onSave({
-  id: event?.id || null,
-  ...form
-});
-};
-const isDark = theme.id === 'dark';
-return (
-<div style={{
-position: 'fixed',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0,
-background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
-display: 'flex',
-alignItems: 'center',
-justifyContent: 'center',
-zIndex: 1000,
-padding: 20,
-backdropFilter: 'blur(8px)'
-}}>
-<div
-onClick={onCancel}
-style={{
-position: 'absolute',
-top: 0,
-left: 0,
-right: 0,
-bottom: 0
-}}
-/>
-  <div
-    className="scale-enter scroll-container"
-    style={{
-    background: isDark ? theme.cardGradient : theme.card,
-    borderRadius: 20,
-    width: '100%',
-    maxWidth: 480,
-    maxHeight: '85vh',
-    overflow: 'auto',
-    boxShadow: isDark
-      ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
-      : '0 24px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
-    position: 'relative'
-  }}>
+    let filtered = events
+      .filter(e => !e.deleted && new Date(e.start) >= now)
+      .filter(e => {
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          return e.title?.toLowerCase().includes(term) ||
+                 e.description?.toLowerCase().includes(term);
+        }
+        return true;
+      })
+      .filter(e => filterCategory === 'all' || e.category === filterCategory)
+      .sort((a, b) => new Date(a.start) - new Date(b.start));
+
+    const groups = {};
+    filtered.forEach(event => {
+      const date = new Date(event.start);
+      const dateKey = date.toDateString();
+      if (!groups[dateKey]) {
+        groups[dateKey] = { date, events: [] };
+      }
+      groups[dateKey].events.push(event);
+    });
+
+    return Object.values(groups).slice(0, 30); // Limit to next 30 days with events
+  }, [events, searchTerm, filterCategory]);
+
+  const getTag = (categoryId) => tags.find(t => t.id === categoryId);
+
+  const formatEventTime = (date) => {
+    return new Date(date).toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: !config.use24Hour
+    });
+  };
+
+  const formatDateHeader = (date) => {
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    if (date.toDateString() === today.toDateString()) return 'Today';
+    if (date.toDateString() === tomorrow.toDateString()) return 'Tomorrow';
+
+    return date.toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const handleDragStart = (e, event) => {
+    setDraggedEvent(event);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+  };
+
+  const handleDragOver = (e, targetDate) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    setDropTarget(targetDate.toDateString());
+  };
+
+  const handleDragLeave = () => {
+    setDropTarget(null);
+  };
+
+  const handleDrop = (e, targetDate) => {
+    e.preventDefault();
+    if (draggedEvent && onEventReschedule) {
+      const oldStart = new Date(draggedEvent.start);
+      const oldEnd = new Date(draggedEvent.end);
+      const duration = oldEnd - oldStart;
+
+      // Keep the same time, just change the date
+      const newStart = new Date(targetDate);
+      newStart.setHours(oldStart.getHours(), oldStart.getMinutes(), 0, 0);
+      const newEnd = new Date(newStart.getTime() + duration);
+
+      onEventReschedule({
+        ...draggedEvent,
+        start: newStart,
+        end: newEnd
+      });
+    }
+    setDraggedEvent(null);
+    setDropTarget(null);
+  };
+
+  const totalEvents = groupedEvents.reduce((sum, g) => sum + g.events.length, 0);
+
+  return (
     <div style={{
-      padding: '20px 24px',
-      borderBottom: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
+      width: 320,
+      height: '100%',
+      background: isDark ? '#0F172A' : '#FFFFFF',
+      borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'}`,
       display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      background: isDark ? 'rgba(255,255,255,0.02)' : 'transparent'
+      flexDirection: 'column',
+      overflow: 'hidden'
     }}>
-      <div>
-        <h3 style={{
-          fontSize: 18,
-          fontWeight: 600,
-          color: theme.text,
-          marginBottom: 2
+      {/* Header */}
+      <div style={{
+        padding: '16px 20px',
+        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'}`,
+        background: isDark ? 'rgba(255,255,255,0.02)' : '#FAFBFC'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 12
         }}>
-          {event?.id ? 'Edit Event' : 'New Event'}
-        </h3>
-        <span style={{ fontSize: 11, color: theme.textMuted }}>
-          {context === 'family' ? 'Family calendar' : 'Personal calendar'}
-        </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 32,
+              height: 32,
+              borderRadius: 10,
+              background: `linear-gradient(135deg, ${accentColor} 0%, ${accentColor}CC 100%)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 4px 12px ${accentColor}30`
+            }}>
+              <ICONS.Calendar width={16} height={16} style={{ color: '#fff' }} />
+            </div>
+            <div>
+              <h3 style={{
+                fontSize: 14,
+                fontWeight: 600,
+                color: theme.text,
+                margin: 0,
+                letterSpacing: '-0.2px'
+              }}>
+                All Events
+              </h3>
+              <span style={{ fontSize: 11, color: theme.textMuted }}>
+                {totalEvents} upcoming
+              </span>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: theme.textMuted,
+              cursor: 'pointer',
+              padding: 6,
+              borderRadius: 6,
+              display: 'flex'
+            }}
+          >
+            <ICONS.Close width={16} height={16} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div style={{ position: 'relative', marginBottom: 10 }}>
+          <ICONS.Search
+            width={14}
+            height={14}
+            style={{
+              position: 'absolute',
+              left: 10,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              color: theme.textMuted
+            }}
+          />
+          <input
+            type="text"
+            placeholder="Search events..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '8px 12px 8px 32px',
+              fontSize: 12,
+              background: isDark ? 'rgba(255,255,255,0.04)' : '#F1F5F9',
+              border: 'none',
+              borderRadius: 8,
+              color: theme.text,
+              outline: 'none'
+            }}
+          />
+        </div>
+
+        {/* Category Filter */}
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <button
+            onClick={() => setFilterCategory('all')}
+            style={{
+              padding: '4px 10px',
+              fontSize: 10,
+              fontWeight: 600,
+              background: filterCategory === 'all' ? `${accentColor}15` : 'transparent',
+              border: `1px solid ${filterCategory === 'all' ? accentColor : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
+              borderRadius: 6,
+              color: filterCategory === 'all' ? accentColor : theme.textSec,
+              cursor: 'pointer'
+            }}
+          >
+            All
+          </button>
+          {tags.slice(0, 4).map(tag => (
+            <button
+              key={tag.id}
+              onClick={() => setFilterCategory(tag.id)}
+              style={{
+                padding: '4px 10px',
+                fontSize: 10,
+                fontWeight: 600,
+                background: filterCategory === tag.id ? `${tag.color}15` : 'transparent',
+                border: `1px solid ${filterCategory === tag.id ? tag.color : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
+                borderRadius: 6,
+                color: filterCategory === tag.id ? tag.color : theme.textSec,
+                cursor: 'pointer'
+              }}
+            >
+              {tag.name}
+            </button>
+          ))}
+        </div>
       </div>
-      <button
-        onClick={onCancel}
+
+      {/* Event List */}
+      <div
+        className="scroll-container"
         style={{
-          background: theme.hoverBg,
-          border: 'none',
-          color: theme.textSec,
-          cursor: 'pointer',
-          padding: 8,
-          borderRadius: 8,
+          flex: 1,
+          overflow: 'auto',
+          padding: '12px 16px'
+        }}
+      >
+        {groupedEvents.length === 0 ? (
+          <div style={{
+            textAlign: 'center',
+            padding: '40px 20px',
+            color: theme.textMuted
+          }}>
+            <ICONS.Calendar width={32} height={32} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <p style={{ fontSize: 13, margin: 0 }}>No upcoming events</p>
+            <p style={{ fontSize: 11, margin: '4px 0 0', opacity: 0.7 }}>
+              {searchTerm ? 'Try a different search' : 'Create your first event'}
+            </p>
+          </div>
+        ) : (
+          groupedEvents.map((group, groupIndex) => (
+            <div
+              key={group.date.toDateString()}
+              onDragOver={(e) => handleDragOver(e, group.date)}
+              onDragLeave={handleDragLeave}
+              onDrop={(e) => handleDrop(e, group.date)}
+              style={{
+                marginBottom: 16,
+                background: dropTarget === group.date.toDateString()
+                  ? `${accentColor}10`
+                  : 'transparent',
+                borderRadius: 12,
+                padding: dropTarget === group.date.toDateString() ? 8 : 0,
+                transition: 'all 0.2s',
+                border: dropTarget === group.date.toDateString()
+                  ? `2px dashed ${accentColor}`
+                  : '2px dashed transparent'
+              }}
+            >
+              {/* Date Header */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 8,
+                marginBottom: 8,
+                paddingLeft: 4
+              }}>
+                <span style={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: groupIndex === 0 ? accentColor : theme.textSec,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  {formatDateHeader(group.date)}
+                </span>
+                <div style={{
+                  flex: 1,
+                  height: 1,
+                  background: isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'
+                }} />
+                <span style={{
+                  fontSize: 10,
+                  color: theme.textMuted,
+                  fontWeight: 500
+                }}>
+                  {group.events.length}
+                </span>
+              </div>
+
+              {/* Events */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {group.events.map(event => {
+                  const tag = getTag(event.category);
+                  const tagColor = tag?.color || accentColor;
+                  const isBeingDragged = draggedEvent?.id === event.id;
+
+                  return (
+                    <div
+                      key={event.id}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, event)}
+                      onDragEnd={() => setDraggedEvent(null)}
+                      onClick={() => onEventClick(event)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        padding: '10px 12px',
+                        background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC',
+                        borderRadius: 10,
+                        cursor: 'grab',
+                        opacity: isBeingDragged ? 0.5 : 1,
+                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : '#F1F5F9'}`,
+                        transition: 'all 0.15s',
+                        position: 'relative',
+                        overflow: 'hidden'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9';
+                        e.currentTarget.style.transform = 'translateX(2px)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC';
+                        e.currentTarget.style.transform = 'translateX(0)';
+                      }}
+                    >
+                      {/* Color indicator */}
+                      <div style={{
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 3,
+                        background: tagColor,
+                        borderRadius: '10px 0 0 10px'
+                      }} />
+
+                      {/* Time */}
+                      <div style={{
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: theme.textMuted,
+                        minWidth: 52,
+                        paddingTop: 2
+                      }}>
+                        {formatEventTime(event.start)}
+                      </div>
+
+                      {/* Content */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: theme.text,
+                          marginBottom: 2,
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap'
+                        }}>
+                          {event.title}
+                        </div>
+                        {event.location && (
+                          <div style={{
+                            fontSize: 10,
+                            color: theme.textMuted,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 4
+                          }}>
+                            <ICONS.MapPin width={10} height={10} />
+                            {event.location}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Drag handle */}
+                      <div style={{
+                        color: theme.textMuted,
+                        opacity: 0.4,
+                        display: 'flex',
+                        alignItems: 'center'
+                      }}>
+                        <ICONS.GripVertical width={14} height={14} />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* Footer hint */}
+      <div style={{
+        padding: '10px 16px',
+        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'}`,
+        background: isDark ? 'rgba(255,255,255,0.02)' : '#FAFBFC'
+      }}>
+        <p style={{
+          fontSize: 10,
+          color: theme.textMuted,
+          margin: 0,
+          textAlign: 'center',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'all 0.2s'
-        }}
-        onMouseEnter={e => {
-          e.currentTarget.style.background = theme.activeBg;
-          e.currentTarget.style.color = theme.text;
-        }}
-        onMouseLeave={e => {
-          e.currentTarget.style.background = theme.hoverBg;
-          e.currentTarget.style.color = theme.textSec;
+          gap: 6
+        }}>
+          <ICONS.GripVertical width={12} height={12} />
+          Drag events to reschedule
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }) {
+  const [form, setForm] = React.useState({
+    title: event?.title || '',
+    category: event?.category || (tags[0]?.id || ''),
+    description: event?.description || '',
+    location: event?.location || '',
+    start: event?.start ? new Date(event.start) : new Date(),
+    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 60 * 60 * 1000)
+  });
+  const [errors, setErrors] = React.useState({});
+  const [showMore, setShowMore] = React.useState(false);
+  const isDark = theme.id === 'dark';
+  const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
+
+  React.useEffect(() => {
+    if (!event?.id) {
+      const now = new Date();
+      const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
+      const start = new Date(now);
+      start.setMinutes(roundedMinutes, 0, 0);
+      const end = new Date(start.getTime() + 60 * 60 * 1000);
+      setForm(prev => ({ ...prev, start, end }));
+    }
+    // Show more options if editing existing event with location/notes
+    if (event?.id && (event.location || event.description)) {
+      setShowMore(true);
+    }
+  }, [event?.id, event?.location, event?.description]);
+
+  const validateForm = () => {
+    const newErrors = {};
+    if (!form.title.trim()) newErrors.title = 'Title required';
+    if (form.end <= form.start) newErrors.end = 'End must be after start';
+    if (!form.category) newErrors.category = 'Select a category';
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!validateForm()) return;
+    onSave({ id: event?.id || null, ...form });
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: '10px 12px',
+    fontSize: 13,
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    fontWeight: 500,
+    background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC',
+    border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}`,
+    borderRadius: 10,
+    color: theme.text,
+    boxSizing: 'border-box',
+    outline: 'none'
+  };
+
+  return (
+    <div style={{
+      position: 'fixed',
+      inset: 0,
+      background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(15, 23, 42, 0.4)',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      zIndex: 1000,
+      padding: 16,
+      backdropFilter: 'blur(8px)'
+    }}>
+      <div onClick={onCancel} style={{ position: 'absolute', inset: 0 }} />
+
+      <div
+        className="scale-enter"
+        style={{
+          background: isDark ? '#1E293B' : '#FFFFFF',
+          borderRadius: 20,
+          width: '100%',
+          maxWidth: 400,
+          boxShadow: isDark
+            ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+            : '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.03)',
+          position: 'relative'
         }}
       >
-        <ICONS.Close width={16} height={16} />
-      </button>
-    </div>
-    
-    <form onSubmit={handleSubmit} style={{ padding: '20px 24px' }}>
-      <div style={{ marginBottom: 20 }}>
-        <label style={{
-          display: 'block',
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 8
-        }}>
-          Title
-        </label>
-        <input
-          type="text"
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          placeholder="Event name"
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            fontSize: 14,
-            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-            border: `1px solid ${errors.title ? theme.indicator : isDark ? theme.subtleBorder : theme.border}`,
-            borderRadius: 10,
-            color: theme.text,
-            transition: 'all 0.2s'
-          }}
-          onFocus={(e) => {
-            e.target.style.borderColor = theme.accent;
-            e.target.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
-          }}
-          onBlur={(e) => {
-            e.target.style.borderColor = errors.title ? theme.indicator : isDark ? theme.subtleBorder : theme.border;
-            e.target.style.boxShadow = 'none';
-          }}
-          autoFocus
-        />
-        {errors.title && (
-          <div style={{
-            fontSize: 10,
-            color: theme.indicator,
-            marginTop: 4
-          }}>
-            {errors.title}
-          </div>
-        )}
-      </div>
-      
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gap: 12,
-        marginBottom: 20
-      }}>
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: 11,
-            fontWeight: 600,
-            color: theme.textSec,
-            marginBottom: 8
-          }}>
-            Start
-          </label>
-          <input
-            type="datetime-local"
-            value={toLocalDateTimeString(form.start)}
-            onChange={(e) => {
-              const newStart = new Date(e.target.value);
-              if (!isNaN(newStart.getTime())) {
-                const duration = form.end - form.start;
-                const newEnd = new Date(newStart.getTime() + duration);
-                setForm({ ...form, start: newStart, end: newEnd });
-              }
-            }}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              fontSize: 13,
-              background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-              border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
-              borderRadius: 10,
-              color: theme.text,
-              cursor: 'pointer'
-            }}
-          />
-        </div>
-
-        <div>
-          <label style={{
-            display: 'block',
-            fontSize: 11,
-            fontWeight: 600,
-            color: theme.textSec,
-            marginBottom: 8
-          }}>
-            End
-          </label>
-          <input
-            type="datetime-local"
-            value={toLocalDateTimeString(form.end)}
-            onChange={(e) => {
-              const newEnd = new Date(e.target.value);
-              if (!isNaN(newEnd.getTime())) {
-                setForm({ ...form, end: newEnd });
-              }
-            }}
-            min={toLocalDateTimeString(form.start)}
-            style={{
-              width: '100%',
-              padding: '12px 14px',
-              fontSize: 13,
-              background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-              border: `1px solid ${errors.end ? theme.indicator : isDark ? theme.subtleBorder : theme.border}`,
-              borderRadius: 10,
-              color: theme.text,
-              cursor: 'pointer'
-            }}
-          />
-          {errors.end && (
-            <div style={{
-              fontSize: 10,
-              color: theme.indicator,
-              marginTop: 4
-            }}>
-              {errors.end}
-            </div>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={{
-          display: 'block',
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 10
-        }}>
-          Category
-        </label>
+        {/* Compact Header */}
         <div style={{
+          padding: '16px 20px',
           display: 'flex',
-          flexWrap: 'wrap',
-          gap: 8
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'}`
         }}>
-          {tags.map(tag => {
-            const IconComponent = getTagIcon(tag);
-            const isSelected = form.category === tag.id;
-            return (
-              <button
-                key={tag.id}
-                type="button"
-                onClick={() => setForm({ ...form, category: tag.id })}
-                style={{
-                  padding: '8px 12px',
-                  background: isSelected
-                    ? `${tag.color}18`
-                    : isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-                  border: `1px solid ${isSelected ? `${tag.color}50` : isDark ? theme.subtleBorder : theme.border}`,
-                  borderRadius: 8,
-                  color: isSelected ? tag.color : theme.textSec,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  transition: 'all 0.2s'
-                }}
-                onMouseEnter={e => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = theme.hoverBg;
-                    e.currentTarget.style.borderColor = isDark ? theme.border : theme.border;
-                  }
-                }}
-                onMouseLeave={e => {
-                  if (!isSelected) {
-                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar;
-                    e.currentTarget.style.borderColor = isDark ? theme.subtleBorder : theme.border;
-                  }
-                }}
-              >
-                {IconComponent && <IconComponent width={12} height={12} />}
-                {tag.name}
-              </button>
-            );
-          })}
-        </div>
-        {errors.category && (
-          <div style={{
-            fontSize: 10,
-            color: theme.indicator,
-            marginTop: 4
-          }}>
-            {errors.category}
-          </div>
-        )}
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label style={{
-          display: 'block',
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 8
-        }}>
-          Location <span style={{ fontWeight: 400, color: theme.textMuted }}>(Optional)</span>
-        </label>
-        <input
-          type="text"
-          value={form.location}
-          onChange={(e) => setForm({ ...form, location: e.target.value })}
-          placeholder="Where?"
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            fontSize: 13,
-            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
-            borderRadius: 10,
-            color: theme.text
-          }}
-        />
-      </div>
-
-      <div style={{ marginBottom: 24 }}>
-        <label style={{
-          display: 'block',
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 8
-        }}>
-          Notes <span style={{ fontWeight: 400, color: theme.textMuted }}>(Optional)</span>
-        </label>
-        <textarea
-          value={form.description}
-          onChange={(e) => setForm({ ...form, description: e.target.value })}
-          placeholder="Additional details..."
-          rows={3}
-          style={{
-            width: '100%',
-            padding: '12px 14px',
-            fontSize: 13,
-            background: isDark ? 'rgba(255,255,255,0.04)' : theme.sidebar,
-            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
-            borderRadius: 10,
-            color: theme.text,
-            resize: 'vertical',
-            minHeight: 80,
-            lineHeight: 1.5
-          }}
-        />
-      </div>
-
-      <div style={{
-        display: 'flex',
-        gap: 10,
-        justifyContent: 'flex-end',
-        borderTop: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
-        paddingTop: 20,
-        marginTop: 4
-      }}>
-        {onDelete && (
-          <button
-            type="button"
-            onClick={onDelete}
-            style={{
-              padding: '11px 20px',
-              background: 'transparent',
-              border: `1px solid ${theme.indicator}50`,
-              borderRadius: 10,
-              color: theme.indicator,
-              fontSize: 13,
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <h3 className="serif" style={{ fontSize: 18, fontWeight: 500, color: theme.text, margin: 0, letterSpacing: '-0.02em' }}>
+              {event?.id ? 'Edit Event' : 'New Event'}
+            </h3>
+            <span style={{
+              fontSize: 10,
+              padding: '3px 8px',
+              background: `${accentColor}15`,
+              color: accentColor,
+              borderRadius: 6,
               fontWeight: 600,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              letterSpacing: '0.02em'
+            }}>
+              {context === 'family' ? 'Family' : 'Personal'}
+            </span>
+          </div>
+          <button
+            onClick={onCancel}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: theme.textMuted,
               cursor: 'pointer',
-              transition: 'all 0.2s'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.background = theme.indicator;
-              e.currentTarget.style.color = '#fff';
-              e.currentTarget.style.borderColor = theme.indicator;
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.color = theme.indicator;
-              e.currentTarget.style.borderColor = `${theme.indicator}50`;
+              padding: 6
             }}
           >
-            Delete
+            <ICONS.Close width={18} height={18} />
           </button>
-        )}
+        </div>
 
-        <button
-          type="button"
-          onClick={onCancel}
-          style={{
-            padding: '11px 20px',
-            background: 'transparent',
-            border: `1px solid ${isDark ? theme.subtleBorder : theme.border}`,
-            borderRadius: 10,
-            color: theme.textSec,
-            fontSize: 13,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = theme.hoverBg;
-            e.currentTarget.style.borderColor = theme.border;
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.borderColor = isDark ? theme.subtleBorder : theme.border;
-          }}
-        >
-          Cancel
-        </button>
+        {/* Compact Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '16px 20px' }}>
+          {/* Title */}
+          <input
+            type="text"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            placeholder="Event title"
+            style={{
+              ...inputStyle,
+              fontSize: 15,
+              fontWeight: 500,
+              padding: '12px 14px',
+              marginBottom: 12,
+              border: `1px solid ${errors.title ? theme.indicator : isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}`
+            }}
+            autoFocus
+          />
 
-        <button
-          type="submit"
-          style={{
-            padding: '11px 28px',
-            background: `linear-gradient(135deg, ${context === 'family' ? theme.familyAccent : theme.accent} 0%, ${context === 'family' ? theme.familyAccentHover : theme.accentHover} 100%)`,
-            border: 'none',
-            borderRadius: 10,
-            boxShadow: `0 4px 12px ${context === 'family' ? theme.familyAccent : theme.accent}30`,
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
-          onMouseEnter={e => e.currentTarget.style.opacity = '0.9'}
-          onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-        >
-          {event?.id ? 'Update' : 'Create'}
-        </button>
+          {/* Date & Time - Stacked for proper display */}
+          <div style={{ marginBottom: 12 }}>
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 4, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Start</label>
+              <input
+                type="datetime-local"
+                value={toLocalDateTimeString(form.start)}
+                onChange={(e) => {
+                  const newStart = new Date(e.target.value);
+                  if (!isNaN(newStart.getTime())) {
+                    const duration = form.end - form.start;
+                    setForm({ ...form, start: newStart, end: new Date(newStart.getTime() + duration) });
+                  }
+                }}
+                style={{ ...inputStyle, fontSize: 13 }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 4, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>End</label>
+              <input
+                type="datetime-local"
+                value={toLocalDateTimeString(form.end)}
+                onChange={(e) => {
+                  const newEnd = new Date(e.target.value);
+                  if (!isNaN(newEnd.getTime())) setForm({ ...form, end: newEnd });
+                }}
+                style={{ ...inputStyle, fontSize: 13, border: `1px solid ${errors.end ? theme.indicator : isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}` }}
+              />
+              {errors.end && <div style={{ fontSize: 10, color: theme.indicator, marginTop: 4 }}>{errors.end}</div>}
+            </div>
+          </div>
+
+          {/* Category - Compact chips */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Category</label>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+              {tags.map(tag => {
+                const IconComponent = getTagIcon(tag);
+                const isSelected = form.category === tag.id;
+                return (
+                  <button
+                    key={tag.id}
+                    type="button"
+                    onClick={() => setForm({ ...form, category: tag.id })}
+                    style={{
+                      padding: '6px 10px',
+                      background: isSelected ? `${tag.color}15` : 'transparent',
+                      border: `1px solid ${isSelected ? tag.color : isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}`,
+                      borderRadius: 8,
+                      color: isSelected ? tag.color : theme.textSec,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      letterSpacing: '0.01em',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5
+                    }}
+                  >
+                    {IconComponent && <IconComponent width={12} height={12} />}
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Optional fields toggle */}
+          {!showMore && (
+            <button
+              type="button"
+              onClick={() => setShowMore(true)}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: accentColor,
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.01em',
+                cursor: 'pointer',
+                padding: '4px 0',
+                marginBottom: 12,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4
+              }}
+            >
+              <ICONS.Plus width={14} height={14} /> Add location & notes
+            </button>
+          )}
+
+          {/* Location & Notes - Collapsible */}
+          {showMore && (
+            <>
+              <input
+                type="text"
+                value={form.location}
+                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                placeholder="Location (optional)"
+                style={{ ...inputStyle, marginBottom: 10 }}
+              />
+              <textarea
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                placeholder="Notes (optional)"
+                rows={2}
+                style={{ ...inputStyle, resize: 'none', marginBottom: 12 }}
+              />
+            </>
+          )}
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: 10, paddingTop: 12, borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'}` }}>
+            {onDelete && (
+              <button
+                type="button"
+                onClick={onDelete}
+                style={{
+                  padding: '10px 16px',
+                  background: 'transparent',
+                  border: `1px solid rgba(239, 68, 68, 0.3)`,
+                  borderRadius: 10,
+                  color: '#EF4444',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.02em',
+                  cursor: 'pointer'
+                }}
+              >
+                Delete
+              </button>
+            )}
+            <div style={{ flex: 1 }} />
+            <button
+              type="button"
+              onClick={onCancel}
+              style={{
+                padding: '10px 18px',
+                background: isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9',
+                border: 'none',
+                borderRadius: 10,
+                color: theme.textSec,
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.02em',
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              style={{
+                padding: '10px 24px',
+                background: accentColor,
+                border: 'none',
+                borderRadius: 10,
+                color: '#fff',
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.02em',
+                cursor: 'pointer'
+              }}
+            >
+              {event?.id ? 'Save' : 'Create'}
+            </button>
+          </div>
+        </form>
       </div>
-    </form>
-  </div>
-</div>
-);
+    </div>
+  );
 }
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
   const [activeTab, setActiveTab] = React.useState('appearance');
@@ -5996,15 +6314,22 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'transparent'
         }}>
           <div>
-            <h3 style={{
-              fontSize: 18,
-              fontWeight: 600,
+            <h3 className="serif" style={{
+              fontSize: 20,
+              fontWeight: 500,
               color: theme.text,
-              marginBottom: 2
+              marginBottom: 4,
+              letterSpacing: '-0.02em'
             }}>
               Settings
             </h3>
-            <span style={{ fontSize: 11, color: theme.textMuted }}>
+            <span style={{
+              fontSize: 12,
+              color: theme.textMuted,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              letterSpacing: '0.01em'
+            }}>
               Customize your experience
             </span>
           </div>
@@ -6073,8 +6398,13 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 }
               }}
             >
-              <span style={{ fontSize: 12 }}>{tab.icon}</span>
-              <span style={{ fontSize: 11, fontWeight: 600 }}>{tab.label}</span>
+              <span style={{ fontSize: 13 }}>{tab.icon}</span>
+              <span style={{
+                fontSize: 12,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                letterSpacing: '0.01em'
+              }}>{tab.label}</span>
             </button>
           ))}
         </div>
@@ -6114,16 +6444,20 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   fontWeight: 600,
                   color: theme.text,
-                  marginBottom: 2
+                  marginBottom: 3,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.01em'
                 }}>
                   {user.displayName || 'User'}
                 </div>
                 <div style={{
-                  fontSize: 11,
-                  color: theme.textMuted
+                  fontSize: 12,
+                  color: theme.textMuted,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontWeight: 500
                 }}>
                   {user.email}
                 </div>
@@ -6138,6 +6472,8 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                   color: theme.textSec,
                   fontSize: 11,
                   fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '0.02em',
                   cursor: 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -6181,15 +6517,20 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 <div>
                   <div style={{
                     fontSize: 13,
-                    fontWeight: 500,
+                    fontWeight: 600,
                     color: theme.text,
-                    marginBottom: 2
+                    marginBottom: 3,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    letterSpacing: '0.01em'
                   }}>
                     {label}
                   </div>
                   <div style={{
                     fontSize: 11,
-                    color: theme.textMuted
+                    color: theme.textMuted,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 500,
+                    letterSpacing: '0.01em'
                   }}>
                     {desc}
                   </div>
@@ -6212,26 +6553,30 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             justifyContent: 'space-between'
           }}>
             <div>
-              <div style={{
-                fontSize: 11,
-                fontWeight: 600,
-                color: theme.textSec
+              <div className="serif" style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: theme.textSec,
+                letterSpacing: '0.01em'
               }}>
                 Timeline OS
               </div>
               <div style={{
                 fontSize: 10,
-                color: theme.textMuted
+                color: theme.textMuted,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 500
               }}>
                 v{APP_META.version}
               </div>
             </div>
-            <div style={{
-              fontSize: 10,
+            <div className="serif" style={{
+              fontSize: 11,
               color: theme.textMuted,
               fontStyle: 'italic',
               maxWidth: 200,
-              textAlign: 'right'
+              textAlign: 'right',
+              letterSpacing: '0.01em'
             }}>
               {APP_META.motto}
             </div>
