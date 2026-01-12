@@ -160,6 +160,41 @@ const FOCUS_MODES = {
   minimal: { id: 'minimal', name: 'Minimal', icon: 'Target', hideStats: true, hideSidebar: true }
 };
 
+// Timer Configuration Constants
+const TIMER_COLORS = [
+  { id: 'orange', color: '#F97316', name: 'Orange' },
+  { id: 'green', color: '#10B981', name: 'Green' },
+  { id: 'blue', color: '#3B82F6', name: 'Blue' },
+  { id: 'purple', color: '#8B5CF6', name: 'Purple' },
+  { id: 'pink', color: '#EC4899', name: 'Pink' },
+  { id: 'red', color: '#EF4444', name: 'Red' },
+  { id: 'yellow', color: '#F59E0B', name: 'Yellow' },
+  { id: 'teal', color: '#14B8A6', name: 'Teal' },
+  { id: 'indigo', color: '#6366F1', name: 'Indigo' },
+];
+
+const TIMER_ICONS = [
+  { id: 'clock', name: 'Clock', icon: 'Clock' },
+  { id: 'target', name: 'Focus', icon: 'Target' },
+  { id: 'coffee', name: 'Break', icon: 'Coffee' },
+  { id: 'zap', name: 'Sprint', icon: 'Zap' },
+  { id: 'book', name: 'Study', icon: 'Book' },
+  { id: 'dumbbell', name: 'Exercise', icon: 'Dumbbell' },
+  { id: 'heart', name: 'Wellness', icon: 'Heart' },
+  { id: 'star', name: 'Priority', icon: 'Star' },
+];
+
+const TIMER_PRESETS = [
+  { name: 'Pomodoro', mins: 25, color: '#F97316', icon: 'Target' },
+  { name: 'Short Break', mins: 5, color: '#10B981', icon: 'Coffee' },
+  { name: 'Long Break', mins: 15, color: '#3B82F6', icon: 'Coffee' },
+  { name: 'Deep Work', mins: 90, color: '#8B5CF6', icon: 'Zap' },
+  { name: 'Quick Task', mins: 10, color: '#F59E0B', icon: 'Clock' },
+  { name: 'Meeting', mins: 30, color: '#EC4899', icon: 'Clock' },
+  { name: 'Exercise', mins: 45, color: '#EF4444', icon: 'Dumbbell' },
+  { name: 'Reading', mins: 20, color: '#14B8A6', icon: 'Book' },
+];
+
 // Smart Suggestions Engine
 const generateSmartSuggestions = (events, today) => {
   const suggestions = [];
@@ -522,6 +557,43 @@ const ICONS = {
   Check: (props) => (
     <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polyline points="20 6 9 17 4 12"/>
+    </svg>
+  ),
+  Play: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="5 3 19 12 5 21 5 3"/>
+    </svg>
+  ),
+  Pause: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/>
+    </svg>
+  ),
+  Minus: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+  ),
+  Maximize: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+      <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+    </svg>
+  ),
+  X: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+    </svg>
+  ),
+  Edit: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+    </svg>
+  ),
+  Timer: (props) => (
+    <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M5 3L2 6"/><path d="M22 6l-3-3"/><line x1="12" y1="1" x2="12" y2="3"/>
     </svg>
   )
 };
@@ -914,6 +986,163 @@ function TimelineOS() {
   const [dateFilter, setDateFilter] = useState({ start: null, end: null });
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Multi-Timer State (persists across views)
+  const [timers, setTimers] = useState(() => {
+    try {
+      const saved = localStorage.getItem('timeline_timers');
+      return saved ? JSON.parse(saved) : [
+        { id: 1, name: 'Focus', seconds: 25 * 60, originalSeconds: 25 * 60, running: false, color: '#F97316', icon: 'Target' },
+        { id: 2, name: 'Break', seconds: 5 * 60, originalSeconds: 5 * 60, running: false, color: '#10B981', icon: 'Coffee' }
+      ];
+    } catch {
+      return [
+        { id: 1, name: 'Focus', seconds: 25 * 60, originalSeconds: 25 * 60, running: false, color: '#F97316', icon: 'Target' },
+        { id: 2, name: 'Break', seconds: 5 * 60, originalSeconds: 5 * 60, running: false, color: '#10B981', icon: 'Coffee' }
+      ];
+    }
+  });
+  const [floatingTimerVisible, setFloatingTimerVisible] = useState(false);
+  const [customizingTimer, setCustomizingTimer] = useState(null);
+  const timerIntervalsRef = useRef({});
+
+  // Centralized Goals State (persists across views)
+  const [goals, setGoals] = useState(() => {
+    try {
+      const saved = localStorage.getItem('timeline_goals');
+      return saved ? JSON.parse(saved) : [
+        { id: 1, text: 'Morning routine', done: false },
+        { id: 2, text: 'Deep work session', done: false },
+        { id: 3, text: 'Exercise', done: false }
+      ];
+    } catch {
+      return [
+        { id: 1, text: 'Morning routine', done: false },
+        { id: 2, text: 'Deep work session', done: false },
+        { id: 3, text: 'Exercise', done: false }
+      ];
+    }
+  });
+  const [newGoal, setNewGoal] = useState('');
+
+  // Multi-Timer Effect - manages all timers globally
+  useEffect(() => {
+    const intervals = timerIntervalsRef.current;
+
+    // Clear all existing intervals first
+    Object.values(intervals).forEach(clearInterval);
+    Object.keys(intervals).forEach(key => delete intervals[key]);
+
+    // Set up intervals for running timers
+    timers.forEach(timer => {
+      if (timer.running && timer.seconds > 0) {
+        intervals[timer.id] = setInterval(() => {
+          setTimers(prev => {
+            const updated = prev.map(t => {
+              if (t.id === timer.id) {
+                const newSeconds = t.seconds - 1;
+                if (newSeconds <= 0) {
+                  // Timer complete - play notification sound
+                  try {
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQEAStPx6IpkDwBM2ezqh3EJAFXZ7OiDcQ0AW9fr5Xp0DABV2OrnfXUNAFjX6uZ9dAwAWNfq5n10DABZ1+rmfXQMAFnX6uZ9dAwA');
+                    audio.volume = 0.5;
+                    audio.play().catch(() => {});
+                  } catch {}
+                  return { ...t, seconds: 0, running: false };
+                }
+                return { ...t, seconds: newSeconds };
+              }
+              return t;
+            });
+            localStorage.setItem('timeline_timers', JSON.stringify(updated));
+            return updated;
+          });
+        }, 1000);
+      }
+    });
+
+    return () => {
+      Object.values(intervals).forEach(clearInterval);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timers]);
+
+  // Persist timers to localStorage when they change (non-running updates)
+  useEffect(() => {
+    localStorage.setItem('timeline_timers', JSON.stringify(timers));
+  }, [timers]);
+
+  // Persist goals to localStorage
+  useEffect(() => {
+    localStorage.setItem('timeline_goals', JSON.stringify(goals));
+  }, [goals]);
+
+  // Timer helpers
+  const formatTimer = (secs) => {
+    const hrs = Math.floor(secs / 3600);
+    const mins = Math.floor((secs % 3600) / 60);
+    const s = secs % 60;
+    if (hrs > 0) {
+      return `${hrs}:${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  const toggleTimer = (id) => {
+    setTimers(prev => prev.map(t => t.id === id ? { ...t, running: !t.running } : t));
+  };
+
+  const resetTimer = (id) => {
+    setTimers(prev => prev.map(t => t.id === id ? { ...t, seconds: t.originalSeconds, running: false } : t));
+  };
+
+  const updateTimer = (id, updates) => {
+    setTimers(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const addTimer = (name = 'New Timer', minutes = 25, color = null, icon = 'Clock') => {
+    const colors = ['#F97316', '#10B981', '#6366F1', '#EC4899', '#F59E0B', '#14B8A6'];
+    const newTimer = {
+      id: Date.now(),
+      name,
+      seconds: minutes * 60,
+      originalSeconds: minutes * 60,
+      running: false,
+      color: color || colors[timers.length % colors.length],
+      icon: icon
+    };
+    setTimers(prev => [...prev, newTimer]);
+  };
+
+  const addTimerFromPreset = (preset) => {
+    addTimer(preset.name, preset.mins, preset.color, preset.icon);
+  };
+
+  const removeTimer = (id) => {
+    if (timerIntervalsRef.current[id]) {
+      clearInterval(timerIntervalsRef.current[id]);
+      delete timerIntervalsRef.current[id];
+    }
+    setTimers(prev => prev.filter(t => t.id !== id));
+  };
+
+  const toggleGoal = (id) => {
+    setGoals(prev => prev.map(g => g.id === id ? { ...g, done: !g.done } : g));
+  };
+
+  const addGoal = () => {
+    if (newGoal.trim()) {
+      setGoals(prev => [...prev, { id: Date.now(), text: newGoal.trim(), done: false }]);
+      setNewGoal('');
+    }
+  };
+
+  const removeGoal = (id) => {
+    setGoals(prev => prev.filter(g => g.id !== id));
+  };
+
+  // Get running timers count for floating indicator
+  const runningTimersCount = timers.filter(t => t.running).length;
+
   // Smart suggestions
   const smartSuggestions = useMemo(() => {
     return generateSmartSuggestions(events, new Date());
@@ -1232,6 +1461,35 @@ function TimelineOS() {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
               <AppLogo size={36} theme={theme} showText={true} />
               <div style={{ display: 'flex', gap: 6 }}>
+                {/* Timer Icon Button */}
+                <button
+                  onClick={() => setFloatingTimerVisible(!floatingTimerVisible)}
+                  title={runningTimersCount > 0 ? `${formatTimer(timers.find(t => t.running)?.seconds || 0)} - ${timers.find(t => t.running)?.name}` : 'Timer'}
+                  style={{
+                    width: 28, height: 28, borderRadius: 8,
+                    background: runningTimersCount > 0 ? `${timers.find(t => t.running)?.color || theme.accent}20` : theme.hoverBg,
+                    border: runningTimersCount > 0 ? `1px solid ${timers.find(t => t.running)?.color || theme.accent}40` : `1px solid ${theme.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer',
+                    color: runningTimersCount > 0 ? timers.find(t => t.running)?.color || theme.accent : theme.textMuted,
+                    position: 'relative'
+                  }}
+                >
+                  <ICONS.Timer width={14} height={14} />
+                  {runningTimersCount > 0 && (
+                    <div style={{
+                      position: 'absolute',
+                      top: -2,
+                      right: -2,
+                      width: 8,
+                      height: 8,
+                      borderRadius: '50%',
+                      background: timers.find(t => t.running)?.color || theme.accent,
+                      border: `2px solid ${config.darkMode ? theme.sidebar : '#fff'}`,
+                      animation: 'pulse 1.5s ease-in-out infinite'
+                    }} />
+                  )}
+                </button>
                 {/* Focus Mode Button */}
                 <button
                   onClick={() => {
@@ -1288,39 +1546,118 @@ function TimelineOS() {
             )}
           </div>
 
-          {/* Smart Suggestions */}
-          {smartSuggestions.length > 0 && (
+          {/* Focus Mode Banner - Shows when not in normal mode */}
+          {config.focusMode !== 'normal' && (
             <div style={{
               marginBottom: 16,
-              padding: 10,
-              background: theme.liquidGlass,
-              backdropFilter: 'blur(12px)',
-              WebkitBackdropFilter: 'blur(12px)',
+              padding: '10px 14px',
+              background: `linear-gradient(135deg, ${accentColor}15 0%, ${accentColor}08 100%)`,
               borderRadius: 10,
-              border: `1px solid ${theme.liquidBorder}`
+              border: `1px solid ${accentColor}30`,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
             }}>
-              <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                Suggestions
+              <div style={{
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: `${accentColor}20`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                {currentFocusMode.icon && ICONS[currentFocusMode.icon] ? (
+                  React.createElement(ICONS[currentFocusMode.icon], {
+                    width: 16, height: 16, style: { color: accentColor }
+                  })
+                ) : (
+                  <ICONS.Target width={16} height={16} style={{ color: accentColor }} />
+                )}
               </div>
+              <div style={{ flex: 1 }}>
+                <div style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: accentColor,
+                  marginBottom: 1
+                }}>
+                  {currentFocusMode.name}
+                </div>
+                <div style={{
+                  fontSize: 10,
+                  color: theme.textMuted
+                }}>
+                  {currentFocusMode.id === 'work' && 'Showing work events only'}
+                  {currentFocusMode.id === 'personal' && 'Showing personal events'}
+                  {currentFocusMode.id === 'minimal' && 'Distraction-free view'}
+                </div>
+              </div>
+              <button
+                onClick={() => setConfig(c => ({ ...c, focusMode: 'normal' }))}
+                style={{
+                  padding: '5px 10px',
+                  fontSize: 10,
+                  fontWeight: 600,
+                  background: config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
+                  color: theme.textSec,
+                  border: 'none',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                }}
+              >
+                Exit
+              </button>
+            </div>
+          )}
+
+          {/* Smart Suggestions - Compact */}
+          {smartSuggestions.length > 0 && (
+            <div style={{
+              marginBottom: 12,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6
+            }}>
               {smartSuggestions.slice(0, 2).map((s, i) => (
                 <div key={i} style={{
-                  display: 'flex', alignItems: 'center', gap: 8,
-                  padding: '6px 0',
-                  borderBottom: i < smartSuggestions.length - 1 ? `1px solid ${theme.subtleBorder}` : 'none'
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '8px 10px',
+                  background: s.type === 'warning'
+                    ? (config.darkMode ? 'rgba(245,151,0,0.08)' : 'rgba(245,151,0,0.06)')
+                    : s.type === 'tip'
+                    ? (config.darkMode ? 'rgba(16,185,129,0.08)' : 'rgba(16,185,129,0.06)')
+                    : (config.darkMode ? 'rgba(99,102,241,0.08)' : 'rgba(99,102,241,0.06)'),
+                  borderRadius: 8,
+                  border: `1px solid ${
+                    s.type === 'warning' ? 'rgba(245,151,0,0.15)'
+                    : s.type === 'tip' ? 'rgba(16,185,129,0.15)'
+                    : 'rgba(99,102,241,0.15)'
+                  }`
                 }}>
                   <div style={{
-                    width: 24, height: 24, borderRadius: 6,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 5,
                     background: s.type === 'warning' ? '#f5970020' : s.type === 'tip' ? '#10b98120' : '#6366f120',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
                   }}>
                     {ICONS[s.icon] && React.createElement(ICONS[s.icon], {
-                      width: 12, height: 12,
+                      width: 10, height: 10,
                       style: { color: s.type === 'warning' ? '#f59700' : s.type === 'tip' ? '#10b981' : '#6366f1' }
                     })}
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, fontWeight: 500, color: theme.text }}>{s.title}</div>
-                    <div style={{ fontSize: 9, color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.message}</div>
+                    <div style={{
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: s.type === 'warning' ? '#f59700' : s.type === 'tip' ? '#10b981' : '#6366f1'
+                    }}>{s.title}</div>
                   </div>
                 </div>
               ))}
@@ -2039,6 +2376,25 @@ function TimelineOS() {
                 setCurrentDate(date);
                 setViewMode('day');
               }}
+              timers={timers}
+              toggleTimer={toggleTimer}
+              formatTimer={formatTimer}
+              resetTimer={resetTimer}
+              updateTimer={updateTimer}
+              addTimerFromPreset={addTimerFromPreset}
+              removeTimer={removeTimer}
+              floatingTimerVisible={floatingTimerVisible}
+              setFloatingTimerVisible={setFloatingTimerVisible}
+              customizingTimer={customizingTimer}
+              setCustomizingTimer={setCustomizingTimer}
+              runningTimersCount={runningTimersCount}
+              goals={goals}
+              setGoals={setGoals}
+              toggleGoal={toggleGoal}
+              addGoal={addGoal}
+              removeGoal={removeGoal}
+              newGoal={newGoal}
+              setNewGoal={setNewGoal}
             />
           ) : null}
         </div>
@@ -2066,94 +2422,205 @@ function TimelineOS() {
         <div className="scale-enter" style={{
           position: "fixed", inset: 0, zIndex: 1000,
           display: "flex", alignItems: "center", justifyContent: "center",
-          background: "rgba(0,0,0,0.6)", backdropFilter: "blur(8px)"
+          background: config.darkMode ? "rgba(0,0,0,0.7)" : "rgba(15,23,42,0.3)",
+          backdropFilter: "blur(8px)"
         }} onClick={() => setInsightsOpen(false)}>
-          <div onClick={e => e.stopPropagation()} style={{
-            width: 600, maxHeight: "80vh", overflow: "auto",
-            background: theme.liquidGlass, backdropFilter: "blur(24px)",
-            borderRadius: 20, border: `1px solid ${theme.liquidBorder}`,
-            boxShadow: theme.liquidShadow, padding: 24
+          <div onClick={e => e.stopPropagation()} className="scroll-container" style={{
+            width: 520,
+            maxHeight: "85vh",
+            overflow: "auto",
+            background: config.darkMode ? theme.card : "#FFFFFF",
+            borderRadius: 16,
+            border: `1px solid ${config.darkMode ? theme.border : 'rgba(0,0,0,0.08)'}`,
+            boxShadow: config.darkMode
+              ? '0 24px 48px rgba(0,0,0,0.5)'
+              : '0 25px 50px -12px rgba(0,0,0,0.25)',
           }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+            {/* Header */}
+            <div style={{
+              padding: '18px 20px',
+              borderBottom: `1px solid ${config.darkMode ? theme.subtleBorder : 'rgba(0,0,0,0.06)'}`,
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
+            }}>
               <div>
-                <h2 style={{ fontSize: 20, fontWeight: 700, color: theme.text, marginBottom: 4 }}>Insights</h2>
-                <p style={{ fontSize: 12, color: theme.textMuted }}>Analytics & patterns from your calendar</p>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: config.darkMode ? theme.text : '#1F2937', marginBottom: 2 }}>
+                  Insights
+                </h2>
+                <p style={{ fontSize: 11, color: config.darkMode ? theme.textMuted : '#6B7280' }}>
+                  Analytics & patterns
+                </p>
               </div>
               <button onClick={() => setInsightsOpen(false)} style={{
-                width: 32, height: 32, borderRadius: 8, background: theme.hoverBg,
-                border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center"
-              }}><ICONS.Close width={16} height={16} style={{ color: theme.textMuted }} /></button>
+                width: 30, height: 30, borderRadius: 8,
+                background: config.darkMode ? theme.hoverBg : '#F3F4F6',
+                border: "none",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: config.darkMode ? theme.textMuted : '#6B7280'
+              }}>
+                <ICONS.Close width={14} height={14} />
+              </button>
             </div>
 
-            {/* Stats Grid */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 20 }}>
-              {[
-                { label: "Total Events", value: events.length, color: "#6366f1", icon: "Calendar" },
-                { label: "This Month", value: events.filter(e => new Date(e.start).getMonth() === new Date().getMonth()).length, color: "#10b981", icon: "TrendingUp" },
-                { label: "Categories", value: currentTags.length, color: "#f59700", icon: "Star" }
-              ].map((stat, i) => (
-                <div key={i} style={{
-                  padding: 16, borderRadius: 12,
-                  background: config.darkMode ? "rgba(255,255,255,0.03)" : "rgba(0,0,0,0.02)",
-                  border: `1px solid ${theme.subtleBorder}`
-                }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ padding: 20 }}>
+              {/* Stats Grid */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+                {[
+                  { label: "Total", value: events.length, color: "#6366f1" },
+                  { label: "This Month", value: events.filter(e => new Date(e.start).getMonth() === new Date().getMonth()).length, color: "#10b981" },
+                  { label: "Categories", value: currentTags.length, color: "#f59e0b" }
+                ].map((stat, i) => (
+                  <div key={i} style={{
+                    padding: '12px 14px',
+                    borderRadius: 10,
+                    background: config.darkMode ? `${stat.color}10` : `${stat.color}08`,
+                    border: `1px solid ${stat.color}20`
+                  }}>
                     <div style={{
-                      width: 24, height: 24, borderRadius: 6, background: `${stat.color}20`,
-                      display: "flex", alignItems: "center", justifyContent: "center"
+                      fontSize: 10,
+                      fontWeight: 600,
+                      color: config.darkMode ? `${stat.color}` : stat.color,
+                      marginBottom: 4,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.3px'
                     }}>
-                      {ICONS[stat.icon] && React.createElement(ICONS[stat.icon], { width: 12, height: 12, style: { color: stat.color } })}
+                      {stat.label}
                     </div>
-                    <span style={{ fontSize: 11, color: theme.textMuted }}>{stat.label}</span>
+                    <div style={{
+                      fontSize: 26,
+                      fontWeight: 700,
+                      color: stat.color,
+                      lineHeight: 1
+                    }}>
+                      {stat.value}
+                    </div>
                   </div>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: stat.color }}>{stat.value}</div>
-                </div>
-              ))}
-            </div>
-
-            {/* Category Breakdown */}
-            <div style={{ marginBottom: 20 }}>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Events by Category</h3>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {currentTags.map(tag => {
-                  const count = events.filter(e => e.category === tag.id).length;
-                  const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
-                  return (
-                    <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{
-                        width: 28, height: 28, borderRadius: 6, background: `${tag.color}20`,
-                        display: "flex", alignItems: "center", justifyContent: "center"
-                      }}>
-                        {ICONS[tag.iconName] && React.createElement(ICONS[tag.iconName], { width: 12, height: 12, style: { color: tag.color } })}
-                      </div>
-                      <span style={{ fontSize: 12, color: theme.text, width: 80 }}>{tag.name}</span>
-                      <div style={{ flex: 1, height: 8, background: theme.hoverBg, borderRadius: 4, overflow: "hidden" }}>
-                        <div style={{ width: `${pct}%`, height: "100%", background: tag.color, borderRadius: 4 }} />
-                      </div>
-                      <span style={{ fontSize: 11, color: theme.textMuted, width: 40, textAlign: "right" }}>{count}</span>
-                    </div>
-                  );
-                })}
+                ))}
               </div>
-            </div>
 
-            {/* Activity Heatmap Preview */}
-            <div>
-              <h3 style={{ fontSize: 13, fontWeight: 600, color: theme.text, marginBottom: 12 }}>Weekly Activity</h3>
-              <div style={{ display: "flex", gap: 4 }}>
-                {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
-                  const dayEvents = events.filter(e => new Date(e.start).getDay() === (i + 1) % 7).length;
-                  const intensity = Math.min(dayEvents / 3, 1);
-                  return (
-                    <div key={day} style={{ flex: 1, textAlign: "center" }}>
-                      <div style={{
-                        height: 40, borderRadius: 6, marginBottom: 4,
-                        background: `rgba(249, 115, 22, ${0.1 + intensity * 0.6})`
-                      }} />
-                      <span style={{ fontSize: 9, color: theme.textMuted }}>{day}</span>
-                    </div>
-                  );
-                })}
+              {/* Category Breakdown */}
+              <div style={{ marginBottom: 20 }}>
+                <h3 style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: config.darkMode ? theme.text : '#374151',
+                  marginBottom: 12,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  By Category
+                </h3>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {currentTags.map(tag => {
+                    const count = events.filter(e => e.category === tag.id).length;
+                    const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
+                    return (
+                      <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          width: 28,
+                          height: 28,
+                          borderRadius: 7,
+                          background: config.darkMode ? `${tag.color}20` : `${tag.color}12`,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center"
+                        }}>
+                          {ICONS[tag.iconName] && React.createElement(ICONS[tag.iconName], {
+                            width: 12, height: 12, style: { color: tag.color }
+                          })}
+                        </div>
+                        <span style={{
+                          fontSize: 12,
+                          fontWeight: 500,
+                          color: config.darkMode ? theme.text : '#374151',
+                          width: 65
+                        }}>
+                          {tag.name}
+                        </span>
+                        <div style={{
+                          flex: 1,
+                          height: 6,
+                          background: config.darkMode ? 'rgba(255,255,255,0.08)' : '#E5E7EB',
+                          borderRadius: 3,
+                          overflow: "hidden"
+                        }}>
+                          <div style={{
+                            width: `${Math.max(pct, count > 0 ? 8 : 0)}%`,
+                            height: "100%",
+                            background: tag.color,
+                            borderRadius: 3,
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: count > 0 ? tag.color : (config.darkMode ? theme.textMuted : '#9CA3AF'),
+                          width: 24,
+                          textAlign: "right"
+                        }}>
+                          {count}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Activity Heatmap */}
+              <div>
+                <h3 style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: config.darkMode ? theme.text : '#374151',
+                  marginBottom: 12,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px'
+                }}>
+                  Weekly Activity
+                </h3>
+                <div style={{ display: "flex", gap: 6 }}>
+                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
+                    const dayEvents = events.filter(e => new Date(e.start).getDay() === (i + 1) % 7).length;
+                    const intensity = Math.min(dayEvents / 3, 1);
+                    return (
+                      <div key={day} style={{ flex: 1, textAlign: "center" }}>
+                        <div style={{
+                          height: 44,
+                          borderRadius: 8,
+                          marginBottom: 4,
+                          background: dayEvents > 0
+                            ? config.darkMode
+                              ? `rgba(99, 102, 241, ${0.15 + intensity * 0.5})`
+                              : `rgba(99, 102, 241, ${0.08 + intensity * 0.35})`
+                            : config.darkMode ? 'rgba(255,255,255,0.04)' : '#F3F4F6',
+                          border: dayEvents > 0
+                            ? '1px solid rgba(99, 102, 241, 0.25)'
+                            : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : '#E5E7EB'}`,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}>
+                          {dayEvents > 0 && (
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#6366f1' }}>{dayEvents}</span>
+                          )}
+                        </div>
+                        <span style={{
+                          fontSize: 9,
+                          fontWeight: 500,
+                          color: config.darkMode ? theme.textMuted : '#9CA3AF'
+                        }}>
+                          {day}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           </div>
@@ -2191,7 +2658,7 @@ function TimelineOS() {
           onClose={() => setTagManagerOpen(false)}
         />
       )}
-      
+
       <div style={{
         position: "fixed",
         bottom: 16,
@@ -3792,59 +4259,34 @@ theme,
 config,
 tags,
 accentColor,
-onDayClick
+onDayClick,
+// Multi-timer props
+timers,
+toggleTimer,
+formatTimer,
+resetTimer,
+updateTimer,
+addTimerFromPreset,
+removeTimer,
+floatingTimerVisible,
+setFloatingTimerVisible,
+customizingTimer,
+setCustomizingTimer,
+runningTimersCount,
+// Goals props
+goals,
+setGoals,
+toggleGoal,
+addGoal,
+removeGoal,
+newGoal,
+setNewGoal
 }) {
 const year = currentDate.getFullYear();
 const today = React.useMemo(() => new Date(), []);
 const isCurrentYear = year === today.getFullYear();
 const [hoveredDay, setHoveredDay] = React.useState(null);
 const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
-
-// Focus Timer State
-const [timerSeconds, setTimerSeconds] = React.useState(25 * 60);
-const [timerRunning, setTimerRunning] = React.useState(false);
-const timerRef = React.useRef(null);
-
-// Daily Goals State
-const [goals, setGoals] = React.useState([
-  { id: 1, text: 'Morning routine', done: false },
-  { id: 2, text: 'Deep work session', done: false },
-  { id: 3, text: 'Exercise', done: false }
-]);
-const [newGoal, setNewGoal] = React.useState('');
-
-// Focus Timer Effect
-React.useEffect(() => {
-  if (timerRunning && timerSeconds > 0) {
-    timerRef.current = setInterval(() => {
-      setTimerSeconds(prev => prev - 1);
-    }, 1000);
-  } else if (timerSeconds === 0) {
-    setTimerRunning(false);
-  }
-  return () => clearInterval(timerRef.current);
-}, [timerRunning, timerSeconds]);
-
-const formatTimer = (secs) => {
-  const mins = Math.floor(secs / 60);
-  const s = secs % 60;
-  return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-};
-
-const toggleGoal = (id) => {
-  setGoals(prev => prev.map(g => g.id === id ? { ...g, done: !g.done } : g));
-};
-
-const addGoal = () => {
-  if (newGoal.trim()) {
-    setGoals(prev => [...prev, { id: Date.now(), text: newGoal.trim(), done: false }]);
-    setNewGoal('');
-  }
-};
-
-const removeGoal = (id) => {
-  setGoals(prev => prev.filter(g => g.id !== id));
-};
 
 React.useEffect(() => {
 if (isCurrentYear) {
@@ -4208,35 +4650,44 @@ flexShrink: 0
               borderRadius: 10,
               border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                <div style={{
-                  width: 20, height: 20, borderRadius: 5,
-                  background: `${accentColor}20`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <ICONS.Clock width={11} height={11} style={{ color: accentColor }} />
+              {timers.slice(0, 2).map((timer, idx) => (
+                <React.Fragment key={timer.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: idx === 0 ? 4 : 0, marginTop: idx > 0 ? 8 : 0 }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 4,
+                      background: `${timer.color}20`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <ICONS.Clock width={9} height={9} style={{ color: timer.color }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: theme.textMuted }}>{timer.name}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: timer.running ? timer.color : theme.text,
+                    fontFamily: 'SF Mono, monospace',
+                    marginBottom: 4
+                  }}>{formatTimer(timer.seconds)}</div>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    <button onClick={() => toggleTimer(timer.id)} style={{
+                      flex: 1, padding: '3px', fontSize: 8, fontWeight: 600,
+                      background: timer.running ? `${timer.color}20` : timer.color,
+                      color: timer.running ? timer.color : '#fff', border: 'none', borderRadius: 4, cursor: 'pointer'
+                    }}>{timer.running ? 'Pause' : 'Start'}</button>
+                    <button onClick={() => resetTimer(timer.id)} style={{
+                      padding: '3px 5px', fontSize: 8,
+                      background: 'transparent', color: theme.textMuted,
+                      border: `1px solid ${theme.border}`, borderRadius: 4, cursor: 'pointer'
+                    }}>↻</button>
+                  </div>
+                </React.Fragment>
+              ))}
+              {timers.length > 2 && (
+                <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 6, textAlign: 'center' }}>
+                  +{timers.length - 2} more timers
                 </div>
-                <span style={{ fontSize: 10, color: theme.textMuted }}>Focus</span>
-              </div>
-              <div style={{
-                fontSize: 18,
-                fontWeight: 600,
-                color: timerRunning ? accentColor : theme.text,
-                fontFamily: 'monospace',
-                marginBottom: 6
-              }}>{formatTimer(timerSeconds)}</div>
-              <div style={{ display: 'flex', gap: 4 }}>
-                <button onClick={() => setTimerRunning(!timerRunning)} style={{
-                  flex: 1, padding: '4px', fontSize: 9, fontWeight: 600,
-                  background: timerRunning ? theme.indicator : accentColor,
-                  color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer'
-                }}>{timerRunning ? 'Stop' : 'Start'}</button>
-                <button onClick={() => { setTimerRunning(false); setTimerSeconds(25 * 60); }} style={{
-                  padding: '4px 6px', fontSize: 9,
-                  background: 'transparent', color: theme.textMuted,
-                  border: `1px solid ${theme.border}`, borderRadius: 4, cursor: 'pointer'
-                }}>↻</button>
-              </div>
+              )}
             </div>
 
             {/* Avg Events/Day */}
@@ -4265,70 +4716,194 @@ flexShrink: 0
 
           {/* Goals + Upcoming Row */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-            {/* Daily Goals - Inline Compact */}
+            {/* Daily Goals - With Scroll */}
             <div style={{
               background: config.darkMode ? theme.card : theme.sidebar,
               padding: "12px",
               borderRadius: 10,
-              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: 200
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexShrink: 0 }}>
                 <div style={{
                   width: 20, height: 20, borderRadius: 5,
-                  background: '#10b98120',
+                  background: goalsProgress === 100 ? '#10b981' : '#10b98120',
                   display: 'flex', alignItems: 'center', justifyContent: 'center'
                 }}>
-                  <ICONS.Target width={11} height={11} style={{ color: '#10b981' }} />
+                  {goalsProgress === 100 ? (
+                    <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/></svg>
+                  ) : (
+                    <ICONS.Target width={11} height={11} style={{ color: '#10b981' }} />
+                  )}
                 </div>
                 <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Daily Goals</span>
-                <span style={{ marginLeft: 'auto', fontSize: 10, color: goalsProgress === 100 ? '#10b981' : theme.textMuted }}>
-                  {goalsCompleted}/{goals.length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 8 }}>
-                {goals.slice(0, 3).map(goal => (
-                  <div key={goal.id} style={{
-                    display: 'flex', alignItems: 'center', gap: 8,
-                    padding: '6px 8px',
-                    background: goal.done ? (config.darkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.08)') : 'transparent',
-                    borderRadius: 6
+                <div style={{
+                  marginLeft: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  {/* Progress */}
+                  <div style={{
+                    width: 40,
+                    height: 4,
+                    background: config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                    borderRadius: 2,
+                    overflow: 'hidden'
                   }}>
-                    <div onClick={() => toggleGoal(goal.id)} style={{
-                      width: 14, height: 14, borderRadius: 4, cursor: 'pointer', flexShrink: 0,
-                      border: `1.5px solid ${goal.done ? '#10b981' : theme.border}`,
-                      background: goal.done ? '#10b981' : 'transparent',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center'
-                    }}>
-                      {goal.done && <svg width="8" height="8" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/></svg>}
+                    <div style={{
+                      width: `${goalsProgress}%`,
+                      height: '100%',
+                      background: '#10b981',
+                      borderRadius: 2,
+                      transition: 'width 0.3s'
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: goalsProgress === 100 ? '#10b981' : theme.textMuted, fontWeight: 500 }}>
+                    {goalsCompleted}/{goals.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Goals List - Scrollable */}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                marginBottom: 8,
+                paddingRight: 4
+              }}>
+                {goals.map(goal => (
+                  <div
+                    key={goal.id}
+                    className="goal-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 8px',
+                      background: goal.done
+                        ? (config.darkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.06)')
+                        : 'transparent',
+                      borderRadius: 6,
+                      transition: 'background 0.15s'
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      onClick={() => toggleGoal(goal.id)}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        border: `1.5px solid ${goal.done ? '#10b981' : theme.border}`,
+                        background: goal.done ? '#10b981' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {goal.done && (
+                        <svg width="9" height="9" viewBox="0 0 12 12">
+                          <path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/>
+                        </svg>
+                      )}
                     </div>
+                    {/* Text */}
                     <span style={{
-                      fontSize: 11, flex: 1,
+                      fontSize: 11,
+                      flex: 1,
                       color: goal.done ? theme.textMuted : theme.text,
                       textDecoration: goal.done ? 'line-through' : 'none',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
                     }}>{goal.text}</span>
-                    <button onClick={() => removeGoal(goal.id)} style={{
-                      background: 'none', border: 'none', color: theme.textMuted,
-                      fontSize: 12, cursor: 'pointer', opacity: 0.5, padding: 0
-                    }}>×</button>
+                    {/* Edit Button */}
+                    <button
+                      onClick={() => {
+                        const newText = prompt('Edit goal:', goal.text);
+                        if (newText && newText.trim()) {
+                          setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, text: newText.trim() } : g));
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: theme.textMuted,
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        opacity: 0.5,
+                        borderRadius: 3
+                      }}
+                      title="Edit"
+                    >
+                      <ICONS.Edit width={10} height={10} />
+                    </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => removeGoal(goal.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        opacity: 0.6,
+                        borderRadius: 3
+                      }}
+                      title="Delete"
+                    >
+                      ×
+                    </button>
                   </div>
                 ))}
               </div>
-              <div style={{ display: 'flex', gap: 6 }}>
+
+              {/* Add Goal Input */}
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
                 <input
-                  type="text" value={newGoal} onChange={e => setNewGoal(e.target.value)}
+                  type="text"
+                  value={newGoal}
+                  onChange={e => setNewGoal(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && addGoal()}
                   placeholder="Add goal..."
                   style={{
-                    flex: 1, padding: '6px 10px', fontSize: 11,
+                    flex: 1,
+                    padding: '6px 10px',
+                    fontSize: 11,
                     background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
-                    border: 'none', borderRadius: 6, color: theme.text, outline: 'none'
+                    border: 'none',
+                    borderRadius: 6,
+                    color: theme.text,
+                    outline: 'none'
                   }}
                 />
-                <button onClick={addGoal} style={{
-                  padding: '6px 10px', fontSize: 10, fontWeight: 600,
-                  background: '#10b981', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer'
-                }}>Add</button>
+                <button
+                  onClick={addGoal}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: '#10b981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
               </div>
             </div>
 
@@ -4490,6 +5065,324 @@ flexShrink: 0
           </div>
         )}
       </div>
+    </div>
+  )}
+
+  {/* Floating Timer Popup */}
+  {floatingTimerVisible && (
+    <div style={{
+      position: 'fixed',
+      bottom: 80,
+      right: 20,
+      width: 280,
+      background: config.darkMode
+        ? 'rgba(30,30,35,0.95)'
+        : 'rgba(255,255,255,0.98)',
+      backdropFilter: 'blur(20px)',
+      borderRadius: 16,
+      border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+      boxShadow: config.darkMode
+        ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
+        : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
+      zIndex: 10000,
+      overflow: 'hidden',
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '12px 14px',
+        borderBottom: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <ICONS.Timer width={14} height={14} style={{ color: theme.accent }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>Timers</span>
+          {runningTimersCount > 0 && (
+            <span style={{
+              fontSize: 9,
+              padding: '2px 6px',
+              background: `${theme.accent}20`,
+              color: theme.accent,
+              borderRadius: 8,
+              fontWeight: 600,
+            }}>
+              {runningTimersCount} active
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setFloatingTimerVisible(false)}
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: theme.textMuted,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <ICONS.X width={14} height={14} />
+        </button>
+      </div>
+
+      {/* Timer List */}
+      <div style={{ padding: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+        {timers.slice(0, 4).map(timer => {
+          const TimerIcon = ICONS[timer.icon] || ICONS.Clock;
+          const isCustomizing = customizingTimer === timer.id;
+          return (
+            <div key={timer.id}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  padding: '10px 12px',
+                  background: timer.running
+                    ? `${timer.color}12`
+                    : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: 12,
+                  border: timer.running
+                    ? `1px solid ${timer.color}30`
+                    : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                }}
+              >
+                {/* Icon */}
+                <div
+                  onClick={() => setCustomizingTimer(isCustomizing ? null : timer.id)}
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: `${timer.color}18`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    transition: 'transform 0.15s',
+                  }}
+                >
+                  <TimerIcon width={18} height={18} style={{ color: timer.color }} />
+                </div>
+
+                {/* Time & Name */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    fontSize: 22,
+                    fontWeight: 700,
+                    fontFamily: 'SF Mono, Menlo, monospace',
+                    color: timer.running ? timer.color : theme.text,
+                    letterSpacing: '-0.5px',
+                    lineHeight: 1,
+                  }}>
+                    {formatTimer(timer.seconds)}
+                  </div>
+                  <div style={{
+                    fontSize: 10,
+                    fontWeight: 500,
+                    color: theme.textMuted,
+                    marginTop: 2,
+                  }}>
+                    {timer.name}
+                  </div>
+                </div>
+
+                {/* Controls */}
+                <div style={{ display: 'flex', gap: 6 }}>
+                  <button
+                    onClick={() => toggleTimer(timer.id)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: timer.running ? `${timer.color}20` : timer.color,
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: timer.running ? timer.color : '#fff',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.15s',
+                    }}
+                  >
+                    {timer.running ? <ICONS.Pause width={14} height={14} /> : <ICONS.Play width={14} height={14} />}
+                  </button>
+                  <button
+                    onClick={() => resetTimer(timer.id)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 10,
+                      background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                      border: 'none',
+                      cursor: 'pointer',
+                      color: theme.textMuted,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                    title="Reset"
+                  >
+                    <ICONS.Clock width={14} height={14} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Customization Panel */}
+              {isCustomizing && (
+                <div style={{
+                  marginTop: 6,
+                  padding: 10,
+                  background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                  borderRadius: 10,
+                  border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+                }}>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
+                    Color
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    {TIMER_COLORS.map(c => (
+                      <button
+                        key={c.id}
+                        onClick={() => updateTimer(timer.id, { color: c.color })}
+                        style={{
+                          width: 22,
+                          height: 22,
+                          borderRadius: 6,
+                          background: c.color,
+                          border: timer.color === c.color ? '2px solid #fff' : '2px solid transparent',
+                          boxShadow: timer.color === c.color ? `0 0 0 1px ${c.color}` : 'none',
+                          cursor: 'pointer',
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase' }}>
+                    Icon
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 8 }}>
+                    {TIMER_ICONS.map(ic => {
+                      const IconComp = ICONS[ic.icon];
+                      const isSelected = timer.icon === ic.icon;
+                      return (
+                        <button
+                          key={ic.id}
+                          onClick={() => updateTimer(timer.id, { icon: ic.icon })}
+                          style={{
+                            width: 26,
+                            height: 26,
+                            borderRadius: 6,
+                            background: isSelected ? `${timer.color}20` : config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                            border: isSelected ? `1px solid ${timer.color}` : '1px solid transparent',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <IconComp width={12} height={12} style={{ color: isSelected ? timer.color : theme.textSec }} />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <button
+                      onClick={() => {
+                        const mins = prompt('Duration (minutes):', Math.floor(timer.originalSeconds / 60));
+                        if (mins && !isNaN(mins)) {
+                          const secs = Math.max(1, parseInt(mins)) * 60;
+                          updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
+                        }
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '6px',
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: theme.textSec,
+                        background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
+                        border: 'none',
+                        borderRadius: 6,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Edit Time
+                    </button>
+                    {timers.length > 1 && (
+                      <button
+                        onClick={() => { removeTimer(timer.id); setCustomizingTimer(null); }}
+                        style={{
+                          padding: '6px 10px',
+                          fontSize: 9,
+                          fontWeight: 600,
+                          color: '#EF4444',
+                          background: 'rgba(239,68,68,0.1)',
+                          border: 'none',
+                          borderRadius: 6,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Quick Add Presets */}
+      {timers.length < 5 && (
+        <div style={{
+          padding: '0 12px 12px',
+          display: 'flex',
+          flexWrap: 'wrap',
+          gap: 6,
+        }}>
+          {TIMER_PRESETS.slice(0, 4).map(preset => {
+            const PresetIcon = ICONS[preset.icon] || ICONS.Clock;
+            return (
+              <button
+                key={preset.name}
+                onClick={() => addTimerFromPreset(preset)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  padding: '5px 10px',
+                  fontSize: 10,
+                  fontWeight: 500,
+                  color: theme.textSec,
+                  background: 'transparent',
+                  border: `1px dashed ${theme.border}`,
+                  borderRadius: 8,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s',
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = preset.color;
+                  e.currentTarget.style.color = preset.color;
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = theme.border;
+                  e.currentTarget.style.color = theme.textSec;
+                }}
+              >
+                <PresetIcon width={11} height={11} />
+                {preset.name} ({preset.mins}m)
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   )}
 </div>
