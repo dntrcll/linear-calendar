@@ -673,12 +673,6 @@ const CSS = `
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-
-    /* Safe area insets for iOS */
-    --sat: env(safe-area-inset-top, 0px);
-    --sar: env(safe-area-inset-right, 0px);
-    --sab: env(safe-area-inset-bottom, 0px);
-    --sal: env(safe-area-inset-left, 0px);
   }
 
   * {
@@ -705,19 +699,12 @@ const CSS = `
     touch-action: manipulation;
   }
 
-  /* Prevent iOS pull-to-refresh */
+  /* Prevent pull-to-refresh */
   html, body {
     overscroll-behavior-y: contain;
   }
 
-  /* iOS standalone mode - account for status bar */
-  @media all and (display-mode: standalone) {
-    body {
-      padding-top: var(--sat);
-    }
-  }
-
-  /* iOS Safari 100vh fix */
+  /* Safari 100vh fix */
   @supports (-webkit-touch-callout: none) {
     .app-container {
       min-height: -webkit-fill-available;
@@ -916,14 +903,6 @@ const CSS = `
       max-width: 100% !important;
     }
 
-    /* Adjust floating elements for mobile */
-    .floating-timer-mobile {
-      bottom: calc(20px + var(--sab)) !important;
-      right: 16px !important;
-      left: 16px !important;
-      width: auto !important;
-    }
-
     /* Larger touch targets on mobile */
     button, .touchable {
       min-height: 44px;
@@ -948,44 +927,6 @@ const CSS = `
     .tablet-optimize {
       padding: 16px;
     }
-  }
-
-  /* Safe area aware floating elements */
-  .safe-area-bottom {
-    padding-bottom: var(--sab);
-    margin-bottom: var(--sab);
-  }
-
-  .safe-area-top {
-    padding-top: var(--sat);
-    margin-top: var(--sat);
-  }
-
-  /* PWA standalone mode specific */
-  @media all and (display-mode: standalone) {
-    .pwa-header {
-      padding-top: var(--sat);
-    }
-
-    .pwa-footer {
-      padding-bottom: var(--sab);
-    }
-
-    /* Prevent notch interference */
-    .pwa-safe-left {
-      padding-left: max(16px, var(--sal));
-    }
-
-    .pwa-safe-right {
-      padding-right: max(16px, var(--sar));
-    }
-  }
-
-  /* Smooth momentum scrolling for iOS */
-  .ios-scroll {
-    -webkit-overflow-scrolling: touch;
-    overflow-y: auto;
-    overscroll-behavior: contain;
   }
 
   /* Prevent text selection on interactive elements */
@@ -2824,17 +2765,15 @@ function TimelineOS() {
       )}
 
       <div
-        className="safe-area-bottom"
         style={{
           position: "fixed",
-          bottom: 'max(16px, calc(16px + env(safe-area-inset-bottom, 0px)))',
-          right: 'max(16px, env(safe-area-inset-right, 0px))',
-          left: window.innerWidth <= 768 ? 'max(16px, env(safe-area-inset-left, 0px))' : 'auto',
+          bottom: 16,
+          right: 16,
           zIndex: 10001,
           display: "flex",
           flexDirection: "column",
           gap: 6,
-          maxWidth: window.innerWidth <= 768 ? 'calc(100vw - 32px)' : 'auto'
+          maxWidth: 320
         }}>
         {notifications.map(notification => (
           <div
@@ -2854,7 +2793,7 @@ function TimelineOS() {
               boxShadow: theme.shadowLg,
               fontSize: 13,
               fontWeight: 600,
-              minWidth: window.innerWidth <= 768 ? 'auto' : 180,
+              minWidth: 180,
               fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
             }}
           >
@@ -2890,14 +2829,11 @@ function TimelineOS() {
       {/* Floating Timer Popup - Global */}
       {floatingTimerVisible && (
         <div
-          className="safe-area-bottom"
           style={{
             position: 'fixed',
-            bottom: 'max(80px, calc(80px + env(safe-area-inset-bottom, 0px)))',
-            right: window.innerWidth <= 768 ? 16 : 20,
-            left: window.innerWidth <= 768 ? 16 : 'auto',
-            width: window.innerWidth <= 768 ? 'auto' : 280,
-            maxWidth: 'calc(100vw - 32px)',
+            bottom: 80,
+            right: 20,
+            width: 280,
             background: config.darkMode
               ? 'rgba(30,30,35,0.95)'
               : 'rgba(255,255,255,0.98)',

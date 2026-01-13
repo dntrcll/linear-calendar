@@ -2,25 +2,18 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#F97316" />
     <meta name="description" content="Timeline OS - Your intelligent calendar for time management and productivity" />
-
-    <!-- PWA Meta Tags -->
-    <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="Timeline OS" />
 
     <!-- Open Graph / Social -->
     <meta property="og:title" content="Timeline OS" />
     <meta property="og:description" content="Your intelligent calendar for time management and productivity" />
     <meta property="og:type" content="website" />
 
-    <!-- Icons - SVG favicon for best quality -->
+    <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="%PUBLIC_URL%/favicon.svg" />
     <link rel="icon" type="image/x-icon" href="%PUBLIC_URL%/favicon.ico" />
-    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/favicon.svg" />
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
 
     <title>Timeline OS</title>
   </head>
@@ -28,7 +21,7 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script>
-      // Unregister old service workers and clear caches
+      // Clean up any old service workers from previous PWA attempts
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(function(registrations) {
           for (var registration of registrations) {
