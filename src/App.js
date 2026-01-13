@@ -1047,7 +1047,24 @@ function TimelineOS() {
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
-  
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1024);
+
+  // Track window resize for responsive behavior
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Check if we're on mobile
+  const isMobile = windowWidth <= 768;
+
+  // Close mobile sidebar when switching to desktop
+  useEffect(() => {
+    if (!isMobile) setMobileSidebarOpen(false);
+  }, [isMobile]);
+
   const currentTags = getCurrentTags();
   
   const [config, setConfig] = useState(() => {
@@ -1565,6 +1582,9 @@ function TimelineOS() {
     return <AuthScreen onLogin={() => signInWithPopup(auth, new GoogleAuthProvider())} theme={theme} />;
   }
   
+  // Determine if sidebar should show (always show on desktop if enabled, only when mobileSidebarOpen on mobile)
+  const shouldShowSidebar = config.showSidebar && (!isMobile || mobileSidebarOpen);
+
   return (
     <div style={{
       display: "flex",
@@ -1572,22 +1592,101 @@ function TimelineOS() {
       background: theme.bg,
       color: theme.text,
       fontFamily: "'Inter', sans-serif",
-      overflow: "hidden"
+      overflow: "hidden",
+      paddingTop: 'env(safe-area-inset-top)',
+      paddingBottom: 'env(safe-area-inset-bottom)',
+      paddingLeft: 'env(safe-area-inset-left)',
+      paddingRight: 'env(safe-area-inset-right)',
     }}>
-      {config.showSidebar && (
+      {/* Mobile sidebar overlay */}
+      {isMobile && mobileSidebarOpen && (
+        <div
+          onClick={() => setMobileSidebarOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.5)',
+            zIndex: 998,
+            backdropFilter: 'blur(2px)',
+          }}
+        />
+      )}
+
+      {/* Mobile hamburger button */}
+      {isMobile && !mobileSidebarOpen && config.showSidebar && (
+        <button
+          onClick={() => setMobileSidebarOpen(true)}
+          style={{
+            position: 'fixed',
+            top: 'calc(12px + env(safe-area-inset-top))',
+            left: 'calc(12px + env(safe-area-inset-left))',
+            zIndex: 100,
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: theme.card,
+            border: `1px solid ${theme.border}`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+          }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.text} strokeWidth="2" strokeLinecap="round">
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </svg>
+        </button>
+      )}
+
+      {shouldShowSidebar && (
         <aside style={{
-          width: LAYOUT.SIDEBAR_WIDTH,
+          width: isMobile ? '85vw' : LAYOUT.SIDEBAR_WIDTH,
+          maxWidth: isMobile ? '320px' : LAYOUT.SIDEBAR_WIDTH,
           background: config.darkMode ? theme.cardGradient : theme.sidebar,
           borderRight: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`,
           display: "flex",
           flexDirection: "column",
-          padding: "20px",
-          overflow: "hidden"
+          padding: isMobile ? "20px 20px calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left))" : "20px",
+          paddingTop: isMobile ? 'calc(20px + env(safe-area-inset-top))' : '20px',
+          overflow: "hidden",
+          position: isMobile ? 'fixed' : 'relative',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          zIndex: 999,
         }}>
           {/* Premium Header with Logo */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <AppLogo size={36} theme={theme} showText={true} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {isMobile && (
+                  <button
+                    onClick={() => setMobileSidebarOpen(false)}
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      background: theme.hoverBg,
+                      border: `1px solid ${theme.border}`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: theme.textMuted,
+                      flexShrink: 0,
+                    }}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </button>
+                )}
+                <AppLogo size={36} theme={theme} showText={true} />
+              </div>
               <div style={{ display: 'flex', gap: 6 }}>
                 {/* Timer Icon Button */}
                 <button
