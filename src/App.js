@@ -673,6 +673,12 @@ const CSS = `
     --ease: cubic-bezier(0.22, 1, 0.36, 1);
     --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
     --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+    /* Safe area insets for iOS */
+    --sat: env(safe-area-inset-top, 0px);
+    --sar: env(safe-area-inset-right, 0px);
+    --sab: env(safe-area-inset-bottom, 0px);
+    --sal: env(safe-area-inset-left, 0px);
   }
 
   * {
@@ -681,15 +687,41 @@ const CSS = `
     padding: 0;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
   }
 
   html {
     scroll-behavior: smooth;
+    height: 100%;
+    height: -webkit-fill-available;
   }
 
   body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     overflow: hidden;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+  }
+
+  /* Prevent iOS pull-to-refresh */
+  html, body {
+    overscroll-behavior-y: contain;
+  }
+
+  /* iOS standalone mode - account for status bar */
+  @media all and (display-mode: standalone) {
+    body {
+      padding-top: var(--sat);
+    }
+  }
+
+  /* iOS Safari 100vh fix */
+  @supports (-webkit-touch-callout: none) {
+    .app-container {
+      min-height: -webkit-fill-available;
+    }
   }
 
   h1, h2, h3, h4, .serif {
@@ -869,6 +901,115 @@ const CSS = `
   .focus-dimmed {
     opacity: 0.4;
     filter: grayscale(50%);
+  }
+
+  /* Mobile-specific styles */
+  @media (max-width: 768px) {
+    /* Hide sidebar on mobile by default */
+    .sidebar-mobile-hidden {
+      display: none !important;
+    }
+
+    /* Full-width content on mobile */
+    .mobile-full-width {
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    /* Adjust floating elements for mobile */
+    .floating-timer-mobile {
+      bottom: calc(20px + var(--sab)) !important;
+      right: 16px !important;
+      left: 16px !important;
+      width: auto !important;
+    }
+
+    /* Larger touch targets on mobile */
+    button, .touchable {
+      min-height: 44px;
+      min-width: 44px;
+    }
+
+    /* Better input sizing */
+    input, textarea, select {
+      font-size: 16px !important; /* Prevents iOS zoom on focus */
+    }
+  }
+
+  /* Small phone adjustments */
+  @media (max-width: 375px) {
+    .compact-mobile {
+      padding: 12px !important;
+    }
+  }
+
+  /* Tablet adjustments */
+  @media (min-width: 769px) and (max-width: 1024px) {
+    .tablet-optimize {
+      padding: 16px;
+    }
+  }
+
+  /* Safe area aware floating elements */
+  .safe-area-bottom {
+    padding-bottom: var(--sab);
+    margin-bottom: var(--sab);
+  }
+
+  .safe-area-top {
+    padding-top: var(--sat);
+    margin-top: var(--sat);
+  }
+
+  /* PWA standalone mode specific */
+  @media all and (display-mode: standalone) {
+    .pwa-header {
+      padding-top: var(--sat);
+    }
+
+    .pwa-footer {
+      padding-bottom: var(--sab);
+    }
+
+    /* Prevent notch interference */
+    .pwa-safe-left {
+      padding-left: max(16px, var(--sal));
+    }
+
+    .pwa-safe-right {
+      padding-right: max(16px, var(--sar));
+    }
+  }
+
+  /* Smooth momentum scrolling for iOS */
+  .ios-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  /* Prevent text selection on interactive elements */
+  .no-select {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Better touch feedback */
+  .touch-feedback:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+    transition: all 0.1s ease;
+  }
+
+  /* Landscape mode adjustments */
+  @media (orientation: landscape) and (max-height: 500px) {
+    .landscape-compact {
+      padding: 8px !important;
+    }
+
+    .landscape-hide {
+      display: none !important;
+    }
   }
 `;
 
@@ -2682,34 +2823,39 @@ function TimelineOS() {
         />
       )}
 
-      <div style={{
-        position: "fixed",
-        bottom: 16,
-        right: 16,
-        zIndex: 1000,
-        display: "flex",
-        flexDirection: "column",
-        gap: 6
-      }}>
+      <div
+        className="safe-area-bottom"
+        style={{
+          position: "fixed",
+          bottom: 'max(16px, calc(16px + env(safe-area-inset-bottom, 0px)))',
+          right: 'max(16px, env(safe-area-inset-right, 0px))',
+          left: window.innerWidth <= 768 ? 'max(16px, env(safe-area-inset-left, 0px))' : 'auto',
+          zIndex: 10001,
+          display: "flex",
+          flexDirection: "column",
+          gap: 6,
+          maxWidth: window.innerWidth <= 768 ? 'calc(100vw - 32px)' : 'auto'
+        }}>
         {notifications.map(notification => (
           <div
             key={notification.id}
-            className="fade-enter"
+            className="fade-enter touch-feedback"
             style={{
-              padding: "10px 16px",
-              background: notification.type === 'error' 
-                ? theme.indicator 
+              padding: "12px 16px",
+              background: notification.type === 'error'
+                ? theme.indicator
                 : notification.type === 'success'
                 ? theme.familyAccent
                 : theme.card,
-              color: notification.type === 'error' || notification.type === 'success' 
-                ? "#fff" 
+              color: notification.type === 'error' || notification.type === 'success'
+                ? "#fff"
                 : theme.text,
-              borderRadius: 8,
+              borderRadius: 10,
               boxShadow: theme.shadowLg,
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: 600,
-              minWidth: 180
+              minWidth: window.innerWidth <= 768 ? 'auto' : 180,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
             }}
           >
             {notification.message}
@@ -2743,23 +2889,28 @@ function TimelineOS() {
 
       {/* Floating Timer Popup - Global */}
       {floatingTimerVisible && (
-        <div style={{
-          position: 'fixed',
-          bottom: 80,
-          right: 20,
-          width: 280,
-          background: config.darkMode
-            ? 'rgba(30,30,35,0.95)'
-            : 'rgba(255,255,255,0.98)',
-          backdropFilter: 'blur(20px)',
-          borderRadius: 16,
-          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-          boxShadow: config.darkMode
-            ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
-            : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
-          zIndex: 10000,
-          overflow: 'hidden',
-        }}>
+        <div
+          className="safe-area-bottom"
+          style={{
+            position: 'fixed',
+            bottom: 'max(80px, calc(80px + env(safe-area-inset-bottom, 0px)))',
+            right: window.innerWidth <= 768 ? 16 : 20,
+            left: window.innerWidth <= 768 ? 16 : 'auto',
+            width: window.innerWidth <= 768 ? 'auto' : 280,
+            maxWidth: 'calc(100vw - 32px)',
+            background: config.darkMode
+              ? 'rgba(30,30,35,0.95)'
+              : 'rgba(255,255,255,0.98)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            borderRadius: 16,
+            border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            boxShadow: config.darkMode
+              ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
+              : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
+            zIndex: 10000,
+            overflow: 'hidden',
+          }}>
           {/* Header */}
           <div style={{
             display: 'flex',
