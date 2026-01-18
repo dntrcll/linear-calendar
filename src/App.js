@@ -1030,6 +1030,7 @@ function TimelineOS() {
       enableDragDrop: true,
       enableAnimations: true,
       enablePulseEffects: true,
+      showConflictNotifications: true,
       focusMode: 'normal'
     };
   });
@@ -2018,7 +2019,7 @@ function TimelineOS() {
                           {event.title || 'Untitled'}
                         </div>
                         {/* Conflict indicator */}
-                        {hasConflict && (
+                        {hasConflict && config.showConflictNotifications && (
                           <span
                             title={`Overlaps with: ${conflicts.map(c => c.title || 'Untitled').join(', ')}`}
                             style={{
@@ -4182,14 +4183,14 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
                   padding: isShortEvent ? "4px 8px" : "6px 10px",
                   cursor: 'pointer',
                   opacity: isDragged ? 0.3 : 1,
-                  boxShadow: eventHasConflict
+                  boxShadow: (eventHasConflict && config.showConflictNotifications)
                     ? `0 1px 3px ${theme.indicator}30, inset 0 0 0 1px ${theme.indicator}40`
                     : `0 1px 3px ${tag.color}15`,
                   transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
                   overflow: "hidden",
                   zIndex: isDragged ? 1 : 5,
                   userSelect: 'none',
-                  border: eventHasConflict ? `1px solid ${theme.indicator}50` : `1px solid ${tag.color}20`,
+                  border: (eventHasConflict && config.showConflictNotifications) ? `1px solid ${theme.indicator}50` : `1px solid ${tag.color}20`,
                   borderLeftWidth: 3,
                   display: 'flex',
                   flexDirection: 'column',
@@ -4228,7 +4229,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
                     flex: 1,
                     minWidth: 0
                   }}>
-                    {eventHasConflict && (
+                    {eventHasConflict && config.showConflictNotifications && (
                       <span
                         title="Time conflict with another event"
                         style={{
@@ -4730,41 +4731,43 @@ function WeekView({ currentDate, nowTime, events, allCalendarEvents = [], theme,
                       cursor: "pointer",
                       overflow: "hidden",
                       zIndex: 5,
-                      boxShadow: eventHasConflict
+                      boxShadow: (eventHasConflict && config.showConflictNotifications)
                         ? `0 0 0 1px #EF4444, 0 1px 3px ${theme.text}08`
                         : `0 1px 3px ${theme.text}08`,
                       transition: "box-shadow 0.15s ease"
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.boxShadow = eventHasConflict
+                      e.currentTarget.style.boxShadow = (eventHasConflict && config.showConflictNotifications)
                         ? `0 0 0 1px #EF4444, 0 2px 8px ${theme.text}15`
                         : `0 2px 8px ${theme.text}15`;
                       e.currentTarget.style.zIndex = "25";
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.boxShadow = eventHasConflict
+                      e.currentTarget.style.boxShadow = (eventHasConflict && config.showConflictNotifications)
                         ? `0 0 0 1px #EF4444, 0 1px 3px ${theme.text}08`
                         : `0 1px 3px ${theme.text}08`;
                       e.currentTarget.style.zIndex = "5";
                     }}
                   >
                     {/* Conflict indicator badge */}
-                    {eventHasConflict && (
+                    {eventHasConflict && config.showConflictNotifications && (
                       <div style={{
                         position: "absolute",
-                        top: -4,
-                        right: -4,
-                        width: 14,
-                        height: 14,
+                        top: 2,
+                        right: 2,
+                        width: 16,
+                        height: 16,
                         background: "#EF4444",
                         borderRadius: "50%",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        fontSize: 9,
+                        fontSize: 10,
                         fontWeight: 700,
                         color: "#fff",
-                        zIndex: 10
+                        zIndex: 10,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                        border: "1.5px solid #fff"
                       }}>!</div>
                     )}
                     <div style={{
@@ -4889,7 +4892,7 @@ letterSpacing: 0.8
             padding: 10,
             borderRadius: 10,
             background: isCurrentMonth ? (isToday ? theme.selection : theme.hoverBg) : theme.bg,
-            border: `1px solid ${dayHasConflicts ? '#EF4444' : (isToday ? theme.accent + '40' : theme.border)}`,
+            border: `1px solid ${(dayHasConflicts && config.showConflictNotifications) ? '#EF4444' : (isToday ? theme.accent + '40' : theme.border)}`,
             cursor: isCurrentMonth ? "pointer" : "default",
             opacity: isCurrentMonth ? 1 : 0.3,
             transition: "all 0.2s",
@@ -4909,7 +4912,7 @@ letterSpacing: 0.8
           }}
         >
           {/* Conflict indicator for the day */}
-          {dayHasConflicts && (
+          {dayHasConflicts && config.showConflictNotifications && (
             <div style={{
               position: "absolute",
               top: 4,
@@ -4983,20 +4986,20 @@ letterSpacing: 0.8
                   }}
                   style={{
                     padding: "3px 6px",
-                    background: eventHasConflict ? '#EF444420' : theme.accent + '15',
+                    background: (eventHasConflict && config.showConflictNotifications) ? '#EF444420' : theme.accent + '15',
                     borderRadius: 4,
                     fontSize: 9,
                     fontWeight: 600,
-                    color: eventHasConflict ? '#EF4444' : theme.accent,
+                    color: (eventHasConflict && config.showConflictNotifications) ? '#EF4444' : theme.accent,
                     cursor: "pointer",
                     overflow: "hidden",
                     whiteSpace: "nowrap",
                     textOverflow: "ellipsis",
                     transition: "all 0.2s",
-                    border: eventHasConflict ? '1px solid #EF4444' : 'none'
+                    border: (eventHasConflict && config.showConflictNotifications) ? '1px solid #EF4444' : 'none'
                   }}
-                  onMouseEnter={e => e.currentTarget.style.background = eventHasConflict ? '#EF444430' : theme.accent + '25'}
-                  onMouseLeave={e => e.currentTarget.style.background = eventHasConflict ? '#EF444420' : theme.accent + '15'}
+                  onMouseEnter={e => e.currentTarget.style.background = (eventHasConflict && config.showConflictNotifications) ? '#EF444430' : theme.accent + '25'}
+                  onMouseLeave={e => e.currentTarget.style.background = (eventHasConflict && config.showConflictNotifications) ? '#EF444420' : theme.accent + '15'}
                 >
                   {event.title || 'Event'}
                 </div>
@@ -5268,14 +5271,14 @@ flexShrink: 0
                     position: "relative",
                     background: isToday
                       ? accentColor
-                      : hasConflicts
+                      : (hasConflicts && config.showConflictNotifications)
                       ? '#EF444420'
                       : hasEvents
                       ? theme.selection
                       : isWeekend
                       ? theme.hoverBg
                       : "transparent",
-                    border: hasConflicts
+                    border: (hasConflicts && config.showConflictNotifications)
                       ? '1.5px solid #EF4444'
                       : isToday
                       ? `1.5px solid ${accentColor}`
@@ -5287,7 +5290,7 @@ flexShrink: 0
                     fontWeight: isToday ? 700 : hasEvents ? 600 : 500,
                     color: isToday
                       ? "#fff"
-                      : hasConflicts
+                      : (hasConflicts && config.showConflictNotifications)
                       ? '#EF4444'
                       : hasEvents
                       ? accentColor
@@ -5297,7 +5300,7 @@ flexShrink: 0
                   {day}
 
                   {/* Event indicator dot */}
-                  {hasEvents && !isToday && !hasConflicts && (
+                  {hasEvents && !isToday && !(hasConflicts && config.showConflictNotifications) && (
                     <div style={{
                       position: "absolute",
                       bottom: 2,
@@ -5311,7 +5314,7 @@ flexShrink: 0
                   )}
 
                   {/* Conflict indicator */}
-                  {hasConflicts && (
+                  {hasConflicts && config.showConflictNotifications && (
                     <div style={{
                       position: "absolute",
                       top: -2,
@@ -5330,7 +5333,7 @@ flexShrink: 0
                   )}
 
                   {/* Other calendar indicator */}
-                  {hasOtherCalendarEvents && !hasConflicts && (
+                  {hasOtherCalendarEvents && !(hasConflicts && config.showConflictNotifications) && (
                     <div style={{
                       position: "absolute",
                       top: 1,
@@ -5899,6 +5902,102 @@ flexShrink: 0
 }
 
 // Premium Event List Panel - Birdseye-inspired
+// Memoized event item component for better performance
+const EventListItem = React.memo(({ event, tag, accentColor, theme, isDark, formatEventTime, draggedEvent, onDragStart, onEventClick }) => {
+  const tagColor = tag?.color || accentColor;
+  const isBeingDragged = draggedEvent?.id === event.id;
+
+  return (
+    <div
+      key={event.id}
+      draggable
+      onDragStart={(e) => onDragStart(e, event)}
+      onClick={() => onEventClick(event)}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        padding: '10px 12px',
+        background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC',
+        borderRadius: 10,
+        cursor: 'grab',
+        opacity: isBeingDragged ? 0.5 : 1,
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : '#F1F5F9'}`,
+        transition: 'all 0.15s',
+        position: 'relative',
+        overflow: 'hidden'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9';
+        e.currentTarget.style.transform = 'translateX(2px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC';
+        e.currentTarget.style.transform = 'translateX(0)';
+      }}
+    >
+      {/* Color indicator */}
+      <div style={{
+        position: 'absolute',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        width: 3,
+        background: tagColor,
+        borderRadius: '10px 0 0 10px'
+      }} />
+
+      {/* Time */}
+      <div style={{
+        fontSize: 10,
+        fontWeight: 600,
+        color: theme.textMuted,
+        minWidth: 52,
+        paddingTop: 2
+      }}>
+        {formatEventTime(event.start)}
+      </div>
+
+      {/* Content */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: theme.text,
+          marginBottom: 2,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap'
+        }}>
+          {event.title}
+        </div>
+        {event.location && (
+          <div style={{
+            fontSize: 10,
+            color: theme.textMuted,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4
+          }}>
+            <ICONS.MapPin width={10} height={10} />
+            {event.location}
+          </div>
+        )}
+      </div>
+
+      {/* Drag handle */}
+      <div style={{
+        color: theme.textMuted,
+        opacity: 0.4,
+        display: 'flex',
+        alignItems: 'center'
+      }}>
+        <ICONS.GripVertical width={14} height={14} />
+      </div>
+    </div>
+  );
+});
+
 function EventListPanel({
   events,
   theme,
@@ -5913,6 +6012,7 @@ function EventListPanel({
   const [filterCategory, setFilterCategory] = React.useState('all');
   const [draggedEvent, setDraggedEvent] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
+  const [showAllDays, setShowAllDays] = React.useState(false);
   const isDark = theme.id === 'dark';
 
   // Group events by date
@@ -5943,8 +6043,9 @@ function EventListPanel({
       groups[dateKey].events.push(event);
     });
 
-    return Object.values(groups).slice(0, 30); // Limit to next 30 days with events
-  }, [events, searchTerm, filterCategory]);
+    const allGroups = Object.values(groups);
+    return showAllDays ? allGroups : allGroups.slice(0, 30); // Limit to next 30 days with events or show all
+  }, [events, searchTerm, filterCategory, showAllDays]);
 
   const getTag = (categoryId) => tags.find(t => t.id === categoryId);
 
@@ -6222,103 +6323,56 @@ function EventListPanel({
               <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                 {group.events.map(event => {
                   const tag = getTag(event.category);
-                  const tagColor = tag?.color || accentColor;
-                  const isBeingDragged = draggedEvent?.id === event.id;
-
                   return (
                     <div
                       key={event.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, event)}
                       onDragEnd={() => setDraggedEvent(null)}
-                      onClick={() => onEventClick(event)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'flex-start',
-                        gap: 10,
-                        padding: '10px 12px',
-                        background: isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC',
-                        borderRadius: 10,
-                        cursor: 'grab',
-                        opacity: isBeingDragged ? 0.5 : 1,
-                        border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : '#F1F5F9'}`,
-                        transition: 'all 0.15s',
-                        position: 'relative',
-                        overflow: 'hidden'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9';
-                        e.currentTarget.style.transform = 'translateX(2px)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC';
-                        e.currentTarget.style.transform = 'translateX(0)';
-                      }}
                     >
-                      {/* Color indicator */}
-                      <div style={{
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 3,
-                        background: tagColor,
-                        borderRadius: '10px 0 0 10px'
-                      }} />
-
-                      {/* Time */}
-                      <div style={{
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: theme.textMuted,
-                        minWidth: 52,
-                        paddingTop: 2
-                      }}>
-                        {formatEventTime(event.start)}
-                      </div>
-
-                      {/* Content */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: theme.text,
-                          marginBottom: 2,
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap'
-                        }}>
-                          {event.title}
-                        </div>
-                        {event.location && (
-                          <div style={{
-                            fontSize: 10,
-                            color: theme.textMuted,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 4
-                          }}>
-                            <ICONS.MapPin width={10} height={10} />
-                            {event.location}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Drag handle */}
-                      <div style={{
-                        color: theme.textMuted,
-                        opacity: 0.4,
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}>
-                        <ICONS.GripVertical width={14} height={14} />
-                      </div>
+                      <EventListItem
+                        event={event}
+                        tag={tag}
+                        accentColor={accentColor}
+                        theme={theme}
+                        isDark={isDark}
+                        formatEventTime={formatEventTime}
+                        draggedEvent={draggedEvent}
+                        onDragStart={handleDragStart}
+                        onEventClick={onEventClick}
+                      />
                     </div>
                   );
                 })}
               </div>
             </div>
           ))
+        )}
+
+        {/* Load More Button */}
+        {!showAllDays && groupedEvents.length >= 30 && (
+          <div style={{ textAlign: 'center', padding: '16px 0' }}>
+            <button
+              onClick={() => setShowAllDays(true)}
+              style={{
+                padding: '8px 16px',
+                fontSize: 11,
+                fontWeight: 600,
+                background: isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
+                borderRadius: 8,
+                color: theme.text,
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : '#F1F5F9';
+              }}
+            >
+              Show All Events
+            </button>
+          </div>
         )}
       </div>
 
@@ -6821,7 +6875,8 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
     features: [
       { key: 'enableDragDrop', label: 'Drag & Drop', desc: 'Move events by dragging' },
       { key: 'enableAnimations', label: 'Animations', desc: 'Enable UI animations' },
-      { key: 'enablePulseEffects', label: 'Pulse Effects', desc: 'Highlight active events' }
+      { key: 'enablePulseEffects', label: 'Pulse Effects', desc: 'Highlight active events' },
+      { key: 'showConflictNotifications', label: 'Conflict Alerts', desc: 'Show overlapping event warnings' }
     ]
   };
 
