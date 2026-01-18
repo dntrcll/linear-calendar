@@ -3429,9 +3429,9 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
         gap: 3,
         textAlign: "center"
       }}>
-        {weekDays.map(day => (
+        {weekDays.map((day, index) => (
           <div
-            key={day}
+            key={index}
             style={{
               fontSize: 9,
               color: theme.textMuted,
