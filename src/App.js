@@ -18,6 +18,17 @@ import {
   serverTimestamp,
   Timestamp
 } from "./firebase";
+import {
+  PALETTE,
+  THEMES,
+  MOTIVATIONAL_QUOTES,
+  DEFAULT_TAGS,
+  FOCUS_MODES,
+  TIMER_COLORS,
+  TIMER_ICONS,
+  TIMER_PRESETS,
+  LAYOUT
+} from "./constants";
 import './components/LinearCalendar.css';
 import './App.css';
 
@@ -153,150 +164,9 @@ const AppLogo = ({ size = 32, theme, showText = false }) => (
 );
 
 // Focus Modes Configuration
-const FOCUS_MODES = {
-  normal: { id: 'normal', name: 'Normal', icon: 'Calendar', filter: null },
-  work: { id: 'work', name: 'Work Focus', icon: 'Briefcase', filter: ['work'] },
-  personal: { id: 'personal', name: 'Personal', icon: 'Star', filter: ['personal', 'health', 'travel'] },
-  minimal: { id: 'minimal', name: 'Minimal', icon: 'Target', hideStats: true, hideSidebar: true }
-};
+// Constants moved to src/constants/
 
-// Timer Configuration Constants
-const TIMER_COLORS = [
-  { id: 'orange', color: '#F97316', name: 'Orange' },
-  { id: 'green', color: '#10B981', name: 'Green' },
-  { id: 'blue', color: '#3B82F6', name: 'Blue' },
-  { id: 'purple', color: '#8B5CF6', name: 'Purple' },
-  { id: 'pink', color: '#EC4899', name: 'Pink' },
-  { id: 'red', color: '#EF4444', name: 'Red' },
-  { id: 'yellow', color: '#F59E0B', name: 'Yellow' },
-  { id: 'teal', color: '#14B8A6', name: 'Teal' },
-  { id: 'indigo', color: '#6366F1', name: 'Indigo' },
-];
-
-const TIMER_ICONS = [
-  { id: 'clock', name: 'Clock', icon: 'Clock' },
-  { id: 'target', name: 'Focus', icon: 'Target' },
-  { id: 'coffee', name: 'Break', icon: 'Coffee' },
-  { id: 'zap', name: 'Sprint', icon: 'Zap' },
-  { id: 'book', name: 'Study', icon: 'Book' },
-  { id: 'dumbbell', name: 'Exercise', icon: 'Dumbbell' },
-  { id: 'heart', name: 'Wellness', icon: 'Heart' },
-  { id: 'star', name: 'Priority', icon: 'Star' },
-];
-
-const TIMER_PRESETS = [
-  { name: 'Pomodoro', mins: 25, color: '#F97316', icon: 'Target' },
-  { name: 'Short Break', mins: 5, color: '#10B981', icon: 'Coffee' },
-  { name: 'Long Break', mins: 15, color: '#3B82F6', icon: 'Coffee' },
-  { name: 'Deep Work', mins: 90, color: '#8B5CF6', icon: 'Zap' },
-  { name: 'Quick Task', mins: 10, color: '#F59E0B', icon: 'Clock' },
-  { name: 'Meeting', mins: 30, color: '#EC4899', icon: 'Clock' },
-  { name: 'Exercise', mins: 45, color: '#EF4444', icon: 'Dumbbell' },
-  { name: 'Reading', mins: 20, color: '#14B8A6', icon: 'Book' },
-];
-
-const LAYOUT = {
-  SIDEBAR_WIDTH: 340,
-  HEADER_HEIGHT: 72,
-  PIXELS_PER_MINUTE: 2.5,
-  SNAP_MINUTES: 15,
-  YEAR_COLS: 38,
-  LINEAR_YEAR_DAY_WIDTH: 2.8,
-  EVENT_HEIGHT: 56,
-  ROW_GAP: 12,
-  DAY_WIDTH: 1440 * 2.5,
-  HOUR_HEIGHT: 60
-};
-
-const MOTIVATIONAL_QUOTES = [
-  "Well done is better than well said.",
-  "What you do today can improve all your tomorrows.",
-  "Action is the foundational key to all success.",
-  "The secret of getting ahead is getting started.",
-  "If it is important to you, you will find a way.",
-  "We become what we repeatedly do.",
-  "Discipline is the bridge between goals and accomplishment.",
-  "Success is not final, failure is not fatal.",
-  "You miss 100% of the shots you don't take.",
-  "Do what you can, with what you have, where you are.",
-  "The future depends on what you do today.",
-  "Start where you are. Use what you have.",
-  "Energy and persistence conquer all things.",
-  "Motivation gets you started. Habit keeps you going.",
-  "The harder the conflict, the greater the triumph.",
-  "Do not wait to strike till the iron is hot.",
-  "Nothing will work unless you do.",
-  "Make each day your masterpiece.",
-  "Success usually comes to those who are too busy to look for it.",
-  "It always seems impossible until it's done.",
-  "If you're going through hell, keep going.",
-  "The way to get started is to quit talking and begin doing.",
-  "Without discipline, there's no life at all.",
-  "A goal is a dream with a deadline.",
-  "What we fear doing most is usually what we most need to do.",
-  "Quality is not an act, it is a habit.",
-  "Do one thing every day that scares you.",
-  "The pain you feel today will be the strength you feel tomorrow.",
-  "If you want something you've never had, do something new.",
-  "The only way out is through.",
-  "You become what you think about.",
-  "Excellence is never an accident.",
-  "Fortune favors the bold.",
-  "The best revenge is massive success.",
-  "He who has a why can endure any how.",
-  "You don't rise to the level of your goals.",
-  "The mind is everything. What you think you become.",
-  "Act, don't react.",
-  "Success is walking from failure to failure with no loss of enthusiasm.",
-  "Do the work. Especially when you don't feel like it.",
-  "Hard choices, easy life.",
-  "Suffer the pain of discipline or regret.",
-  "If not now, when?",
-  "What gets measured gets managed.",
-  "You are what you repeatedly do.",
-  "The obstacle is the way.",
-  "Don't wish it were easier; wish you were better.",
-  "Waste no more time arguing what a good man should be.",
-  "To improve is to change.",
-  "First we form habits, then they form us.",
-  "You don't get what you want. You get what you work for.",
-  "Luck is what happens when preparation meets opportunity.",
-  "An ounce of action is worth a ton of theory.",
-  "Fall seven times, stand up eight.",
-  "Do today what others won't.",
-  "The man who moves a mountain begins by carrying stones.",
-  "If you want peace, prepare for war.",
-  "No pressure, no diamonds.",
-  "Be strict with yourself.",
-  "Work hard in silence.",
-  "Success is built daily.",
-  "Don't count the days, make the days count.",
-  "Decide. Commit. Execute.",
-  "A year from now you may wish you had started today.",
-  "Comfort is the enemy of progress.",
-  "Great things are done by a series of small things.",
-  "Do what is hard now so life is easy later.",
-  "You can't escape the responsibility of tomorrow.",
-  "If you're tired of starting over, stop quitting.",
-  "Discipline equals freedom.",
-  "What consumes your mind controls your life.",
-  "Don't negotiate with weakness.",
-  "The price of discipline is always less than regret.",
-  "Master yourself.",
-  "Earn your confidence.",
-  "Sweat more in training, bleed less in battle.",
-  "Do the difficult things while they are easy.",
-  "A man conquers the world by conquering himself.",
-  "Small disciplines repeated daily create big results.",
-  "Success demands singleness of purpose.",
-  "Your habits determine your future.",
-  "The best project you'll ever work on is you.",
-  "If you don't sacrifice for your goal, your goal becomes the sacrifice.",
-  "Nothing great was ever achieved without discipline.",
-  "Win the morning, win the day.",
-  "Control your mind or it will control you."
-];
-
+// ICONS object kept in App.js (will be extracted later)
 const ICONS = {
   Settings: (props) => (
     <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -550,102 +420,7 @@ const ICONS = {
   )
 };
 
-const PALETTE = {
-  slate: { bg: "#F8FAFC", text: "#334155", border: "#E2E8F0", color: "#64748B" },
-  stone: { bg: "#FAFAF9", text: "#44403C", border: "#E7E5E4", color: "#78716C" },
-  blue: { bg: "#EFF6FF", text: "#1E40AF", border: "#DBEAFE", color: "#3B82F6" },
-  indigo: { bg: "#EEF2FF", text: "#4338CA", border: "#E0E7FF", color: "#6366F1" },
-  purple: { bg: "#FAF5FF", text: "#7C3AED", border: "#F3E8FF", color: "#A855F7" },
-  pink: { bg: "#FDF2F8", text: "#BE185D", border: "#FCE7F3", color: "#EC4899" },
-  rose: { bg: "#FFF1F2", text: "#BE123C", border: "#FFE4E6", color: "#F43F5E" },
-  orange: { bg: "#FFF7ED", text: "#C2410C", border: "#FFEDD5", color: "#F97316" },
-  amber: { bg: "#FFFBEB", text: "#B45309", border: "#FEF3C7", color: "#F59E0B" },
-  emerald: { bg: "#ECFDF5", text: "#047857", border: "#D1FAE5", color: "#10B981" },
-  teal: { bg: "#F0FDFA", text: "#115E59", border: "#CCFBF1", color: "#14B8A6" },
-  cyan: { bg: "#ECFEFF", text: "#0E7490", border: "#CFFAFE", color: "#06B6D4" }
-};
-
-const THEMES = {
-  light: {
-    id: 'light',
-    bg: "#FAFAFA",
-    sidebar: "#FFFFFF",
-    card: "#FFFFFF",
-    text: "#0F172A",
-    textSec: "#475569",
-    textMuted: "#94A3B8",
-    border: "#E2E8F0",
-    borderLight: "#F1F5F9",
-    accent: "#F97316",
-    accentHover: "#EA580C",
-    familyAccent: "#10B981",
-    familyAccentHover: "#059669",
-    selection: "rgba(249, 115, 22, 0.08)",
-    shadow: "0 1px 2px rgba(0,0,0,0.04), 0 4px 8px rgba(0,0,0,0.04)",
-    shadowLg: "0 4px 6px rgba(0,0,0,0.04), 0 10px 20px rgba(0,0,0,0.06)",
-    glass: "rgba(255, 255, 255, 0.85)",
-    indicator: "#EF4444",
-    manifestoLine: "#E2E8F0",
-    hoverBg: "rgba(0, 0, 0, 0.02)",
-    activeBg: "rgba(0, 0, 0, 0.04)",
-    pulse: "rgba(249, 115, 22, 0.15)",
-    glow: "0 0 16px rgba(249, 115, 22, 0.2)",
-    cardGradient: "linear-gradient(145deg, #FFFFFF 0%, #FAFAFA 100%)",
-    subtleBorder: "rgba(0, 0, 0, 0.04)",
-    liquidGlass: "rgba(255, 255, 255, 0.72)",
-    liquidBorder: "rgba(255, 255, 255, 0.5)",
-    liquidShadow: "0 8px 32px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.9)"
-  },
-  dark: {
-    id: 'dark',
-    bg: "#09090B",
-    sidebar: "#0F0F12",
-    card: "#18181B",
-    text: "#FAFAF9",
-    textSec: "#A8A8B3",
-    textMuted: "#6B6B76",
-    border: "#2A2A30",
-    borderLight: "#1A1A1F",
-    accent: "#F97316",
-    accentHover: "#FB923C",
-    familyAccent: "#10B981",
-    familyAccentHover: "#34D399",
-    selection: "rgba(249, 115, 22, 0.18)",
-    shadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)",
-    shadowLg: "0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6)",
-    glass: "rgba(15, 15, 18, 0.9)",
-    indicator: "#F87171",
-    manifestoLine: "#2A2A30",
-    hoverBg: "rgba(255, 255, 255, 0.05)",
-    activeBg: "rgba(255, 255, 255, 0.1)",
-    pulse: "rgba(249, 115, 22, 0.25)",
-    glow: "0 0 20px rgba(249, 115, 22, 0.35)",
-    cardGradient: "linear-gradient(145deg, #1C1C20 0%, #18181B 100%)",
-    subtleBorder: "rgba(255, 255, 255, 0.06)",
-    liquidGlass: "rgba(24, 24, 27, 0.75)",
-    liquidBorder: "rgba(255, 255, 255, 0.08)",
-    liquidShadow: "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)"
-  }
-};
-
-const DEFAULT_TAGS = {
-  personal: [
-    { id: 'work', name: "Work", iconName: 'Briefcase', ...PALETTE.slate },
-    { id: 'health', name: "Health", iconName: 'Health', ...PALETTE.rose },
-    { id: 'finance', name: "Finance", iconName: 'Finance', ...PALETTE.emerald },
-    { id: 'personal', name: "Personal", iconName: 'Star', ...PALETTE.blue },
-    { id: 'travel', name: "Travel", iconName: 'MapPin', ...PALETTE.purple },
-    { id: 'growth', name: "Growth", iconName: 'TrendingUp', ...PALETTE.amber }
-  ],
-  family: [
-    { id: 'family-events', name: "Events", iconName: 'Calendar', ...PALETTE.blue },
-    { id: 'kids', name: "Kids", iconName: 'Users', ...PALETTE.purple },
-    { id: 'household', name: "Home", iconName: 'Home', ...PALETTE.orange },
-    { id: 'vacation', name: "Vacation", iconName: 'MapPin', ...PALETTE.teal },
-    { id: 'education', name: "Education", iconName: 'Star', ...PALETTE.amber },
-    { id: 'healthcare', name: "Health", iconName: 'Health', ...PALETTE.emerald }
-  ]
-};
+// PALETTE, THEMES, and DEFAULT_TAGS moved to src/constants/
 
 // Helper to get icon component from tag
 const getTagIcon = (tag) => {
