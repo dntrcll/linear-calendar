@@ -29,6 +29,12 @@ import {
   TIMER_PRESETS,
   LAYOUT
 } from "./constants";
+import {
+  toLocalDateTimeString,
+  eventsOverlap,
+  findConflicts,
+  getTagIcon
+} from "./utils";
 import './components/LinearCalendar.css';
 import './App.css';
 
@@ -421,25 +427,7 @@ const ICONS = {
 };
 
 // PALETTE, THEMES, and DEFAULT_TAGS moved to src/constants/
-
-// Helper to get icon component from tag
-const getTagIcon = (tag) => {
-  if (tag.iconName && ICONS[tag.iconName]) {
-    return ICONS[tag.iconName];
-  }
-  return null;
-};
-
-// Helper to format date for datetime-local input (avoids UTC conversion issues)
-const toLocalDateTimeString = (date) => {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hours = String(d.getHours()).padStart(2, '0');
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
-};
+// getTagIcon and toLocalDateTimeString moved to src/utils/
 
 const CSS = `
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap');
@@ -753,24 +741,7 @@ function TimelineOS() {
   const getCurrentTags = () => tags[context] || [];
   const getAllTags = () => [...(tags.personal || []), ...(tags.family || [])];
 
-  // Helper function to check if two events overlap
-  const eventsOverlap = (event1, event2) => {
-    if (!event1.start || !event1.end || !event2.start || !event2.end) return false;
-    const start1 = new Date(event1.start).getTime();
-    const end1 = new Date(event1.end).getTime();
-    const start2 = new Date(event2.start).getTime();
-    const end2 = new Date(event2.end).getTime();
-    return start1 < end2 && start2 < end1;
-  };
-
-  // Find all events that conflict with a given event
-  const findConflicts = (event, allEvents) => {
-    return allEvents.filter(e =>
-      e.id !== event.id &&
-      !e.deleted &&
-      eventsOverlap(event, e)
-    );
-  };
+  // eventsOverlap and findConflicts moved to src/utils/eventUtils.js
 
   const [activeTagIds, setActiveTagIds] = useState(() => {
     return getCurrentTags().map(t => t.id);
@@ -4062,7 +4033,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
                       maxWidth: 80,
                       border: `1px solid ${tag.color}${config.darkMode ? '30' : '18'}`
                     }}>
-                      {(() => { const IconComponent = getTagIcon(tag); return IconComponent ? <IconComponent width={8} height={8} /> : null; })()}
+                      {(() => { const IconComponent = getTagIcon(tag, ICONS); return IconComponent ? <IconComponent width={8} height={8} /> : null; })()}
                       <span style={{
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
@@ -6439,7 +6410,7 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, 
             <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Category</label>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {tags.map(tag => {
-                const IconComponent = getTagIcon(tag);
+                const IconComponent = getTagIcon(tag, ICONS);
                 const isSelected = form.category === tag.id;
                 return (
                   <button
@@ -7354,7 +7325,7 @@ bottom: 0
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {contextTags.map(tag => {
-              const IconComponent = getTagIcon(tag);
+              const IconComponent = getTagIcon(tag, ICONS);
               return (
                 <div
                   key={tag.id}
