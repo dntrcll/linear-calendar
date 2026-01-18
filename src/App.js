@@ -964,7 +964,8 @@ function TimelineOS() {
   const [events, setEvents] = useState([]);
   const [deletedEvents, setDeletedEvents] = useState([]);
   const [filteredEvents, setFilteredEvents] = useState([]);
-  const [upcomingEvents, setUpcomingEvents] = useState([]);
+  const [unifiedUpcoming, setUnifiedUpcoming] = useState([]); // All calendars combined
+  const [allCalendarEvents, setAllCalendarEvents] = useState([]); // All non-deleted events for conflict detection
   const [tags, setTags] = useState(() => {
     try {
       const saved = localStorage.getItem('timeline_tags_v5');
@@ -975,7 +976,27 @@ function TimelineOS() {
   });
   
   const getCurrentTags = () => tags[context] || [];
-  
+  const getAllTags = () => [...(tags.personal || []), ...(tags.family || [])];
+
+  // Helper function to check if two events overlap
+  const eventsOverlap = (event1, event2) => {
+    if (!event1.start || !event1.end || !event2.start || !event2.end) return false;
+    const start1 = new Date(event1.start).getTime();
+    const end1 = new Date(event1.end).getTime();
+    const start2 = new Date(event2.start).getTime();
+    const end2 = new Date(event2.end).getTime();
+    return start1 < end2 && start2 < end1;
+  };
+
+  // Find all events that conflict with a given event
+  const findConflicts = (event, allEvents) => {
+    return allEvents.filter(e =>
+      e.id !== event.id &&
+      !e.deleted &&
+      eventsOverlap(event, e)
+    );
+  };
+
   const [activeTagIds, setActiveTagIds] = useState(() => {
     return getCurrentTags().map(t => t.id);
   });
@@ -1318,12 +1339,15 @@ function TimelineOS() {
     const nextWeek = new Date();
     nextWeek.setDate(nextWeek.getDate() + 7);
 
-    const upcoming = filtered
-      .filter(e => e.start >= now && e.start <= nextWeek)
-      .sort((a, b) => a.start - b.start)
-      .slice(0, 5);
+    // Unified upcoming events from ALL calendars (personal + family)
+    const allNonDeleted = events.filter(e => !e.deleted);
+    setAllCalendarEvents(allNonDeleted);
 
-    setUpcomingEvents(upcoming);
+    const unifiedUp = allNonDeleted
+      .filter(e => new Date(e.start) >= now && new Date(e.start) <= nextWeek)
+      .sort((a, b) => new Date(a.start) - new Date(b.start))
+      .slice(0, 8);
+    setUnifiedUpcoming(unifiedUp);
   }, [events, context, activeTagIds, config.focusMode, searchQuery]);
 
   // Keyboard shortcut: Cmd/Ctrl + L to jump to today
@@ -1894,10 +1918,10 @@ function TimelineOS() {
             />
           </div>
           
-          {config.showUpcomingEvents && upcomingEvents.length > 0 && (
-            <div style={{ 
+          {config.showUpcomingEvents && unifiedUpcoming.length > 0 && (
+            <div style={{
               marginBottom: 16,
-              maxHeight: 160,
+              maxHeight: 200,
               overflow: "hidden",
               display: "flex",
               flexDirection: "column"
@@ -1914,21 +1938,36 @@ function TimelineOS() {
                 alignItems: "center",
                 fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
               }}>
-                <span>Upcoming</span>
+                <span>Unified Schedule</span>
+                <span style={{
+                  fontSize: 8,
+                  fontWeight: 500,
+                  color: theme.textMuted,
+                  textTransform: 'none',
+                  letterSpacing: 0
+                }}>All Calendars</span>
               </div>
-              <div style={{ 
+              <div style={{
                 flex: 1,
                 overflowY: "auto"
               }}>
-                {upcomingEvents.map(event => {
-                  const tag = currentTags.find(t => t.id === event.category) || currentTags[0];
+                {unifiedUpcoming.map(event => {
+                  const allTags = getAllTags();
+                  const tag = allTags.find(t => t.id === event.category) || allTags[0];
                   const eventDate = new Date(event.start);
                   const isToday = eventDate.toDateString() === new Date().toDateString();
+                  const isFamily = event.context === 'family';
+                  const isOtherCalendar = event.context !== context;
+                  // Find conflicts - events overlapping this one
+                  const conflicts = findConflicts(event, allCalendarEvents);
+                  const hasConflict = conflicts.length > 0;
 
                   return (
                     <div
                       key={event.id}
                       onClick={() => {
+                        // Switch context if clicking event from other calendar
+                        if (isOtherCalendar) setContext(event.context);
                         setEditingEvent(event);
                         setModalOpen(true);
                       }}
@@ -1936,28 +1975,65 @@ function TimelineOS() {
                         padding: "7px 8px",
                         marginBottom: 5,
                         borderRadius: 6,
-                        background: theme.hoverBg,
+                        background: isOtherCalendar ? `${isFamily ? theme.familyAccent : theme.accent}08` : theme.hoverBg,
                         cursor: "pointer",
                         transition: "all 0.2s",
-                        borderLeft: `2px solid ${tag?.color || theme.accent}`
+                        borderLeft: `2px solid ${tag?.color || (isFamily ? theme.familyAccent : theme.accent)}`,
+                        position: 'relative'
                       }}
                       onMouseEnter={e => {
-                        e.currentTarget.style.background = theme.activeBg;
+                        e.currentTarget.style.background = isOtherCalendar
+                          ? `${isFamily ? theme.familyAccent : theme.accent}15`
+                          : theme.activeBg;
                       }}
                       onMouseLeave={e => {
-                        e.currentTarget.style.background = theme.hoverBg;
+                        e.currentTarget.style.background = isOtherCalendar
+                          ? `${isFamily ? theme.familyAccent : theme.accent}08`
+                          : theme.hoverBg;
                       }}
                     >
                       <div style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: theme.text,
-                        marginBottom: 2,
-                        overflow: "hidden",
-                        textOverflow: "ellipsis",
-                        whiteSpace: "nowrap"
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6,
+                        marginBottom: 2
                       }}>
-                        {event.title || 'Untitled'}
+                        {/* Calendar indicator */}
+                        <span style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: isFamily ? theme.familyAccent : theme.accent,
+                          flexShrink: 0
+                        }} />
+                        <div style={{
+                          fontSize: 11,
+                          fontWeight: 600,
+                          color: theme.text,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          flex: 1
+                        }}>
+                          {event.title || 'Untitled'}
+                        </div>
+                        {/* Conflict indicator */}
+                        {hasConflict && (
+                          <span
+                            title={`Overlaps with: ${conflicts.map(c => c.title || 'Untitled').join(', ')}`}
+                            style={{
+                              fontSize: 8,
+                              padding: '2px 4px',
+                              background: theme.indicator + '20',
+                              color: theme.indicator,
+                              borderRadius: 3,
+                              fontWeight: 700,
+                              flexShrink: 0
+                            }}
+                          >
+                            BUSY
+                          </span>
+                        )}
                       </div>
                       <div style={{
                         fontSize: 9,
@@ -1966,19 +2042,34 @@ function TimelineOS() {
                         alignItems: "center",
                         justifyContent: "space-between"
                       }}>
-                        <span style={{
-                          fontWeight: 600,
-                          color: isToday ? theme.accent : theme.textSec
-                        }}>
-                          {isToday ? 'Today' : eventDate.toLocaleDateString([], { 
-                            month: 'short', 
-                            day: 'numeric' 
-                          })}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <span style={{
+                            fontWeight: 600,
+                            color: isToday ? theme.accent : theme.textSec
+                          }}>
+                            {isToday ? 'Today' : eventDate.toLocaleDateString([], {
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </span>
+                          {/* Calendar label for other calendar events */}
+                          {isOtherCalendar && (
+                            <span style={{
+                              fontSize: 8,
+                              padding: '1px 4px',
+                              background: `${isFamily ? theme.familyAccent : theme.accent}20`,
+                              color: isFamily ? theme.familyAccent : theme.accent,
+                              borderRadius: 3,
+                              fontWeight: 600
+                            }}>
+                              {isFamily ? 'Family' : 'Personal'}
+                            </span>
+                          )}
+                        </div>
                         <span>
-                          {eventDate.toLocaleTimeString([], { 
-                            hour: 'numeric', 
-                            minute: '2-digit' 
+                          {eventDate.toLocaleTimeString([], {
+                            hour: 'numeric',
+                            minute: '2-digit'
                           })}
                         </span>
                       </div>
@@ -2404,10 +2495,12 @@ function TimelineOS() {
                 currentDate={currentDate}
                 nowTime={nowTime}
                 events={filteredEvents}
+                allCalendarEvents={allCalendarEvents}
                 theme={theme}
                 config={config}
                 tags={currentTags}
                 onEventClick={(event) => {
+                  if (event.context !== context) setContext(event.context);
                   setEditingEvent(event);
                   setModalOpen(true);
                 }}
@@ -2415,24 +2508,30 @@ function TimelineOS() {
                 context={context}
                 accentColor={accentColor}
                 parentScrollRef={scrollRef}
+                eventsOverlap={eventsOverlap}
               />
             ) : viewMode === 'week' ? (
               <WeekView
                 currentDate={currentDate}
                 nowTime={nowTime}
                 events={filteredEvents}
+                allCalendarEvents={allCalendarEvents}
                 theme={theme}
                 config={config}
                 tags={currentTags}
                 onEventClick={(event) => {
+                  if (event.context !== context) setContext(event.context);
                   setEditingEvent(event);
                   setModalOpen(true);
                 }}
+                context={context}
+                eventsOverlap={eventsOverlap}
               />
             ) : viewMode === 'month' ? (
               <MonthView
                 currentDate={currentDate}
                 events={filteredEvents}
+                allCalendarEvents={allCalendarEvents}
                 theme={theme}
                 config={config}
                 onDayClick={(date) => {
@@ -2440,14 +2539,18 @@ function TimelineOS() {
                   setViewMode('day');
                 }}
                 onEventClick={(event) => {
+                  if (event.context !== context) setContext(event.context);
                   setEditingEvent(event);
                   setModalOpen(true);
                 }}
+                context={context}
+                eventsOverlap={eventsOverlap}
               />
             ) : viewMode === 'year' ? (
               <LinearYearView
                 currentDate={currentDate}
                 events={filteredEvents}
+                allCalendarEvents={allCalendarEvents}
                 theme={theme}
                 config={config}
                 tags={currentTags}
@@ -2456,6 +2559,8 @@ function TimelineOS() {
                   setCurrentDate(date);
                   setViewMode('day');
                 }}
+                context={context}
+                eventsOverlap={eventsOverlap}
                 timers={timers}
                 toggleTimer={toggleTimer}
                 formatTimer={formatTimer}
@@ -2741,6 +2846,8 @@ function TimelineOS() {
           onDelete={editingEvent?.id ? () => softDeleteEvent(editingEvent.id) : null}
           onCancel={() => setModalOpen(false)}
           context={context}
+          allCalendarEvents={allCalendarEvents}
+          eventsOverlap={eventsOverlap}
         />
       )}
       
@@ -3403,7 +3510,7 @@ function MiniCalendar({ currentDate, setCurrentDate, theme, config, accentColor 
   );
 }
 
-function DayView({ currentDate, nowTime, events, theme, config, tags, onEventClick, onEventDrag, context, accentColor, parentScrollRef }) {
+function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, config, tags, onEventClick, onEventDrag, context, accentColor, parentScrollRef, eventsOverlap }) {
   const [draggedEvent, setDraggedEvent] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dropIndicator, setDropIndicator] = useState(null);
@@ -3413,16 +3520,37 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
   const autoScrollRef = useRef(null);
   const currentTime = nowTime || new Date();
   const isToday = currentDate.toDateString() === currentTime.toDateString();
-  
+
+  // Events from the current context for this day
   const dayEvents = useMemo(() => {
     const filtered = events.filter(event => {
       if (!event?.start) return false;
       const eventDate = new Date(event.start);
       return eventDate.toDateString() === currentDate.toDateString();
     });
-    
+
     return filtered.sort((a, b) => new Date(a.start) - new Date(b.start));
   }, [events, currentDate]);
+
+  // Events from OTHER calendars for this day (shown as background/subtle indicators)
+  const otherCalendarEvents = useMemo(() => {
+    return allCalendarEvents.filter(event => {
+      if (!event?.start || event.context === context) return false;
+      const eventDate = new Date(event.start);
+      return eventDate.toDateString() === currentDate.toDateString();
+    }).sort((a, b) => new Date(a.start) - new Date(b.start));
+  }, [allCalendarEvents, currentDate, context]);
+
+  // Combined events for this day (for conflict checking)
+  const allDayEvents = useMemo(() => {
+    return [...dayEvents, ...otherCalendarEvents];
+  }, [dayEvents, otherCalendarEvents]);
+
+  // Check if an event has conflicts
+  const hasConflict = (event) => {
+    if (!eventsOverlap) return false;
+    return allDayEvents.some(e => e.id !== event.id && eventsOverlap(event, e));
+  };
   
   const HOUR_HEIGHT = 52;
   const START_HOUR = 0;
@@ -3977,12 +4105,59 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
             />
           )}
           
+          {/* Events from OTHER calendars (shown as subtle background) */}
+          {otherCalendarEvents.map((event) => {
+            const eventStart = new Date(event.start);
+            const eventEnd = new Date(event.end);
+            const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
+            const endMinutes = eventEnd.getHours() * 60 + eventEnd.getMinutes();
+            const top = ((startMinutes - START_HOUR * 60) / 60) * HOUR_HEIGHT;
+            const height = Math.max(30, ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT);
+            const isFamily = event.context === 'family';
+            const otherAccent = isFamily ? theme.familyAccent : theme.accent;
+
+            return (
+              <div
+                key={`other-${event.id}`}
+                onClick={() => onEventClick(event)}
+                title={`${event.title || 'Untitled'} (${isFamily ? 'Family' : 'Personal'} Calendar)`}
+                style={{
+                  position: "absolute",
+                  top: top,
+                  right: 8,
+                  width: 32,
+                  height: Math.max(24, height),
+                  background: `${otherAccent}15`,
+                  borderRight: `3px solid ${otherAccent}60`,
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  opacity: 0.7,
+                  zIndex: 3,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'opacity 0.15s ease'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.7'; }}
+              >
+                <span style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  background: otherAccent
+                }} />
+              </div>
+            );
+          })}
+
           {calculateEventPositions.map((pos) => {
             const { event, top, height, left, width } = pos;
             const tag = tags.find(t => t.id === event.category) || tags[0] || {};
             const isDragged = draggedEvent?.id === event.id;
             const isShortEvent = height < 60;
-            
+            const eventHasConflict = hasConflict(event);
+
             return (
               <div
                 key={event.id}
@@ -4007,12 +4182,14 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
                   padding: isShortEvent ? "4px 8px" : "6px 10px",
                   cursor: 'pointer',
                   opacity: isDragged ? 0.3 : 1,
-                  boxShadow: `0 1px 3px ${tag.color}15`,
+                  boxShadow: eventHasConflict
+                    ? `0 1px 3px ${theme.indicator}30, inset 0 0 0 1px ${theme.indicator}40`
+                    : `0 1px 3px ${tag.color}15`,
                   transition: 'transform 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease',
                   overflow: "hidden",
                   zIndex: isDragged ? 1 : 5,
                   userSelect: 'none',
-                  border: `1px solid ${tag.color}20`,
+                  border: eventHasConflict ? `1px solid ${theme.indicator}50` : `1px solid ${tag.color}20`,
                   borderLeftWidth: 3,
                   display: 'flex',
                   flexDirection: 'column',
@@ -4036,7 +4213,7 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
                     e.currentTarget.style.zIndex = "5";
                   }
                 }}>
-                {/* Header: Title + Tag (top-right) */}
+                {/* Header: Title + Conflict indicator + Tag (top-right) */}
                 <div style={{
                   display: 'flex',
                   justifyContent: 'space-between',
@@ -4045,20 +4222,42 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
                   marginBottom: isShortEvent ? 1 : 4
                 }}>
                   <div style={{
-                    fontSize: isShortEvent ? 11 : 13,
-                    fontWeight: 600,
-                    color: theme.text,
-                    lineHeight: 1.25,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
                     flex: 1,
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: isShortEvent ? 'nowrap' : 'normal',
-                    display: '-webkit-box',
-                    WebkitLineClamp: isShortEvent ? 1 : 2,
-                    WebkitBoxOrient: 'vertical'
+                    minWidth: 0
                   }}>
-                    {event.title || 'Event'}
+                    {eventHasConflict && (
+                      <span
+                        title="Time conflict with another event"
+                        style={{
+                          fontSize: 7,
+                          padding: '1px 3px',
+                          background: theme.indicator,
+                          color: '#fff',
+                          borderRadius: 2,
+                          fontWeight: 700,
+                          flexShrink: 0
+                        }}
+                      >!</span>
+                    )}
+                    <div style={{
+                      fontSize: isShortEvent ? 11 : 13,
+                      fontWeight: 600,
+                      color: theme.text,
+                      lineHeight: 1.25,
+                      flex: 1,
+                      minWidth: 0,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: isShortEvent ? 'nowrap' : 'normal',
+                      display: '-webkit-box',
+                      WebkitLineClamp: isShortEvent ? 1 : 2,
+                      WebkitBoxOrient: 'vertical'
+                    }}>
+                      {event.title || 'Event'}
+                    </div>
                   </div>
                   {/* Tag badge - top right (compact dot for short events) */}
                   {isShortEvent ? (
@@ -4208,7 +4407,7 @@ function DayView({ currentDate, nowTime, events, theme, config, tags, onEventCli
 </div>
 );
 }
-function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventClick }) {
+function WeekView({ currentDate, nowTime, events, allCalendarEvents = [], theme, config, tags, onEventClick, context, eventsOverlap }) {
   const HOUR_HEIGHT = 52;
   const HEADER_HEIGHT = 60;
   const TIME_COL_WIDTH = 50;
@@ -4238,6 +4437,24 @@ function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventCl
     });
     return grouped;
   }, [events, days]);
+
+  // Events from OTHER calendars grouped by day
+  const otherEventsByDay = useMemo(() => {
+    const grouped = {};
+    days.forEach(day => {
+      const dayStr = day.toDateString();
+      grouped[dayStr] = allCalendarEvents.filter(event =>
+        event?.start && event.context !== context && new Date(event.start).toDateString() === dayStr
+      );
+    });
+    return grouped;
+  }, [allCalendarEvents, days, context]);
+
+  // Check if an event has conflicts
+  const hasConflict = (event) => {
+    if (!eventsOverlap) return false;
+    return allCalendarEvents.some(e => e.id !== event.id && eventsOverlap(event, e));
+  };
 
   return (
     <div style={{
@@ -4449,10 +4666,40 @@ function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventCl
                 );
               })()}
 
+              {/* Other calendar events (subtle indicators) */}
+              {(otherEventsByDay[dayStr] || []).map(event => {
+                const eventStart = new Date(event.start);
+                const eventEnd = new Date(event.end);
+                const startMinutes = eventStart.getHours() * 60 + eventStart.getMinutes();
+                const endMinutes = Math.min(eventEnd.getHours() * 60 + eventEnd.getMinutes(), 24 * 60);
+                const top = (startMinutes / 60) * HOUR_HEIGHT;
+                const height = ((endMinutes - startMinutes) / 60) * HOUR_HEIGHT;
+
+                return (
+                  <div
+                    key={`other-${event.id}`}
+                    title={`${event.context === 'family' ? 'Family' : 'Personal'}: ${event.title || 'Event'}`}
+                    style={{
+                      position: "absolute",
+                      top: top + 2,
+                      right: 2,
+                      width: 4,
+                      height: Math.max(height - 4, 8),
+                      background: event.context === 'family' ? '#8B5CF6' : theme.accent,
+                      borderRadius: 2,
+                      opacity: 0.5,
+                      zIndex: 1,
+                      pointerEvents: "none"
+                    }}
+                  />
+                );
+              })}
+
               {/* Events */}
               {eventsWithLayout.map(event => {
                 const tag = tags.find(t => t.id === event.category) || tags[0] || {};
                 const eventStart = new Date(event.start);
+                const eventHasConflict = hasConflict(event);
 
                 const top = (event.startMinutes / 60) * HOUR_HEIGHT;
                 const height = ((event.endMinutes - event.startMinutes) / 60) * HOUR_HEIGHT;
@@ -4469,7 +4716,7 @@ function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventCl
                   <div
                     key={event.id}
                     onClick={() => onEventClick(event)}
-                    title={`${event.title || 'Event'} - ${timeStr}`}
+                    title={`${event.title || 'Event'} - ${timeStr}${eventHasConflict ? ' (Conflict!)' : ''}`}
                     style={{
                       position: "absolute",
                       top: top + 2,
@@ -4483,18 +4730,43 @@ function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventCl
                       cursor: "pointer",
                       overflow: "hidden",
                       zIndex: 5,
-                      boxShadow: `0 1px 3px ${theme.text}08`,
+                      boxShadow: eventHasConflict
+                        ? `0 0 0 1px #EF4444, 0 1px 3px ${theme.text}08`
+                        : `0 1px 3px ${theme.text}08`,
                       transition: "box-shadow 0.15s ease"
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.boxShadow = `0 2px 8px ${theme.text}15`;
+                      e.currentTarget.style.boxShadow = eventHasConflict
+                        ? `0 0 0 1px #EF4444, 0 2px 8px ${theme.text}15`
+                        : `0 2px 8px ${theme.text}15`;
                       e.currentTarget.style.zIndex = "25";
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.boxShadow = `0 1px 3px ${theme.text}08`;
+                      e.currentTarget.style.boxShadow = eventHasConflict
+                        ? `0 0 0 1px #EF4444, 0 1px 3px ${theme.text}08`
+                        : `0 1px 3px ${theme.text}08`;
                       e.currentTarget.style.zIndex = "5";
                     }}
                   >
+                    {/* Conflict indicator badge */}
+                    {eventHasConflict && (
+                      <div style={{
+                        position: "absolute",
+                        top: -4,
+                        right: -4,
+                        width: 14,
+                        height: 14,
+                        background: "#EF4444",
+                        borderRadius: "50%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "#fff",
+                        zIndex: 10
+                      }}>!</div>
+                    )}
                     <div style={{
                       fontSize: 10,
                       fontWeight: 600,
@@ -4523,7 +4795,7 @@ function WeekView({ currentDate, nowTime, events, theme, config, tags, onEventCl
     </div>
   );
 }
-function MonthView({ currentDate, events, theme, config, onDayClick, onEventClick }) {
+function MonthView({ currentDate, events, allCalendarEvents = [], theme, config, onDayClick, onEventClick, context, eventsOverlap }) {
 const today = useMemo(() => new Date(), []);
 const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
@@ -4551,6 +4823,20 @@ for (let i = 1; i <= nextMonthDays; i++) {
 
 return dayArray;
 }, [currentDate, startDay, daysInMonth]);
+
+// Check if an event has conflicts across all calendars
+const hasConflict = (event) => {
+  if (!eventsOverlap) return false;
+  return allCalendarEvents.some(e => e.id !== event.id && eventsOverlap(event, e));
+};
+
+// Get other calendar events for a date
+const getOtherCalendarEventsForDate = (date) => {
+  return allCalendarEvents.filter(event =>
+    event?.start && event.context !== context &&
+    new Date(event.start).toDateString() === date.toDateString()
+  );
+};
 const weekDays = config.weekStartMon
 ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -4587,10 +4873,13 @@ letterSpacing: 0.8
     {days.map((dayInfo, index) => {
       const { date, isCurrentMonth } = dayInfo;
       const isToday = date.toDateString() === today.toDateString();
-      const dayEvents = events.filter(event => 
+      const dayEvents = events.filter(event =>
         event?.start && new Date(event.start).toDateString() === date.toDateString()
       );
-      
+      const otherCalendarEvents = getOtherCalendarEventsForDate(date);
+      // Check if any event on this day has conflicts
+      const dayHasConflicts = dayEvents.some(e => hasConflict(e));
+
       return (
         <div
           key={index}
@@ -4600,10 +4889,11 @@ letterSpacing: 0.8
             padding: 10,
             borderRadius: 10,
             background: isCurrentMonth ? (isToday ? theme.selection : theme.hoverBg) : theme.bg,
-            border: `1px solid ${isToday ? theme.accent + '40' : theme.border}`,
+            border: `1px solid ${dayHasConflicts ? '#EF4444' : (isToday ? theme.accent + '40' : theme.border)}`,
             cursor: isCurrentMonth ? "pointer" : "default",
             opacity: isCurrentMonth ? 1 : 0.3,
-            transition: "all 0.2s"
+            transition: "all 0.2s",
+            position: "relative"
           }}
           onMouseEnter={e => {
             if (isCurrentMonth) {
@@ -4618,6 +4908,25 @@ letterSpacing: 0.8
             }
           }}
         >
+          {/* Conflict indicator for the day */}
+          {dayHasConflicts && (
+            <div style={{
+              position: "absolute",
+              top: 4,
+              right: 4,
+              width: 12,
+              height: 12,
+              background: "#EF4444",
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 8,
+              fontWeight: 700,
+              color: "#fff"
+            }}>!</div>
+          )}
+
           <div style={{
             fontSize: 14,
             fontWeight: 600,
@@ -4627,7 +4936,30 @@ letterSpacing: 0.8
             justifyContent: "space-between",
             alignItems: "center"
           }}>
-            <span>{date.getDate()}</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+              {date.getDate()}
+              {/* Other calendar indicator dots */}
+              {otherCalendarEvents.length > 0 && (
+                <span style={{
+                  display: "flex",
+                  gap: 2
+                }}>
+                  {otherCalendarEvents.slice(0, 3).map((e, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        width: 4,
+                        height: 4,
+                        borderRadius: "50%",
+                        background: e.context === 'family' ? '#8B5CF6' : theme.accent,
+                        opacity: 0.6
+                      }}
+                      title={`${e.context === 'family' ? 'Family' : 'Personal'}: ${e.title || 'Event'}`}
+                    />
+                  ))}
+                </span>
+              )}
+            </span>
             {isToday && config.enablePulseEffects && (
               <div style={{
                 width: 5,
@@ -4638,35 +4970,39 @@ letterSpacing: 0.8
               }} />
             )}
           </div>
-          
+
           <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {dayEvents.slice(0, 3).map(event => (
-              <div
-                key={event.id}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onEventClick(event);
-                }}
-                style={{
-                  padding: "3px 6px",
-                  background: theme.accent + '15',
-                  borderRadius: 4,
-                  fontSize: 9,
-                  fontWeight: 600,
-                  color: theme.accent,
-                  cursor: "pointer",
-                  overflow: "hidden",
-                  whiteSpace: "nowrap",
-                  textOverflow: "ellipsis",
-                  transition: "all 0.2s"
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = theme.accent + '25'}
-                onMouseLeave={e => e.currentTarget.style.background = theme.accent + '15'}
-              >
-                {event.title || 'Event'}
-              </div>
-            ))}
-            
+            {dayEvents.slice(0, 3).map(event => {
+              const eventHasConflict = hasConflict(event);
+              return (
+                <div
+                  key={event.id}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEventClick(event);
+                  }}
+                  style={{
+                    padding: "3px 6px",
+                    background: eventHasConflict ? '#EF444420' : theme.accent + '15',
+                    borderRadius: 4,
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: eventHasConflict ? '#EF4444' : theme.accent,
+                    cursor: "pointer",
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                    transition: "all 0.2s",
+                    border: eventHasConflict ? '1px solid #EF4444' : 'none'
+                  }}
+                  onMouseEnter={e => e.currentTarget.style.background = eventHasConflict ? '#EF444430' : theme.accent + '25'}
+                  onMouseLeave={e => e.currentTarget.style.background = eventHasConflict ? '#EF444420' : theme.accent + '15'}
+                >
+                  {event.title || 'Event'}
+                </div>
+              );
+            })}
+
             {dayEvents.length > 3 && (
               <div style={{
                 fontSize: 8,
@@ -4688,11 +5024,14 @@ letterSpacing: 0.8
 function LinearYearView({
 currentDate,
 events,
+allCalendarEvents = [],
 theme,
 config,
 tags,
 accentColor,
 onDayClick,
+context,
+eventsOverlap,
 // Timer props (for compact display)
 timers,
 toggleTimer,
@@ -4734,6 +5073,22 @@ grouped[dayStr].push(event);
 });
 return grouped;
 }, [events]);
+
+// Check if any event on a given day has conflicts
+const dayHasConflicts = React.useCallback((dayEvents) => {
+  if (!eventsOverlap || !dayEvents || dayEvents.length === 0) return false;
+  return dayEvents.some(event =>
+    allCalendarEvents.some(e => e.id !== event.id && eventsOverlap(event, e))
+  );
+}, [allCalendarEvents, eventsOverlap]);
+
+// Get other calendar events for a date
+const getOtherCalendarEventsForDate = React.useCallback((date) => {
+  return allCalendarEvents.filter(event =>
+    event?.start && event.context !== context &&
+    new Date(event.start).toDateString() === date.toDateString()
+  );
+}, [allCalendarEvents, context]);
 const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const weekDayAbbr = config.weekStartMon
 ? ["M", "T", "W", "T", "F", "S", "S"]
@@ -4874,16 +5229,19 @@ flexShrink: 0
                 );
               }
               
-              const { date, day, isToday, isWeekend, events } = cell;
-              const hasEvents = events.length > 0;
-              
+              const { date, day, isToday, isWeekend, events: cellEvents } = cell;
+              const hasEvents = cellEvents.length > 0;
+              const hasConflicts = dayHasConflicts(cellEvents);
+              const otherEvents = getOtherCalendarEventsForDate(date);
+              const hasOtherCalendarEvents = otherEvents.length > 0;
+
               return (
                 <div
                   key={cellIndex}
                   onClick={() => onDayClick(date)}
                   onMouseEnter={(e) => {
-                    if (hasEvents) {
-                      setHoveredDay({ date, events });
+                    if (hasEvents || hasOtherCalendarEvents) {
+                      setHoveredDay({ date, events: cellEvents, otherEvents });
                       const rect = e.currentTarget.getBoundingClientRect();
                       setTooltipPos({ x: rect.left, y: rect.bottom + 6 });
                     }
@@ -4908,27 +5266,38 @@ flexShrink: 0
                     borderRadius: 3,
                     cursor: "pointer",
                     position: "relative",
-                    background: isToday 
-                      ? accentColor 
+                    background: isToday
+                      ? accentColor
+                      : hasConflicts
+                      ? '#EF444420'
                       : hasEvents
                       ? theme.selection
-                      : isWeekend 
-                      ? theme.hoverBg 
+                      : isWeekend
+                      ? theme.hoverBg
                       : "transparent",
-                    border: isToday ? `1.5px solid ${accentColor}` : hasEvents ? `1px solid ${accentColor}30` : "1px solid transparent",
+                    border: hasConflicts
+                      ? '1.5px solid #EF4444'
+                      : isToday
+                      ? `1.5px solid ${accentColor}`
+                      : hasEvents
+                      ? `1px solid ${accentColor}30`
+                      : "1px solid transparent",
                     transition: "all 0.15s",
                     fontSize: 9,
                     fontWeight: isToday ? 700 : hasEvents ? 600 : 500,
-                    color: isToday 
-                      ? "#fff" 
+                    color: isToday
+                      ? "#fff"
+                      : hasConflicts
+                      ? '#EF4444'
                       : hasEvents
                       ? accentColor
                       : theme.text
                   }}
                 >
                   {day}
-                  
-                  {hasEvents && !isToday && (
+
+                  {/* Event indicator dot */}
+                  {hasEvents && !isToday && !hasConflicts && (
                     <div style={{
                       position: "absolute",
                       bottom: 2,
@@ -4938,6 +5307,39 @@ flexShrink: 0
                       height: 2,
                       borderRadius: "50%",
                       background: accentColor
+                    }} />
+                  )}
+
+                  {/* Conflict indicator */}
+                  {hasConflicts && (
+                    <div style={{
+                      position: "absolute",
+                      top: -2,
+                      right: -2,
+                      width: 8,
+                      height: 8,
+                      background: "#EF4444",
+                      borderRadius: "50%",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 6,
+                      fontWeight: 700,
+                      color: "#fff"
+                    }}>!</div>
+                  )}
+
+                  {/* Other calendar indicator */}
+                  {hasOtherCalendarEvents && !hasConflicts && (
+                    <div style={{
+                      position: "absolute",
+                      top: 1,
+                      right: 1,
+                      width: 4,
+                      height: 4,
+                      borderRadius: "50%",
+                      background: otherEvents[0]?.context === 'family' ? '#8B5CF6' : theme.accent,
+                      opacity: 0.7
                     }} />
                   )}
                 </div>
@@ -5944,7 +6346,7 @@ function EventListPanel({
   );
 }
 
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }) {
+function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
   const [form, setForm] = React.useState({
     title: event?.title || '',
     category: event?.category || (tags[0]?.id || ''),
@@ -5957,6 +6359,16 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }
   const [showMore, setShowMore] = React.useState(false);
   const isDark = theme.id === 'dark';
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
+
+  // Find conflicts with current form times across ALL calendars
+  const conflictingEvents = React.useMemo(() => {
+    if (!eventsOverlap || !form.start || !form.end) return [];
+    return allCalendarEvents.filter(e => {
+      // Don't count the event being edited as a conflict
+      if (event?.id && e.id === event.id) return false;
+      return eventsOverlap({ start: form.start, end: form.end }, e);
+    });
+  }, [form.start, form.end, allCalendarEvents, event?.id, eventsOverlap]);
 
   React.useEffect(() => {
     if (!event?.id) {
@@ -6118,6 +6530,80 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context }
               {errors.end && <div style={{ fontSize: 10, color: theme.indicator, marginTop: 4 }}>{errors.end}</div>}
             </div>
           </div>
+
+          {/* Conflict Warning - Show when time overlaps with other events */}
+          {conflictingEvents.length > 0 && (
+            <div style={{
+              marginBottom: 12,
+              padding: '10px 12px',
+              background: `${theme.indicator}10`,
+              border: `1px solid ${theme.indicator}30`,
+              borderRadius: 10
+            }}>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: theme.indicator,
+                marginBottom: 6,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                Time Conflict
+              </div>
+              <div style={{ fontSize: 10, color: theme.textSec, lineHeight: 1.5 }}>
+                This overlaps with {conflictingEvents.length} event{conflictingEvents.length > 1 ? 's' : ''}:
+              </div>
+              <div style={{ marginTop: 6 }}>
+                {conflictingEvents.slice(0, 3).map(ce => {
+                  const isFamily = ce.context === 'family';
+                  return (
+                    <div key={ce.id} style={{
+                      fontSize: 10,
+                      padding: '4px 8px',
+                      marginTop: 4,
+                      background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(255,255,255,0.8)',
+                      borderRadius: 6,
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 6
+                    }}>
+                      <span style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: isFamily ? theme.familyAccent : theme.accent,
+                        flexShrink: 0
+                      }} />
+                      <span style={{ color: theme.text, fontWeight: 600, flex: 1 }}>
+                        {ce.title || 'Untitled'}
+                      </span>
+                      <span style={{
+                        fontSize: 8,
+                        padding: '2px 4px',
+                        background: `${isFamily ? theme.familyAccent : theme.accent}20`,
+                        color: isFamily ? theme.familyAccent : theme.accent,
+                        borderRadius: 3,
+                        fontWeight: 600
+                      }}>
+                        {isFamily ? 'Family' : 'Personal'}
+                      </span>
+                    </div>
+                  );
+                })}
+                {conflictingEvents.length > 3 && (
+                  <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4, paddingLeft: 8 }}>
+                    +{conflictingEvents.length - 3} more
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Category - Compact chips */}
           <div style={{ marginBottom: 12 }}>
