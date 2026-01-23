@@ -10,7 +10,6 @@ let debugConsole = null;
 let isLoaded = false;
 
 const noop = () => {};
-const noopReturn = () => ({});
 
 const fallbacks = {
   runAllGuards: noop,

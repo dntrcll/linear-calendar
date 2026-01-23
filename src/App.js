@@ -36,12 +36,12 @@ import {
   createTag,
   updateTag,
   deleteTag,
-  getTagsByContext
+  // getTagsByContext
 } from "./services/tagService";
-import {
-  loadUserPreferences,
-  updateUserPreferences
-} from "./services/userPreferencesService";
+// import {
+//   loadUserPreferences,
+//   updateUserPreferences
+// } from "./services/userPreferencesService";
 import { supabase } from './supabaseClient';
 import {
   runAllGuards,
@@ -5657,22 +5657,22 @@ onDayClick,
 context,
 eventsOverlap,
 // Timer props (for compact display)
-timers,
-toggleTimer,
-formatTimer,
-resetTimer,
+// timers,
+// toggleTimer,
+// formatTimer,
+// resetTimer,
 // Goals props
 goals,
-setGoals,
-toggleGoal,
-addGoal,
-removeGoal,
-newGoal,
-setNewGoal
+// setGoals,
+// toggleGoal,
+// addGoal,
+// removeGoal,
+// newGoal,
+// setNewGoal
 }) {
 const year = currentDate.getFullYear();
 const today = React.useMemo(() => new Date(), []);
-const isCurrentYear = year === today.getFullYear();
+// const isCurrentYear = year === today.getFullYear();
 const [hoveredDay, setHoveredDay] = React.useState(null);
 const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
 
@@ -5966,29 +5966,6 @@ flexShrink: 0
       );
     })}
     
-    {/* Productivity Tools Section */}
-    {(() => {
-      const progress = isCurrentYear
-        ? Math.floor((today - new Date(year, 0, 1)) / (1000 * 60 * 60 * 24 * 365) * 100)
-        : year < today.getFullYear() ? 100 : 0;
-      const totalEvents = events.length;
-      const daysWithEvents = Object.keys(eventsByDay).length;
-
-      // Upcoming events (next 7 days)
-      const upcomingEvents = events
-        .filter(e => {
-          const start = new Date(e.start);
-          const diffDays = (start - today) / (1000 * 60 * 60 * 24);
-          return diffDays >= 0 && diffDays <= 7;
-        })
-        .sort((a, b) => new Date(a.start) - new Date(b.start))
-        .slice(0, 5);
-
-      const goalsCompleted = goals.filter(g => g.done).length;
-      const goalsProgress = goals.length > 0 ? Math.round((goalsCompleted / goals.length) * 100) : 0;
-
-      return null;
-    })()}
   </div>
   
   {hoveredDay && (
@@ -6194,7 +6171,7 @@ const EventListItem = React.memo(({ event, tag, accentColor, theme, isDark, form
 // Focus View - For Goals and Timers
 function FocusView({
   theme,
-  config,
+  // config,
   goals,
   toggleGoal,
   addGoal,
@@ -8547,12 +8524,12 @@ bottom: 0
 </div>
 );
 }
-function TagManager({ tags, setTags, theme, context, user, loadData, onClose }) {
+function TagManager({ tags, theme, context, user, loadData, onClose }) {
 const [editingTag, setEditingTag] = React.useState(null);
 const [newTagName, setNewTagName] = React.useState('');
 const [selectedPalette, setSelectedPalette] = React.useState(Object.keys(PALETTE)[0]);
 const [selectedIcon, setSelectedIcon] = React.useState('Briefcase'); // null = color-only tag
-const [saving, setSaving] = React.useState(false);
+const [, setSaving] = React.useState(false);
 const contextTags = tags[context] || [];
 
 const handleSaveTag = async () => {
