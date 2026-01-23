@@ -5307,7 +5307,7 @@ function WeekView({ currentDate, nowTime, events, allCalendarEvents = [], theme,
                       right: 2,
                       width: 4,
                       height: Math.max(height - 4, 8),
-                      background: event.context === 'family' ? '#8B5CF6' : theme.accent,
+                      background: event.context === 'family' ? theme.familyAccent : theme.accent,
                       borderRadius: 2,
                       opacity: 0.5,
                       zIndex: 1,
@@ -5575,7 +5575,7 @@ letterSpacing: 0.8
                         width: 4,
                         height: 4,
                         borderRadius: "50%",
-                        background: e.context === 'family' ? '#8B5CF6' : theme.accent,
+                        background: e.context === 'family' ? theme.familyAccent : theme.accent,
                         opacity: 0.6
                       }}
                       title={`${e.context === 'family' ? 'Family' : 'Personal'}: ${e.title || 'Event'}`}
@@ -5954,7 +5954,7 @@ flexShrink: 0
                       width: 4,
                       height: 4,
                       borderRadius: "50%",
-                      background: otherEvents[0]?.context === 'family' ? '#8B5CF6' : theme.accent,
+                      background: otherEvents[0]?.context === 'family' ? theme.familyAccent : theme.accent,
                       opacity: 0.7
                     }} />
                   )}
@@ -7721,27 +7721,169 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
   );
 
   const tabs = [
-    { id: 'appearance', label: 'Appearance', icon: '◐' },
-    { id: 'interface', label: 'Interface', icon: '▣' },
-    { id: 'features', label: 'Features', icon: '⚡' }
+    {
+      id: 'appearance',
+      label: 'Appearance',
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/>
+          <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/>
+          <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      )
+    },
+    {
+      id: 'interface',
+      label: 'Interface',
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+          <line x1="3" y1="9" x2="21" y2="9"/>
+          <line x1="9" y1="21" x2="9" y2="9"/>
+        </svg>
+      )
+    },
+    {
+      id: 'features',
+      label: 'Features',
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      )
+    }
   ];
 
   const settingsGroups = {
     appearance: [
-      { key: 'use24Hour', label: '24-Hour Time', desc: 'Use military time format' },
-      { key: 'weekStartMon', label: 'Week Starts Monday', desc: 'Change first day of week' }
+      {
+        key: 'use24Hour',
+        label: '24-Hour Time',
+        desc: 'Use military time format',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        )
+      },
+      {
+        key: 'weekStartMon',
+        label: 'Week Starts Monday',
+        desc: 'Change first day of week',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+            <line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/>
+            <line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        )
+      }
     ],
     interface: [
-      { key: 'showSidebar', label: 'Show Sidebar', desc: 'Display navigation sidebar' },
-      { key: 'showWeekNumbers', label: 'Week Numbers', desc: 'Display ISO week numbers' },
-      { key: 'showMotivationalQuotes', label: 'Show Quotes', desc: 'Daily motivational quotes' },
-      { key: 'showUpcomingEvents', label: 'Show Upcoming', desc: 'Preview upcoming events' }
+      {
+        key: 'showSidebar',
+        label: 'Show Sidebar',
+        desc: 'Display navigation sidebar',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <line x1="9" y1="3" x2="9" y2="21"/>
+          </svg>
+        )
+      },
+      {
+        key: 'showWeekNumbers',
+        label: 'Week Numbers',
+        desc: 'Display ISO week numbers',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="10" y1="3" x2="10" y2="21"/>
+            <line x1="21" y1="12" x2="3" y2="12"/>
+            <path d="M3 3h18v18H3z"/>
+          </svg>
+        )
+      },
+      {
+        key: 'showMotivationalQuotes',
+        label: 'Show Quotes',
+        desc: 'Daily motivational quotes',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/>
+            <path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>
+          </svg>
+        )
+      },
+      {
+        key: 'showUpcomingEvents',
+        label: 'Show Upcoming',
+        desc: 'Preview upcoming events',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        )
+      }
     ],
     features: [
-      { key: 'enableDragDrop', label: 'Drag & Drop', desc: 'Move events by dragging' },
-      { key: 'enableAnimations', label: 'Animations', desc: 'Enable UI animations' },
-      { key: 'enablePulseEffects', label: 'Pulse Effects', desc: 'Highlight active events' },
-      { key: 'showConflictNotifications', label: 'Conflict Alerts', desc: 'Show overlapping event warnings' }
+      {
+        key: 'enableDragDrop',
+        label: 'Drag & Drop',
+        desc: 'Move events by dragging',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="5 9 2 12 5 15"/>
+            <polyline points="9 5 12 2 15 5"/>
+            <polyline points="15 19 12 22 9 19"/>
+            <polyline points="19 9 22 12 19 15"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <line x1="12" y1="2" x2="12" y2="22"/>
+          </svg>
+        )
+      },
+      {
+        key: 'enableAnimations',
+        label: 'Animations',
+        desc: 'Enable UI animations',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+        )
+      },
+      {
+        key: 'enablePulseEffects',
+        label: 'Pulse Effects',
+        desc: 'Highlight active events',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="6"/>
+            <circle cx="12" cy="12" r="2"/>
+          </svg>
+        )
+      },
+      {
+        key: 'showConflictNotifications',
+        label: 'Conflict Alerts',
+        desc: 'Show overlapping event warnings',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+            <line x1="12" y1="9" x2="12" y2="13"/>
+            <line x1="12" y1="17" x2="12.01" y2="17"/>
+          </svg>
+        )
+      }
     ]
   };
 
@@ -7909,7 +8051,9 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 }
               }}
             >
-              <span style={{ fontSize: 13 }}>{tab.icon}</span>
+              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                {tab.icon}
+              </span>
               <span style={{
                 fontSize: 12,
                 fontWeight: 600,
@@ -7926,49 +8070,73 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           overflow: 'auto',
           padding: '20px 24px'
         }}>
-          {/* User Card */}
+          {/* User Card - Enhanced Premium Design */}
           {user && activeTab === 'appearance' && (
             <div style={{
-              padding: 16,
-              background: theme.id === 'dark' ? 'rgba(255,255,255,0.03)' : theme.sidebar,
-              borderRadius: 12,
-              marginBottom: 24,
+              padding: 18,
+              background: theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : theme.sidebar),
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: 16,
+              marginBottom: 28,
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              border: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`
+              gap: 14,
+              border: `1px solid ${theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border)}`,
+              boxShadow: theme.premiumShadow || (theme.id === 'dark'
+                ? '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
+                : '0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)'),
+              position: 'relative',
+              overflow: 'hidden'
             }}>
+              {/* Background gradient overlay */}
               <div style={{
-                width: 44,
-                height: 44,
-                borderRadius: 12,
-                background: `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '50%',
+                background: theme.id === 'dark'
+                  ? 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%)'
+                  : 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%)',
+                pointerEvents: 'none'
+              }} />
+
+              <div style={{
+                width: 52,
+                height: 52,
+                borderRadius: 16,
+                background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: '#fff',
                 fontWeight: 700,
-                fontSize: 16,
-                boxShadow: `0 4px 12px ${theme.accent}30`
+                fontSize: 20,
+                boxShadow: `0 6px 20px ${theme.accent}40, inset 0 1px 0 rgba(255,255,255,0.2)`,
+                border: `2px solid ${theme.premiumGlassBorder || 'rgba(255,255,255,0.2)'}`,
+                position: 'relative',
+                zIndex: 1
               }}>
-                {user.displayName?.charAt(0) || user.email?.charAt(0) || 'U'}
+                {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
               </div>
-              <div style={{ flex: 1 }}>
+              <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
                 <div style={{
-                  fontSize: 14,
-                  fontWeight: 600,
+                  fontSize: 15,
+                  fontWeight: 700,
                   color: theme.text,
-                  marginBottom: 3,
+                  marginBottom: 4,
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  letterSpacing: '0.01em'
+                  letterSpacing: '-0.01em'
                 }}>
                   {user.displayName || 'User'}
                 </div>
                 <div style={{
-                  fontSize: 12,
+                  fontSize: 11,
                   color: theme.textMuted,
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  fontWeight: 500
+                  fontWeight: 500,
+                  letterSpacing: '0.01em'
                 }}>
                   {user.email}
                 </div>
@@ -7976,25 +8144,40 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '8px 14px',
-                  background: 'transparent',
-                  border: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
-                  borderRadius: 8,
-                  color: theme.textSec,
+                  padding: '10px 16px',
+                  background: theme.metallicGradient || 'transparent',
+                  border: `1px solid ${theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border)}`,
+                  borderRadius: 10,
+                  color: theme.text,
                   fontSize: 11,
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  letterSpacing: '0.02em',
+                  letterSpacing: '0.03em',
+                  textTransform: 'uppercase',
                   cursor: 'pointer',
-                  transition: 'all 0.2s'
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: theme.metallicShadow || (theme.id === 'dark'
+                    ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'),
+                  position: 'relative',
+                  zIndex: 1
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.hoverBg;
-                  e.currentTarget.style.borderColor = theme.border;
+                  e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
+                  e.currentTarget.style.borderColor = theme.accent;
+                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.boxShadow = theme.id === 'dark'
+                    ? `0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 2px ${theme.accent}20`
+                    : `0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 2px ${theme.accent}20`;
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = theme.id === 'dark' ? theme.subtleBorder : theme.border;
+                  e.currentTarget.style.background = theme.metallicGradient || 'transparent';
+                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border);
+                  e.currentTarget.style.transform = 'translateY(0)';
+                  e.currentTarget.style.boxShadow = theme.metallicShadow || (theme.id === 'dark'
+                    ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
+                    : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)');
                 }}
               >
                 Sign Out
@@ -8005,36 +8188,37 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           {/* Theme Selector */}
           {activeTab === 'appearance' && (
             <div style={{ marginBottom: 28 }}>
-              {/* Section Header with Glass Effect */}
+              {/* Section Header with Premium Effect */}
               <div style={{
-                padding: '10px 14px',
-                background: theme.id === 'dark'
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))'
-                  : 'linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))',
-                backdropFilter: 'blur(10px)',
-                borderRadius: 10,
-                marginBottom: 14,
-                border: `1px solid ${theme.liquidBorder}`,
-                boxShadow: theme.id === 'dark'
-                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-                  : 'inset 0 1px 0 rgba(255,255,255,0.5)'
+                padding: '12px 16px',
+                background: theme.metallicGradient || (theme.id === 'dark'
+                  ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
+                  : 'linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))'),
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderRadius: 12,
+                marginBottom: 16,
+                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                boxShadow: theme.metallicShadow || (theme.id === 'dark'
+                  ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)'
+                  : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)')
               }}>
                 <div style={{
                   fontSize: 11,
                   fontWeight: 700,
                   color: theme.text,
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                   textTransform: 'uppercase',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8
+                  gap: 10
                 }}>
                   <div style={{
-                    width: 3,
-                    height: 12,
-                    background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+                    width: 4,
+                    height: 14,
+                    background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
                     borderRadius: 2,
-                    boxShadow: `0 0 8px ${theme.accent}40`
+                    boxShadow: `0 0 10px ${theme.accent}50, inset 0 1px 0 rgba(255,255,255,0.2)`
                   }} />
                   Color Themes
                 </div>
@@ -8157,36 +8341,37 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 
           {/* Settings List */}
           <div>
-            {/* Section Header */}
+            {/* Section Header with Premium Effect */}
             <div style={{
-              padding: '10px 14px',
-              background: theme.id === 'dark'
-                ? 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))'
-                : 'linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: 10,
-              marginBottom: 12,
-              border: `1px solid ${theme.liquidBorder}`,
-              boxShadow: theme.id === 'dark'
-                ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-                : 'inset 0 1px 0 rgba(255,255,255,0.5)'
+              padding: '12px 16px',
+              background: theme.metallicGradient || (theme.id === 'dark'
+                ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
+                : 'linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))'),
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: 12,
+              marginBottom: 14,
+              border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+              boxShadow: theme.metallicShadow || (theme.id === 'dark'
+                ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)'
+                : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)')
             }}>
               <div style={{
                 fontSize: 11,
                 fontWeight: 700,
                 color: theme.text,
-                letterSpacing: '0.06em',
+                letterSpacing: '0.08em',
                 textTransform: 'uppercase',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8
+                gap: 10
               }}>
                 <div style={{
-                  width: 3,
-                  height: 12,
-                  background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+                  width: 4,
+                  height: 14,
+                  background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
                   borderRadius: 2,
-                  boxShadow: `0 0 8px ${theme.accent}40`
+                  boxShadow: `0 0 10px ${theme.accent}50, inset 0 1px 0 rgba(255,255,255,0.2)`
                 }} />
                 {activeTab === 'appearance' ? 'Display Settings' :
                  activeTab === 'interface' ? 'Interface Options' :
@@ -8194,13 +8379,13 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               </div>
             </div>
 
-            {/* Settings Items with Glass Cards */}
+            {/* Settings Items with Premium Glass Cards */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 6
+              gap: 8
             }}>
-              {settingsGroups[activeTab].map(({ key, label, desc}) => (
+              {settingsGroups[activeTab].map(({ key, label, desc, icon }) => (
                 <div
                   key={key}
                   onClick={() => handleToggle(key)}
@@ -8208,47 +8393,84 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '12px 14px',
-                    borderRadius: 10,
+                    padding: '14px 16px',
+                    borderRadius: 12,
                     cursor: 'pointer',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                    border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                    backdropFilter: 'blur(5px)'
+                    background: config[key]
+                      ? (theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'))
+                      : (theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'),
+                    border: `1px solid ${config[key] ? (theme.accent + '40') : (theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}`,
+                    backdropFilter: 'blur(10px)',
+                    WebkitBackdropFilter: 'blur(10px)',
+                    boxShadow: config[key]
+                      ? `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`
+                      : 'none'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.hoverBg;
-                    e.currentTarget.style.borderColor = theme.liquidBorder;
-                    e.currentTarget.style.transform = 'translateX(2px)';
+                    e.currentTarget.style.background = theme.premiumGlass || theme.hoverBg;
+                    e.currentTarget.style.borderColor = theme.accent + '60';
+                    e.currentTarget.style.transform = 'translateX(3px)';
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${theme.accent}20, inset 0 1px 0 rgba(255,255,255,0.08)`;
                   }}
                   onMouseLeave={e => {
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
-                    e.currentTarget.style.borderColor = theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
+                    e.currentTarget.style.background = config[key]
+                      ? (theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'))
+                      : (theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)');
+                    e.currentTarget.style.borderColor = config[key] ? (theme.accent + '40') : (theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)');
                     e.currentTarget.style.transform = 'translateX(0)';
+                    e.currentTarget.style.boxShadow = config[key]
+                      ? `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`
+                      : 'none';
                   }}
                 >
-                  <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                    {/* Icon Container */}
                     <div style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: theme.text,
-                      marginBottom: 2,
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      letterSpacing: '0.01em'
+                      width: 36,
+                      height: 36,
+                      borderRadius: 10,
+                      background: config[key]
+                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)`)
+                        : (theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')),
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: config[key] ? theme.accent : theme.textSec,
+                      flexShrink: 0,
+                      border: `1px solid ${config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.liquidBorder)}`,
+                      boxShadow: config[key]
+                        ? `0 2px 6px ${theme.accent}20, inset 0 1px 0 rgba(255,255,255,0.1)`
+                        : (theme.metallicShadow || (theme.id === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.03)' : 'inset 0 1px 0 rgba(255,255,255,0.5)'))
                     }}>
-                      {label}
+                      {icon}
                     </div>
-                    <div style={{
-                      fontSize: 10,
-                      color: theme.textMuted,
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 500,
-                      letterSpacing: '0.01em',
-                      lineHeight: 1.4
-                    }}>
-                      {desc}
+
+                    {/* Text Content */}
+                    <div style={{ flex: 1 }}>
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.text,
+                        marginBottom: 3,
+                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                        letterSpacing: '-0.01em'
+                      }}>
+                        {label}
+                      </div>
+                      <div style={{
+                        fontSize: 10,
+                        color: theme.textMuted,
+                        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                        fontWeight: 500,
+                        letterSpacing: '0.01em',
+                        lineHeight: 1.4
+                      }}>
+                        {desc}
+                      </div>
                     </div>
                   </div>
+
                   <ToggleSwitch value={config[key]} label={label} />
                 </div>
               ))}
