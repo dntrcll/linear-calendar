@@ -2542,7 +2542,7 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus'].map(mode => (
+            {['day', 'week', 'month', 'year', 'focus', 'life'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -2722,6 +2722,11 @@ function TimelineOS() {
                 tags={currentTags}
                 setEditingEvent={setEditingEvent}
               />
+            ) : viewMode === 'life' ? (
+              <LifeView
+                theme={theme}
+                accentColor={accentColor}
+              />
             ) : null}
           </div>
 
@@ -2782,97 +2787,124 @@ function TimelineOS() {
           position: "fixed", inset: 0, zIndex: 1000,
           display: "flex", alignItems: "center", justifyContent: "center",
           background: config.darkMode ? "rgba(0,0,0,0.7)" : "rgba(15,23,42,0.3)",
-          backdropFilter: "blur(8px)"
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)"
         }} onClick={() => setInsightsOpen(false)}>
           <div onClick={e => e.stopPropagation()} className="scroll-container" style={{
-            width: 520,
-            maxHeight: "85vh",
+            width: 680,
+            maxHeight: "92vh",
             overflow: "auto",
-            background: theme.liquidGlass,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
+            background: theme.premiumGlass || theme.liquidGlass,
+            backdropFilter: 'blur(32px)',
+            WebkitBackdropFilter: 'blur(32px)',
             borderRadius: 20,
-            border: `1px solid ${theme.liquidBorder}`,
-            boxShadow: config.darkMode
+            border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+            boxShadow: theme.premiumShadow || (config.darkMode
               ? '0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
-              : '0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)',
+              : '0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)')
           }}>
             {/* Header */}
             <div style={{
-              padding: '18px 20px',
-              borderBottom: `1px solid ${config.darkMode ? theme.subtleBorder : 'rgba(0,0,0,0.06)'}`,
+              padding: '24px 28px',
+              borderBottom: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
               display: "flex",
               justifyContent: "space-between",
-              alignItems: "center",
-              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
+              alignItems: "center"
             }}>
-              <div>
-                <h2 style={{
-                  fontSize: 20,
-                  fontWeight: 600,
-                  fontFamily: theme.fontDisplay,
-                  color: theme.text,
-                  marginBottom: 4,
-                  letterSpacing: '-0.02em'
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div style={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: 14,
+                  background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: theme.metallicShadow || `0 4px 16px ${accentColor}40`
                 }}>
-                  Insights
-                </h2>
-                <p style={{
-                  fontSize: 11,
-                  color: theme.textMuted,
-                  fontFamily: theme.fontFamily,
-                  fontWeight: 500,
-                  letterSpacing: '0.01em'
-                }}>
-                  Analytics & patterns
-                </p>
+                  <ICONS.BarChart width={24} height={24} style={{ color: '#fff' }} />
+                </div>
+                <div>
+                  <h2 style={{
+                    fontSize: 24,
+                    fontWeight: 700,
+                    fontFamily: theme.fontDisplay,
+                    color: theme.text,
+                    marginBottom: 4,
+                    letterSpacing: '-0.03em'
+                  }}>
+                    Insights
+                  </h2>
+                  <p style={{
+                    fontSize: 12,
+                    color: theme.textSec,
+                    fontFamily: theme.fontFamily,
+                    fontWeight: 500
+                  }}>
+                    Analytics & patterns from your calendar
+                  </p>
+                </div>
               </div>
               <button onClick={() => setInsightsOpen(false)} style={{
-                width: 30, height: 30, borderRadius: 8,
-                background: config.darkMode ? theme.hoverBg : '#F3F4F6',
-                border: "none",
+                width: 36, height: 36, borderRadius: 10,
+                background: theme.metallicGradient || (config.darkMode ? theme.hoverBg : '#F3F4F6'),
+                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: config.darkMode ? theme.textMuted : '#6B7280'
+                color: theme.textMuted,
+                transition: 'all 0.2s'
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = theme.metallicGradient || (config.darkMode ? theme.hoverBg : '#F3F4F6');
               }}>
-                <ICONS.Close width={14} height={14} />
+                <ICONS.Close width={16} height={16} />
               </button>
             </div>
 
-            <div style={{ padding: 20 }}>
+            <div style={{ padding: 28 }}>
               {/* Stats Grid */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10, marginBottom: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 28 }}>
                 {[
-                  { label: "Total", value: events.length, color: "#6366f1" },
-                  { label: "This Month", value: events.filter(e => new Date(e.start).getMonth() === new Date().getMonth()).length, color: "#10b981" },
-                  { label: "Categories", value: currentTags.length, color: "#f59e0b" }
+                  { label: "Total Events", value: events.length, color: "#6366f1", gradient: "linear-gradient(135deg, #6366f1, #818cf8)" },
+                  { label: "This Month", value: events.filter(e => new Date(e.start).getMonth() === new Date().getMonth()).length, color: "#10b981", gradient: "linear-gradient(135deg, #10b981, #059669)" },
+                  { label: "Categories", value: currentTags.length, color: "#f59e0b", gradient: "linear-gradient(135deg, #f59e0b, #f97316)" }
                 ].map((stat, i) => (
                   <div key={i} style={{
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    background: config.darkMode ? `${stat.color}10` : `${stat.color}08`,
-                    border: `1px solid ${stat.color}20`
+                    padding: '18px 16px',
+                    borderRadius: 14,
+                    background: config.darkMode ? `${stat.color}12` : `${stat.color}0A`,
+                    border: `1px solid ${stat.color}25`,
+                    backdropFilter: 'blur(8px)',
+                    WebkitBackdropFilter: 'blur(8px)',
+                    boxShadow: `0 4px 12px ${stat.color}15`
                   }}>
                     <div style={{
-                      fontSize: 10,
+                      fontSize: 11,
                       fontWeight: 600,
                       fontFamily: theme.fontFamily,
-                      color: config.darkMode ? `${stat.color}` : stat.color,
-                      marginBottom: 6,
+                      color: stat.color,
+                      marginBottom: 10,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.06em'
+                      letterSpacing: '0.06em',
+                      opacity: 0.9
                     }}>
                       {stat.label}
                     </div>
                     <div style={{
-                      fontSize: 32,
-                      fontWeight: 600,
+                      fontSize: 40,
+                      fontWeight: 700,
                       fontFamily: theme.fontDisplay,
-                      color: stat.color,
+                      background: stat.gradient,
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
                       lineHeight: 1,
-                      letterSpacing: '-0.02em'
+                      letterSpacing: '-0.03em'
                     }}>
                       {stat.value}
                     </div>
@@ -2881,123 +2913,199 @@ function TimelineOS() {
               </div>
 
               {/* Category Breakdown */}
-              <div style={{ marginBottom: 20 }}>
-                <h3 style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: theme.fontFamily,
-                  color: theme.textSec,
-                  marginBottom: 12,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em'
+              <div style={{ marginBottom: 28 }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 16
                 }}>
-                  By Category
-                </h3>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {currentTags.map(tag => {
-                    const count = events.filter(e => e.category === tag.tagId).length;
-                    const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
-                    return (
-                      <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: 7,
-                          background: config.darkMode ? `${tag.color}20` : `${tag.color}12`,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center"
-                        }}>
-                          {ICONS[tag.iconName] && React.createElement(ICONS[tag.iconName], {
-                            width: 12, height: 12, style: { color: tag.color }
-                          })}
-                        </div>
-                        <span style={{
-                          fontSize: 12,
-                          fontWeight: 500,
-                          color: config.darkMode ? theme.text : '#374151',
-                          width: 65
-                        }}>
-                          {tag.name}
-                        </span>
-                        <div style={{
-                          flex: 1,
-                          height: 6,
-                          background: config.darkMode ? 'rgba(255,255,255,0.08)' : '#E5E7EB',
-                          borderRadius: 3,
-                          overflow: "hidden"
-                        }}>
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: theme.metallicGradient || (config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}>
+                    <ICONS.Tag width={18} height={18} style={{ color: accentColor }} />
+                  </div>
+                  <h3 style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    fontFamily: theme.fontDisplay,
+                    color: theme.text,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Category Breakdown
+                  </h3>
+                </div>
+                <div style={{
+                  background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                  border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                  borderRadius: 12,
+                  padding: 16
+                }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {currentTags.map(tag => {
+                      const count = events.filter(e => e.category === tag.tagId).length;
+                      const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
+                      return (
+                        <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <div style={{
-                            width: `${Math.max(pct, count > 0 ? 8 : 0)}%`,
-                            height: "100%",
-                            background: tag.color,
-                            borderRadius: 3,
-                            transition: 'width 0.3s ease'
-                          }} />
+                            width: 34,
+                            height: 34,
+                            borderRadius: 9,
+                            background: config.darkMode ? `${tag.color}18` : `${tag.color}10`,
+                            border: `1px solid ${tag.color}30`,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center"
+                          }}>
+                            {ICONS[tag.iconName] && React.createElement(ICONS[tag.iconName], {
+                              width: 16, height: 16, style: { color: tag.color }
+                            })}
+                          </div>
+                          <span style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: theme.text,
+                            width: 90,
+                            fontFamily: theme.fontFamily
+                          }}>
+                            {tag.name}
+                          </span>
+                          <div style={{
+                            flex: 1,
+                            height: 8,
+                            background: config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                            borderRadius: 4,
+                            overflow: "hidden"
+                          }}>
+                            <div style={{
+                              width: `${Math.max(pct, count > 0 ? 10 : 0)}%`,
+                              height: "100%",
+                              background: `linear-gradient(90deg, ${tag.color}, ${tag.color}dd)`,
+                              borderRadius: 4,
+                              transition: 'width 0.4s ease'
+                            }} />
+                          </div>
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-end',
+                            minWidth: 50
+                          }}>
+                            <span style={{
+                              fontSize: 15,
+                              fontWeight: 700,
+                              color: count > 0 ? tag.color : theme.textMuted,
+                              fontFamily: 'SF Mono, monospace'
+                            }}>
+                              {count}
+                            </span>
+                            <span style={{
+                              fontSize: 10,
+                              fontWeight: 500,
+                              color: theme.textMuted
+                            }}>
+                              {pct}%
+                            </span>
+                          </div>
                         </div>
-                        <span style={{
-                          fontSize: 11,
-                          fontWeight: 600,
-                          color: count > 0 ? tag.color : (config.darkMode ? theme.textMuted : '#9CA3AF'),
-                          width: 24,
-                          textAlign: "right"
-                        }}>
-                          {count}
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
 
               {/* Activity Heatmap */}
               <div>
-                <h3 style={{
-                  fontSize: 11,
-                  fontWeight: 600,
-                  color: config.darkMode ? theme.text : '#374151',
-                  marginBottom: 12,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  marginBottom: 16
                 }}>
-                  Weekly Activity
-                </h3>
-                <div style={{ display: "flex", gap: 6 }}>
-                  {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
-                    const dayEvents = events.filter(e => new Date(e.start).getDay() === (i + 1) % 7).length;
-                    const intensity = Math.min(dayEvents / 3, 1);
-                    return (
-                      <div key={day} style={{ flex: 1, textAlign: "center" }}>
-                        <div style={{
-                          height: 44,
-                          borderRadius: 8,
-                          marginBottom: 4,
-                          background: dayEvents > 0
-                            ? config.darkMode
-                              ? `rgba(99, 102, 241, ${0.15 + intensity * 0.5})`
-                              : `rgba(99, 102, 241, ${0.08 + intensity * 0.35})`
-                            : config.darkMode ? 'rgba(255,255,255,0.04)' : '#F3F4F6',
-                          border: dayEvents > 0
-                            ? '1px solid rgba(99, 102, 241, 0.25)'
-                            : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : '#E5E7EB'}`,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}>
-                          {dayEvents > 0 && (
-                            <span style={{ fontSize: 13, fontWeight: 700, color: '#6366f1' }}>{dayEvents}</span>
-                          )}
+                  <div style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: 10,
+                    background: 'linear-gradient(135deg, #6366f1, #818cf8)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 12px rgba(99, 102, 241, 0.3)'
+                  }}>
+                    <ICONS.Calendar width={18} height={18} style={{ color: '#fff' }} />
+                  </div>
+                  <h3 style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    fontFamily: theme.fontDisplay,
+                    color: theme.text,
+                    letterSpacing: '-0.01em'
+                  }}>
+                    Weekly Activity
+                  </h3>
+                </div>
+                <div style={{
+                  background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                  border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                  borderRadius: 12,
+                  padding: 16
+                }}>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((day, i) => {
+                      const dayEvents = events.filter(e => new Date(e.start).getDay() === (i + 1) % 7).length;
+                      const intensity = Math.min(dayEvents / 3, 1);
+                      return (
+                        <div key={day} style={{ flex: 1, textAlign: "center" }}>
+                          <div style={{
+                            height: 80,
+                            borderRadius: 10,
+                            marginBottom: 8,
+                            background: dayEvents > 0
+                              ? config.darkMode
+                                ? `rgba(99, 102, 241, ${0.15 + intensity * 0.5})`
+                                : `rgba(99, 102, 241, ${0.08 + intensity * 0.35})`
+                              : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                            border: dayEvents > 0
+                              ? `1.5px solid rgba(99, 102, 241, ${0.3 + intensity * 0.4})`
+                              : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            transition: 'all 0.2s',
+                            backdropFilter: dayEvents > 0 ? 'blur(8px)' : 'none',
+                            WebkitBackdropFilter: dayEvents > 0 ? 'blur(8px)' : 'none',
+                            boxShadow: dayEvents > 0 ? `0 4px 12px rgba(99, 102, 241, ${0.15 + intensity * 0.2})` : 'none'
+                          }}>
+                            {dayEvents > 0 && (
+                              <span style={{
+                                fontSize: 20,
+                                fontWeight: 700,
+                                color: '#6366f1',
+                                fontFamily: 'SF Mono, monospace'
+                              }}>
+                                {dayEvents}
+                              </span>
+                            )}
+                          </div>
+                          <span style={{
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: dayEvents > 0 ? '#6366f1' : theme.textMuted,
+                            fontFamily: theme.fontFamily,
+                            letterSpacing: '0.01em'
+                          }}>
+                            {day}
+                          </span>
                         </div>
-                        <span style={{
-                          fontSize: 9,
-                          fontWeight: 500,
-                          color: config.darkMode ? theme.textMuted : '#9CA3AF'
-                        }}>
-                          {day}
-                        </span>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             </div>
@@ -5742,6 +5850,19 @@ for (let day = 1; day <= daysInMonth; day++) {
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
 const CELL_SIZE = 32;
+
+// Calculate year progress
+const now = new Date();
+const startOfYear = new Date(year, 0, 1);
+const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+const totalYearMs = endOfYear - startOfYear;
+const elapsedMs = now - startOfYear;
+const yearProgress = Math.min(100, Math.max(0, (elapsedMs / totalYearMs) * 100));
+const daysInYear = Math.ceil((endOfYear - startOfYear) / (1000 * 60 * 60 * 24));
+const daysElapsed = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+const daysRemaining = daysInYear - daysElapsed;
+const isCurrentYear = year === now.getFullYear();
+
 return (
 <div style={{
 width: "100%",
@@ -5752,6 +5873,74 @@ gap: 16,
 overflow: "auto",
 paddingBottom: 12
 }}>
+{/* Year Progress Indicator */}
+{isCurrentYear && (
+<div style={{
+width: "100%",
+maxWidth: 1400,
+margin: "0 auto",
+padding: '16px 20px',
+background: theme.premiumGlass || theme.liquidGlass,
+backdropFilter: 'blur(32px)',
+WebkitBackdropFilter: 'blur(32px)',
+border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+borderRadius: 14,
+boxShadow: theme.premiumShadow || theme.liquidShadow
+}}>
+<div style={{
+display: 'flex',
+alignItems: 'center',
+justifyContent: 'space-between',
+marginBottom: 12
+}}>
+<div>
+<h3 style={{
+fontSize: 16,
+fontWeight: 600,
+fontFamily: theme.fontDisplay,
+color: theme.text,
+marginBottom: 2,
+letterSpacing: '-0.01em'
+}}>
+{year} Progress
+</h3>
+<p style={{
+fontSize: 11,
+color: theme.textSec,
+fontFamily: theme.fontFamily
+}}>
+{daysElapsed} days complete • {daysRemaining} days remaining
+</p>
+</div>
+<div style={{
+fontSize: 20,
+fontWeight: 700,
+fontFamily: 'SF Mono, monospace',
+background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+WebkitBackgroundClip: 'text',
+WebkitTextFillColor: 'transparent',
+backgroundClip: 'text'
+}}>
+{yearProgress.toFixed(1)}%
+</div>
+</div>
+<div style={{
+height: 8,
+background: theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+borderRadius: 4,
+overflow: 'hidden'
+}}>
+<div style={{
+width: `${yearProgress}%`,
+height: '100%',
+background: theme.metallicAccent || accentColor,
+borderRadius: 4,
+transition: 'width 0.5s ease'
+}} />
+</div>
+</div>
+)}
+
 <div style={{
 width: "100%",
 maxWidth: 1400,
@@ -6215,42 +6404,54 @@ function FocusView({
 
   return (
     <div style={{
-      maxWidth: 1200,
+      height: 'calc(100vh - 120px)',
+      maxWidth: 1400,
       margin: '0 auto',
-      padding: '40px 20px'
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16
     }}>
       {/* Header */}
-      <div style={{ marginBottom: 40 }}>
-        <h1 style={{
-          fontSize: 48,
-          fontWeight: 700,
-          fontFamily: theme.fontDisplay,
-          color: theme.text,
-          marginBottom: 12,
-          letterSpacing: '-0.03em',
-          background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          Focus Mode
-        </h1>
-        <p style={{
-          fontSize: 16,
-          color: theme.textSec,
-          fontFamily: theme.fontFamily,
-          fontWeight: 500,
-          letterSpacing: '0.01em'
-        }}>
-          Your productivity command center - goals, timers, agenda, and notes
-        </p>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        marginBottom: 4
+      }}>
+        <div>
+          <h1 style={{
+            fontSize: 32,
+            fontWeight: 700,
+            fontFamily: theme.fontDisplay,
+            color: theme.text,
+            marginBottom: 4,
+            letterSpacing: '-0.03em',
+            background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Focus Mode
+          </h1>
+          <p style={{
+            fontSize: 13,
+            color: theme.textSec,
+            fontFamily: theme.fontFamily,
+            fontWeight: 500
+          }}>
+            Your productivity command center
+          </p>
+        </div>
       </div>
 
       {/* Main Grid */}
       <div style={{
+        flex: 1,
         display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-        gap: 20
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 16,
+        minHeight: 0
       }}>
         {/* Daily Goals Card */}
         <div style={{
@@ -6258,37 +6459,40 @@ function FocusView({
           backdropFilter: theme.glassBlur || 'blur(32px)',
           WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
           border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
         }}>
           {/* Goals Header */}
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              marginBottom: 16
+              gap: 10,
+              marginBottom: 12
             }}>
               <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 background: `linear-gradient(135deg, #10b981, #059669)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)'
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)'
               }}>
                 {goalsProgress === 100 ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 12L10 18L20 6" stroke="#fff" strokeWidth="3" fill="none"/></svg>
+                  <svg width="20" height="20" viewBox="0 0 24 24"><path d="M4 12L10 18L20 6" stroke="#fff" strokeWidth="3" fill="none"/></svg>
                 ) : (
-                  <ICONS.Target width={24} height={24} style={{ color: '#fff' }} />
+                  <ICONS.Target width={20} height={20} style={{ color: '#fff' }} />
                 )}
               </div>
               <div style={{ flex: 1 }}>
                 <h2 style={{
-                  fontSize: 22,
+                  fontSize: 17,
                   fontWeight: 600,
                   fontFamily: theme.fontDisplay,
                   color: theme.text,
@@ -6300,11 +6504,11 @@ function FocusView({
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12
+                  gap: 10
                 }}>
                   <div style={{
                     flex: 1,
-                    height: 6,
+                    height: 5,
                     background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
                     borderRadius: 3,
                     overflow: 'hidden'
@@ -6318,11 +6522,11 @@ function FocusView({
                     }} />
                   </div>
                   <span style={{
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: 600,
                     fontFamily: theme.fontFamily,
                     color: goalsProgress === 100 ? '#10b981' : theme.textSec,
-                    minWidth: 50
+                    minWidth: 45
                   }}>
                     {goalsCompleted}/{goals.length}
                   </span>
@@ -6333,10 +6537,13 @@ function FocusView({
 
           {/* Goals List */}
           <div style={{
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            gap: 10,
-            marginBottom: 20
+            gap: 8,
+            marginBottom: 12,
+            overflow: 'auto',
+            minHeight: 0
           }}>
             {goals.map(goal => (
               <div
@@ -6344,22 +6551,22 @@ function FocusView({
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 14,
-                  padding: '14px 16px',
+                  gap: 12,
+                  padding: '10px 12px',
                   background: goal.done
                     ? (isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)')
                     : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
                   border: `1px solid ${goal.done ? 'rgba(16,185,129,0.2)' : theme.liquidBorder}`,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
                 }}
               >
                 <div
                   onClick={() => toggleGoal(goal.id)}
                   style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 7,
+                    width: 20,
+                    height: 20,
+                    borderRadius: 6,
                     cursor: 'pointer',
                     flexShrink: 0,
                     border: `2px solid ${goal.done ? '#10b981' : theme.border}`,
@@ -6371,14 +6578,14 @@ function FocusView({
                   }}
                 >
                   {goal.done && (
-                    <svg width="12" height="12" viewBox="0 0 12 12">
+                    <svg width="11" height="11" viewBox="0 0 12 12">
                       <path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/>
                     </svg>
                   )}
                 </div>
                 <span style={{
                   flex: 1,
-                  fontSize: 14,
+                  fontSize: 13,
                   fontWeight: 500,
                   fontFamily: theme.fontFamily,
                   color: goal.done ? theme.textMuted : theme.text,
@@ -6394,8 +6601,8 @@ function FocusView({
                     border: 'none',
                     color: theme.textMuted,
                     cursor: 'pointer',
-                    padding: 6,
-                    borderRadius: 6,
+                    padding: 5,
+                    borderRadius: 5,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -6410,7 +6617,7 @@ function FocusView({
                     e.currentTarget.style.color = theme.textMuted;
                   }}
                 >
-                  <ICONS.Close width={14} height={14} />
+                  <ICONS.Close width={13} height={13} />
                 </button>
               </div>
             ))}
@@ -6419,7 +6626,7 @@ function FocusView({
           {/* Add Goal Input */}
           <div style={{
             display: 'flex',
-            gap: 10
+            gap: 8
           }}>
             <input
               type="text"
@@ -6429,12 +6636,12 @@ function FocusView({
               placeholder="Add a new goal..."
               style={{
                 flex: 1,
-                padding: '12px 16px',
+                padding: '10px 14px',
                 background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                 border: `1px solid ${theme.liquidBorder}`,
-                borderRadius: 10,
+                borderRadius: 8,
                 color: theme.text,
-                fontSize: 14,
+                fontSize: 13,
                 fontFamily: theme.fontFamily,
                 outline: 'none'
               }}
@@ -6443,12 +6650,12 @@ function FocusView({
               onClick={addGoal}
               disabled={!newGoal.trim()}
               style={{
-                padding: '12px 20px',
+                padding: '10px 18px',
                 background: newGoal.trim() ? `linear-gradient(135deg, #10b981, #059669)` : theme.hoverBg,
                 border: 'none',
-                borderRadius: 10,
+                borderRadius: 8,
                 color: newGoal.trim() ? '#fff' : theme.textMuted,
-                fontSize: 14,
+                fontSize: 13,
                 fontWeight: 600,
                 fontFamily: theme.fontFamily,
                 cursor: newGoal.trim() ? 'pointer' : 'not-allowed',
@@ -6467,31 +6674,34 @@ function FocusView({
           backdropFilter: theme.glassBlur || 'blur(32px)',
           WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
           border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
         }}>
-          <div style={{ marginBottom: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
+              gap: 10,
+              marginBottom: 6
             }}>
               <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: theme.metallicShadow || `0 4px 16px ${accentColor}40`
+                boxShadow: theme.metallicShadow || `0 4px 12px ${accentColor}40`
               }}>
-                <ICONS.Clock width={24} height={24} style={{ color: '#fff' }} />
+                <ICONS.Clock width={20} height={20} style={{ color: '#fff' }} />
               </div>
               <h2 style={{
-                fontSize: 22,
+                fontSize: 17,
                 fontWeight: 600,
                 fontFamily: theme.fontDisplay,
                 color: theme.text,
@@ -6500,37 +6710,32 @@ function FocusView({
                 Focus Timers
               </h2>
             </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              Track your focused work sessions
-            </p>
           </div>
 
           {/* Timers List - Compact */}
           <div style={{
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            gap: 10
+            gap: 8,
+            overflow: 'auto',
+            minHeight: 0
           }}>
             {timers.map(timer => (
               <div
                 key={timer.id}
                 style={{
-                  padding: 14,
+                  padding: 12,
                   background: timer.running
                     ? (theme.premiumGlass || `linear-gradient(135deg, ${timer.color}15, ${timer.color}08)`)
                     : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
                   border: `1px solid ${timer.running ? `${timer.color}40` : theme.premiumGlassBorder || theme.liquidBorder}`,
-                  borderRadius: 12,
+                  borderRadius: 10,
                   boxShadow: timer.running ? (theme.metallicShadow || `0 2px 8px ${timer.color}20`) : 'none',
                   transition: 'all 0.2s',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 12
+                  gap: 10
                 }}
               >
                 {/* Timer Info - Left Side */}
@@ -6538,19 +6743,19 @@ function FocusView({
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 6
+                    gap: 6,
+                    marginBottom: 4
                   }}>
                     <div style={{
-                      width: 8,
-                      height: 8,
+                      width: 7,
+                      height: 7,
                       borderRadius: '50%',
                       background: timer.color,
                       boxShadow: timer.running ? `0 0 10px ${timer.color}` : 'none',
                       animation: timer.running ? 'pulse 1.5s ease-in-out infinite' : 'none'
                     }} />
                     <span style={{
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: 600,
                       fontFamily: theme.fontFamily,
                       color: timer.running ? timer.color : theme.text,
@@ -6560,7 +6765,7 @@ function FocusView({
                     </span>
                   </div>
                   <div style={{
-                    fontSize: 24,
+                    fontSize: 20,
                     fontWeight: 600,
                     fontFamily: 'SF Mono, monospace',
                     color: timer.running ? timer.color : theme.text,
@@ -6573,19 +6778,19 @@ function FocusView({
                 {/* Timer Controls - Right Side */}
                 <div style={{
                   display: 'flex',
-                  gap: 6
+                  gap: 5
                 }}>
                   <button
                     onClick={() => toggleTimer(timer.id)}
                     style={{
-                      padding: '8px 16px',
+                      padding: '7px 14px',
                       background: timer.running
                         ? `${timer.color}20`
                         : (theme.metallicAccent || `linear-gradient(135deg, ${timer.color}, ${timer.color}dd)`),
                       color: timer.running ? timer.color : '#fff',
                       border: timer.running ? `1px solid ${timer.color}40` : 'none',
-                      borderRadius: 8,
-                      fontSize: 12,
+                      borderRadius: 7,
+                      fontSize: 11,
                       fontWeight: 600,
                       fontFamily: theme.fontFamily,
                       cursor: 'pointer',
@@ -6599,12 +6804,12 @@ function FocusView({
                   <button
                     onClick={() => resetTimer(timer.id)}
                     style={{
-                      padding: '8px 12px',
+                      padding: '7px 10px',
                       background: theme.metallicGradient || 'transparent',
                       color: theme.textMuted,
                       border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-                      borderRadius: 8,
-                      fontSize: 12,
+                      borderRadius: 7,
+                      fontSize: 11,
                       fontWeight: 600,
                       fontFamily: theme.fontFamily,
                       cursor: 'pointer',
@@ -6634,56 +6839,62 @@ function FocusView({
           backdropFilter: theme.glassBlur || 'blur(32px)',
           WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
           border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
         }}>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
+              gap: 10,
+              marginBottom: 6
             }}>
               <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 background: `linear-gradient(135deg, #6366f1, #818cf8)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 4px 16px rgba(99, 102, 241, 0.4)`
+                boxShadow: `0 4px 12px rgba(99, 102, 241, 0.4)`
               }}>
-                <ICONS.Calendar width={24} height={24} style={{ color: '#fff' }} />
+                <ICONS.Calendar width={20} height={20} style={{ color: '#fff' }} />
               </div>
-              <h2 style={{
-                fontSize: 22,
-                fontWeight: 600,
-                fontFamily: theme.fontDisplay,
-                color: theme.text,
-                letterSpacing: '-0.02em'
-              }}>
-                Today's Agenda
-              </h2>
+              <div style={{ flex: 1 }}>
+                <h2 style={{
+                  fontSize: 17,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  letterSpacing: '-0.02em'
+                }}>
+                  Today's Agenda
+                </h2>
+                <p style={{
+                  fontSize: 11,
+                  color: theme.textMuted,
+                  fontFamily: theme.fontFamily,
+                  fontWeight: 500
+                }}>
+                  {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'}
+                </p>
+              </div>
             </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'} scheduled
-            </p>
           </div>
 
           {/* Today's Events List */}
           <div style={{
+            flex: 1,
             display: 'flex',
             flexDirection: 'column',
-            gap: 12,
-            maxHeight: 400,
-            overflowY: 'auto'
+            gap: 8,
+            overflow: 'auto',
+            minHeight: 0
           }}>
             {todayEvents.length > 0 ? (
               todayEvents.map(event => {
@@ -6695,11 +6906,11 @@ function FocusView({
                     key={event.id}
                     onClick={() => setEditingEvent(event)}
                     style={{
-                      padding: 16,
+                      padding: 12,
                       background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                       border: `1px solid ${theme.liquidBorder}`,
                       borderLeft: `3px solid ${tag?.color || accentColor}`,
-                      borderRadius: 12,
+                      borderRadius: 10,
                       cursor: 'pointer',
                       transition: 'all 0.2s'
                     }}
@@ -6713,16 +6924,16 @@ function FocusView({
                     }}
                   >
                     <div style={{
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: 600,
                       color: theme.text,
-                      marginBottom: 4,
+                      marginBottom: 3,
                       fontFamily: theme.fontFamily
                     }}>
                       {event.title}
                     </div>
                     <div style={{
-                      fontSize: 12,
+                      fontSize: 11,
                       color: theme.textMuted,
                       fontFamily: theme.fontFamily
                     }}>
@@ -6732,14 +6943,14 @@ function FocusView({
                     </div>
                     {event.location && (
                       <div style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         color: theme.textSec,
-                        marginTop: 4,
+                        marginTop: 3,
                         display: 'flex',
                         alignItems: 'center',
                         gap: 4
                       }}>
-                        <ICONS.MapPin width={10} height={10} />
+                        <ICONS.MapPin width={9} height={9} />
                         {event.location}
                       </div>
                     )}
@@ -6749,11 +6960,11 @@ function FocusView({
             ) : (
               <div style={{
                 textAlign: 'center',
-                padding: '40px 20px',
+                padding: '30px 20px',
                 color: theme.textMuted
               }}>
-                <ICONS.Calendar width={32} height={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <div style={{ fontSize: 13 }}>No events scheduled for today</div>
+                <ICONS.Calendar width={28} height={28} style={{ opacity: 0.3, marginBottom: 10 }} />
+                <div style={{ fontSize: 12 }}>No events scheduled</div>
               </div>
             )}
           </div>
@@ -6765,31 +6976,34 @@ function FocusView({
           backdropFilter: theme.glassBlur || 'blur(32px)',
           WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
           border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 0
         }}>
-          <div style={{ marginBottom: 24 }}>
+          <div style={{ marginBottom: 16 }}>
             <div style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
+              gap: 10,
+              marginBottom: 6
             }}>
               <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
+                width: 40,
+                height: 40,
+                borderRadius: 12,
                 background: `linear-gradient(135deg, #f59e0b, #f97316)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 4px 16px rgba(245, 158, 11, 0.4)`
+                boxShadow: `0 4px 12px rgba(245, 158, 11, 0.4)`
               }}>
-                <ICONS.Edit width={24} height={24} style={{ color: '#fff' }} />
+                <ICONS.Edit width={20} height={20} style={{ color: '#fff' }} />
               </div>
               <h2 style={{
-                fontSize: 22,
+                fontSize: 17,
                 fontWeight: 600,
                 fontFamily: theme.fontDisplay,
                 color: theme.text,
@@ -6798,14 +7012,6 @@ function FocusView({
                 Quick Notes
               </h2>
             </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              Jot down quick thoughts and ideas
-            </p>
           </div>
 
           {/* Notes Textarea */}
@@ -6814,19 +7020,20 @@ function FocusView({
             onChange={(e) => setQuickNotes(e.target.value)}
             placeholder="Start typing..."
             style={{
+              flex: 1,
               width: '100%',
-              minHeight: 200,
-              padding: '16px',
+              padding: '14px',
               background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
               border: `1px solid ${theme.liquidBorder}`,
-              borderRadius: 12,
+              borderRadius: 10,
               color: theme.text,
-              fontSize: 14,
+              fontSize: 13,
               fontFamily: theme.fontFamily,
               lineHeight: 1.6,
               outline: 'none',
-              resize: 'vertical',
-              transition: 'all 0.2s'
+              resize: 'none',
+              transition: 'all 0.2s',
+              minHeight: 0
             }}
             onFocus={(e) => {
               e.currentTarget.style.borderColor = accentColor;
@@ -6839,11 +7046,11 @@ function FocusView({
           />
           <div style={{
             marginTop: 8,
-            fontSize: 11,
+            fontSize: 10,
             color: theme.textMuted,
             textAlign: 'right'
           }}>
-            {quickNotes.length} characters • Auto-saved
+            {quickNotes.length} chars • Auto-saved
           </div>
         </div>
       </div>
@@ -9303,6 +9510,420 @@ bottom: 0
 </div>
 );
 }
+
+// LifeView Component - Visualize life in weeks
+function LifeView({ theme, accentColor }) {
+  const [birthDate, setBirthDate] = React.useState(() => {
+    const saved = localStorage.getItem('userBirthDate');
+    return saved || '';
+  });
+
+  const [hoveredWeek, setHoveredWeek] = React.useState(null);
+
+  React.useEffect(() => {
+    if (birthDate) {
+      localStorage.setItem('userBirthDate', birthDate);
+    }
+  }, [birthDate]);
+
+  // Calculate life statistics
+  const lifeStats = React.useMemo(() => {
+    if (!birthDate) return null;
+
+    const birth = new Date(birthDate);
+    const now = new Date();
+    const diffMs = now - birth;
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    const diffWeeks = Math.floor(diffDays / 7);
+    const diffYears = diffWeeks / 52;
+
+    return {
+      weeks: diffWeeks,
+      days: diffDays,
+      years: diffYears.toFixed(2),
+      months: Math.floor(diffDays / 30.44),
+      hours: Math.floor(diffMs / (1000 * 60 * 60)),
+      heartbeats: Math.floor(diffMs / (1000 * 60 * 60) * 70 * 60), // ~70 bpm
+      breaths: Math.floor(diffMs / (1000 * 60 * 60) * 16 * 60), // ~16 per minute
+      sleepHours: Math.floor(diffMs / (1000 * 60 * 60) * 0.33), // ~8h/day
+    };
+  }, [birthDate]);
+
+  const isDark = theme.id === 'dark';
+  const totalWeeks = 52 * 80; // 80 years in weeks
+  const weeksLived = lifeStats?.weeks || 0;
+
+  return (
+    <div style={{
+      height: 'calc(100vh - 120px)',
+      maxWidth: 1400,
+      margin: '0 auto',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16
+    }}>
+      {/* Header Section */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        gap: 20
+      }}>
+        <div>
+          <h1 style={{
+            fontSize: 36,
+            fontWeight: 700,
+            fontFamily: theme.fontDisplay,
+            color: theme.text,
+            marginBottom: 6,
+            letterSpacing: '-0.03em',
+            background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Life in Weeks
+          </h1>
+          <p style={{
+            fontSize: 13,
+            color: theme.textSec,
+            fontFamily: theme.fontFamily,
+            fontWeight: 500
+          }}>
+            {birthDate ? `${weeksLived.toLocaleString()} weeks lived • ${(totalWeeks - weeksLived).toLocaleString()} weeks remaining` : 'Enter your birth date to visualize your life'}
+          </p>
+        </div>
+
+        <input
+          type="date"
+          value={birthDate}
+          onChange={(e) => setBirthDate(e.target.value)}
+          max={new Date().toISOString().split('T')[0]}
+          style={{
+            padding: '10px 16px',
+            background: theme.premiumGlass || theme.liquidGlass,
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+            borderRadius: 10,
+            color: theme.text,
+            fontSize: 13,
+            fontWeight: 500,
+            fontFamily: theme.fontFamily,
+            outline: 'none',
+            cursor: 'pointer'
+          }}
+        />
+      </div>
+
+      {/* Main Content Grid */}
+      <div style={{
+        flex: 1,
+        display: 'grid',
+        gridTemplateColumns: '1fr 320px',
+        gap: 16,
+        minHeight: 0
+      }}>
+        {/* Life Grid - Left Side */}
+        <div style={{
+          background: theme.premiumGlass || theme.liquidGlass,
+          backdropFilter: 'blur(32px)',
+          WebkitBackdropFilter: 'blur(32px)',
+          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: theme.textSec,
+            marginBottom: 12,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            80 Years • 4,160 Weeks
+          </div>
+
+          {/* Weeks Grid */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(52, 1fr)',
+            gap: 3,
+            overflow: 'auto',
+            paddingRight: 4
+          }}>
+            {Array.from({ length: totalWeeks }).map((_, i) => {
+              const isLived = birthDate && i < weeksLived;
+              const isCurrent = birthDate && i === weeksLived;
+              const year = Math.floor(i / 52);
+              const week = i % 52;
+
+              return (
+                <div
+                  key={i}
+                  onMouseEnter={() => setHoveredWeek({ year, week, index: i })}
+                  onMouseLeave={() => setHoveredWeek(null)}
+                  style={{
+                    aspectRatio: '1',
+                    borderRadius: 2,
+                    background: isCurrent
+                      ? accentColor
+                      : isLived
+                        ? (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)')
+                        : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                    border: isCurrent ? `1.5px solid ${accentColor}` : 'none',
+                    transition: 'all 0.15s',
+                    cursor: 'default',
+                    boxShadow: isCurrent ? `0 0 8px ${accentColor}40` : 'none'
+                  }}
+                  title={`Year ${year + 1}, Week ${week + 1}`}
+                />
+              );
+            })}
+          </div>
+
+          {hoveredWeek && (
+            <div style={{
+              marginTop: 12,
+              padding: '8px 12px',
+              background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+              borderRadius: 8,
+              fontSize: 11,
+              fontWeight: 500,
+              color: theme.textSec,
+              textAlign: 'center'
+            }}>
+              Year {hoveredWeek.year + 1}, Week {hoveredWeek.week + 1}
+            </div>
+          )}
+        </div>
+
+        {/* Statistics - Right Side */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 12,
+          overflow: 'auto'
+        }}>
+          {birthDate && lifeStats && (
+            <>
+              {/* Life Highlights */}
+              <div style={{
+                background: theme.premiumGlass || theme.liquidGlass,
+                backdropFilter: 'blur(32px)',
+                WebkitBackdropFilter: 'blur(32px)',
+                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: theme.premiumShadow || theme.liquidShadow
+              }}>
+                <h3 style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  marginBottom: 12,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Life Highlights
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: 'Years', value: lifeStats.years },
+                    { label: 'Months', value: lifeStats.months.toLocaleString() },
+                    { label: 'Days', value: lifeStats.days.toLocaleString() },
+                    { label: 'Hours', value: lifeStats.hours.toLocaleString() }
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 10px',
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 6
+                    }}>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: theme.textSec
+                      }}>
+                        {stat.label}
+                      </span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: accentColor,
+                        fontFamily: 'monospace'
+                      }}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Body's Work */}
+              <div style={{
+                background: theme.premiumGlass || theme.liquidGlass,
+                backdropFilter: 'blur(32px)',
+                WebkitBackdropFilter: 'blur(32px)',
+                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: theme.premiumShadow || theme.liquidShadow
+              }}>
+                <h3 style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  marginBottom: 12,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Body's Work
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: 'Heartbeats', value: (lifeStats.heartbeats / 1e9).toFixed(2) + 'B', icon: '❤️' },
+                    { label: 'Breaths', value: (lifeStats.breaths / 1e6).toFixed(0) + 'M', icon: '🫁' },
+                    { label: 'Sleep', value: (lifeStats.sleepHours / 24 / 365).toFixed(1) + ' yrs', icon: '😴' }
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 10px',
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 6
+                    }}>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: theme.textSec,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}>
+                        <span>{stat.icon}</span>
+                        {stat.label}
+                      </span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.text,
+                        fontFamily: 'monospace'
+                      }}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Perspective */}
+              <div style={{
+                background: theme.premiumGlass || theme.liquidGlass,
+                backdropFilter: 'blur(32px)',
+                WebkitBackdropFilter: 'blur(32px)',
+                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: theme.premiumShadow || theme.liquidShadow
+              }}>
+                <h3 style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  marginBottom: 12,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Time Perspective
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: 'Weeks Lived', value: Math.floor((weeksLived / totalWeeks) * 100) + '%' },
+                    { label: 'Life Progress', value: Math.floor((weeksLived / totalWeeks) * 100), isProgress: true }
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      padding: '6px 10px',
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 6
+                    }}>
+                      <div style={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        marginBottom: stat.isProgress ? 8 : 0
+                      }}>
+                        <span style={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: theme.textSec
+                        }}>
+                          {stat.label}
+                        </span>
+                        {!stat.isProgress && (
+                          <span style={{
+                            fontSize: 13,
+                            fontWeight: 600,
+                            color: accentColor,
+                            fontFamily: 'monospace'
+                          }}>
+                            {stat.value}
+                          </span>
+                        )}
+                      </div>
+                      {stat.isProgress && (
+                        <div style={{
+                          height: 6,
+                          background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                          borderRadius: 3,
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            width: `${stat.value}%`,
+                            height: '100%',
+                            background: theme.metallicAccent || accentColor,
+                            borderRadius: 3,
+                            transition: 'width 0.5s ease'
+                          }} />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+
+          {!birthDate && (
+            <div style={{
+              background: theme.premiumGlass || theme.liquidGlass,
+              backdropFilter: 'blur(32px)',
+              WebkitBackdropFilter: 'blur(32px)',
+              border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+              borderRadius: 12,
+              padding: 24,
+              boxShadow: theme.premiumShadow || theme.liquidShadow,
+              textAlign: 'center',
+              color: theme.textSec,
+              fontSize: 13
+            }}>
+              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
+              <p>Enter your birth date to see your life visualized in weeks</p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
 return (
 <ErrorBoundary>
