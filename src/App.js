@@ -5880,31 +5880,18 @@ width: "100%",
 maxWidth: 1400,
 margin: "0 auto",
 padding: '10px 16px',
-background: theme.id === 'dark'
-? 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'
-: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%)',
-backdropFilter: 'blur(40px)',
-WebkitBackdropFilter: 'blur(40px)',
-border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+background: theme.premiumGlass || theme.liquidGlass,
+backdropFilter: 'blur(32px)',
+WebkitBackdropFilter: 'blur(32px)',
+border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
 borderRadius: 20,
-boxShadow: theme.id === 'dark'
-? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2)'
-: '0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)',
+boxShadow: theme.premiumShadow || theme.liquidShadow,
 display: 'flex',
 alignItems: 'center',
 gap: 16,
 position: 'relative',
 overflow: 'hidden'
 }}>
-{/* Subtle gradient overlay for depth */}
-<div style={{
-position: 'absolute',
-inset: 0,
-background: theme.id === 'dark'
-? 'radial-gradient(circle at top left, rgba(255,255,255,0.03) 0%, transparent 50%)'
-: 'radial-gradient(circle at top left, rgba(255,255,255,0.6) 0%, transparent 50%)',
-pointerEvents: 'none'
-}} />
 
 {/* Left side - Text content */}
 <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
