@@ -8258,16 +8258,33 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         }} />
                       </div>
 
-                      {/* Theme Name */}
+                      {/* Theme Name with Mode Indicator */}
                       <div style={{
-                        fontSize: 10,
-                        fontWeight: 600,
-                        color: isSelected ? themeOption.accent : theme.text,
-                        textAlign: 'center',
-                        letterSpacing: '0.01em',
-                        lineHeight: 1.2
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        gap: 3
                       }}>
-                        {themeOption.name}
+                        <div style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: isSelected ? themeOption.accent : theme.text,
+                          textAlign: 'center',
+                          letterSpacing: '0.01em',
+                          lineHeight: 1.2
+                        }}>
+                          {themeOption.name}
+                        </div>
+                        <div style={{
+                          fontSize: 8,
+                          fontWeight: 500,
+                          color: theme.textMuted,
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          opacity: 0.6
+                        }}>
+                          {themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' ? '● Dark' : '○ Light'}
+                        </div>
                       </div>
 
                       {/* Selected Indicator - Checkmark inside circle */}
