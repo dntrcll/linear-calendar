@@ -3613,7 +3613,7 @@ function AuthScreen({ onLogin, theme }) {
           {[
             {
               name: 'Smart Calendar',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
@@ -3626,7 +3626,7 @@ function AuthScreen({ onLogin, theme }) {
             },
             {
               name: 'Focus Mode',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10"/>
                 <circle cx="12" cy="12" r="6"/>
                 <circle cx="12" cy="12" r="2" fill="currentColor"/>
@@ -3634,14 +3634,14 @@ function AuthScreen({ onLogin, theme }) {
             },
             {
               name: 'Daily Goals',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <polyline points="22 4 12 14.01 9 11.01"/>
               </svg>
             },
             {
               name: 'Multi-Context',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="3" width="7" height="7" rx="1"/>
                 <rect x="14" y="14" width="7" height="7" rx="1"/>
@@ -7725,7 +7725,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'appearance',
       label: 'Appearance',
       icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="5"/>
           <line x1="12" y1="1" x2="12" y2="3"/>
           <line x1="12" y1="21" x2="12" y2="23"/>
@@ -7742,7 +7742,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'interface',
       label: 'Interface',
       icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
           <line x1="3" y1="9" x2="21" y2="9"/>
           <line x1="9" y1="21" x2="9" y2="9"/>
@@ -7753,7 +7753,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'features',
       label: 'Features',
       icon: (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
         </svg>
       )
@@ -7922,7 +7922,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
         borderRadius: 20,
         width: '100%',
         maxWidth: 520,
-        maxHeight: '85vh',
+        maxHeight: '92vh',
         overflow: 'hidden',
         boxShadow: theme.premiumShadow || (theme.id === 'dark'
           ? '0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
@@ -8068,7 +8068,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
         <div style={{
           flex: 1,
           overflow: 'auto',
-          padding: '20px 24px'
+          padding: '16px 24px'
         }}>
           {/* User Card - Enhanced Premium Design */}
           {user && activeTab === 'appearance' && (
@@ -8078,7 +8078,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderRadius: 16,
-              marginBottom: 28,
+              marginBottom: 20,
               display: 'flex',
               alignItems: 'center',
               gap: 14,
@@ -8187,7 +8187,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 
           {/* Theme Selector */}
           {activeTab === 'appearance' && (
-            <div style={{ marginBottom: 28 }}>
+            <div style={{ marginBottom: 20 }}>
               {/* Section Header with Premium Effect */}
               <div style={{
                 padding: '12px 16px',
@@ -8427,21 +8427,21 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     {/* Icon Container */}
                     <div style={{
-                      width: 36,
-                      height: 36,
-                      borderRadius: 10,
+                      width: 42,
+                      height: 42,
+                      borderRadius: 11,
                       background: config[key]
-                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)`)
-                        : (theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)')),
+                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)`)
+                        : (theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)')),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: config[key] ? theme.accent : theme.textSec,
+                      color: config[key] ? '#FFFFFF' : theme.text,
                       flexShrink: 0,
-                      border: `1px solid ${config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.liquidBorder)}`,
+                      border: `1.5px solid ${config[key] ? (theme.accent + '50') : (theme.premiumGlassBorder || theme.liquidBorder)}`,
                       boxShadow: config[key]
-                        ? `0 2px 6px ${theme.accent}20, inset 0 1px 0 rgba(255,255,255,0.1)`
-                        : (theme.metallicShadow || (theme.id === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.03)' : 'inset 0 1px 0 rgba(255,255,255,0.5)'))
+                        ? `0 3px 10px ${theme.accent}30, inset 0 1px 0 rgba(255,255,255,0.2)`
+                        : (theme.metallicShadow || (theme.id === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'inset 0 1px 0 rgba(255,255,255,0.6)'))
                     }}>
                       {icon}
                     </div>
