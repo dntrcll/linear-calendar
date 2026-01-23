@@ -1,4 +1,4 @@
 // Barrel export for all utility functions
-export { toLocalDateTimeString } from './dateUtils';
+export { toLocalDateTimeString, getWeekNumber } from './dateUtils';
 export { eventsOverlap, findConflicts } from './eventUtils';
 export { getTagIcon } from './tagUtils';

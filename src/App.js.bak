@@ -123,144 +123,65 @@ class ErrorBoundary extends React.Component {
 
 const APP_META = {
   name: "Timeline OS",
-  version: "1.0.0",
+  version: "10.0.0",
   quoteInterval: 14400000,
   author: "Timeline Systems",
   motto: "Time is the luxury you cannot buy."
 };
 
-// Ultra-Premium Logo Component - Clean 4K (No Orange Hue)
-const AppLogo = ({ size = 32, theme, showText = false, animated = false }) => {
-  const isDark = theme?.id === 'dark' || theme?.id === 'midnight' || theme?.id === 'monochrome';
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: showText ? 12 : 0 }}>
+// Premium Logo Component with Liquid Glass effect
+const AppLogo = ({ size = 32, theme, showText = false }) => (
+  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+    <div style={{
+      width: size,
+      height: size,
+      borderRadius: size * 0.28,
+      background: `linear-gradient(135deg, #F97316 0%, #FB923C 50%, #FDBA74 100%)`,
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      boxShadow: `0 4px 16px rgba(249, 115, 22, 0.35), inset 0 1px 1px rgba(255,255,255,0.3)`,
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Glass overlay */}
       <div style={{
-        width: size,
-        height: size,
-        borderRadius: size * 0.28,
-        background: isDark
-          ? 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.05) 100%)'
-          : 'linear-gradient(135deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.04) 100%)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: isDark
-          ? '0 4px 16px rgba(0,0,0,0.4), 0 8px 32px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)'
-          : '0 4px 16px rgba(0,0,0,0.08), 0 8px 32px rgba(0,0,0,0.06), inset 0 1px 2px rgba(255,255,255,0.6)',
-        position: 'relative',
-        overflow: 'hidden',
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: `1px solid ${theme?.premiumGlassBorder || (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')}`
-      }}>
-        {/* Animated shimmer effect */}
-        {animated && (
-          <div style={{
-            position: 'absolute',
-            inset: 0,
-            background: isDark
-              ? 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)'
-              : 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%)',
-            backgroundSize: '200% 100%',
-            animation: 'shimmer 3s ease-in-out infinite',
-            zIndex: 2
-          }} />
-        )}
-
-        {/* Premium glass overlay */}
-        <div style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: '50%',
-          background: isDark
-            ? 'linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0) 100%)'
-            : 'linear-gradient(180deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 100%)',
-          borderRadius: `${size * 0.28}px ${size * 0.28}px 0 0`,
-          zIndex: 1
-        }} />
-
-        {/* Clean 4K Timeline Icon */}
-        <svg width={size * 0.58} height={size * 0.58} viewBox="0 0 48 48" fill="none" style={{ position: 'relative', zIndex: 3 }}>
-          {/* Main vertical timeline - thicker, smoother */}
-          <line
-            x1="24" y1="4"
-            x2="24" y2="44"
-            stroke={theme?.accent || '#F97316'}
-            strokeWidth="3.5"
-            strokeLinecap="round"
-            opacity="1"
-          />
-
-          {/* Horizontal branches - varying lengths for hierarchy */}
-          {/* Top branch */}
-          <line
-            x1="24" y1="12"
-            x2="38" y2="12"
-            stroke={theme?.accent || '#F97316'}
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.95"
-          />
-
-          {/* Middle branch */}
-          <line
-            x1="24" y1="24"
-            x2="34" y2="24"
-            stroke={theme?.accent || '#F97316'}
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.95"
-          />
-
-          {/* Bottom branch - longest */}
-          <line
-            x1="24" y1="36"
-            x2="42" y2="36"
-            stroke={theme?.accent || '#F97316'}
-            strokeWidth="3"
-            strokeLinecap="round"
-            opacity="0.95"
-          />
-
-          {/* Timeline nodes - crisp circles */}
-          <circle cx="24" cy="12" r="4" fill={theme?.accent || '#F97316'} opacity="1"/>
-          <circle cx="24" cy="24" r="4.5" fill={theme?.accent || '#F97316'} opacity="1"/>
-          <circle cx="24" cy="36" r="4" fill={theme?.accent || '#F97316'} opacity="1"/>
-
-          {/* Endpoint nodes on branches */}
-          <circle cx="38" cy="12" r="3" fill={theme?.accent || '#F97316'} opacity="0.9"/>
-          <circle cx="34" cy="24" r="3" fill={theme?.accent || '#F97316'} opacity="0.9"/>
-          <circle cx="42" cy="36" r="3" fill={theme?.accent || '#F97316'} opacity="0.9"/>
-        </svg>
-      </div>
-
-      {showText && (
-        <div style={{ lineHeight: 1 }}>
-          <div style={{
-            fontSize: size * 0.47,
-            fontWeight: 700,
-            fontFamily: theme?.fontDisplay || "'Playfair Display', serif",
-            color: theme?.text || '#000',
-            letterSpacing: '-0.02em',
-            marginBottom: size * 0.06
-          }}>Timeline</div>
-          <div style={{
-            fontSize: size * 0.28,
-            fontWeight: 600,
-            fontFamily: theme?.fontFamily || "'Inter', sans-serif",
-            color: theme?.textSec || '#666',
-            letterSpacing: '0.15em',
-            textTransform: 'uppercase'
-          }}>OS</div>
-        </div>
-      )}
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        height: '50%',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 100%)',
+        borderRadius: `${size * 0.28}px ${size * 0.28}px 0 0`
+      }} />
+      {/* Timeline icon */}
+      <svg width={size * 0.5} height={size * 0.5} viewBox="0 0 24 24" fill="none" style={{ position: 'relative', zIndex: 1 }}>
+        <path d="M12 2L12 22M12 6L18 6M12 12L16 12M12 18L20 18" stroke="white" strokeWidth="2.5" strokeLinecap="round"/>
+        <circle cx="12" cy="6" r="2" fill="white"/>
+        <circle cx="12" cy="12" r="2" fill="white"/>
+        <circle cx="12" cy="18" r="2" fill="white"/>
+      </svg>
     </div>
-  );
-};
+    {showText && (
+      <div>
+        <div style={{
+          fontSize: 15,
+          fontWeight: 700,
+          color: theme.text,
+          letterSpacing: '-0.3px',
+          lineHeight: 1.1
+        }}>Timeline</div>
+        <div style={{
+          fontSize: 10,
+          fontWeight: 500,
+          color: theme.accent,
+          letterSpacing: '1px',
+          textTransform: 'uppercase'
+        }}>OS</div>
+      </div>
+    )}
+  </div>
+);
 
 // Focus Modes Configuration
 // Constants moved to src/constants/
@@ -837,14 +758,14 @@ function TimelineOS() {
   // Helper functions (eventsOverlap, findConflicts) moved to src/utils/
 
   const [activeTagIds, setActiveTagIds] = useState(() => {
-    return getCurrentTags().map(t => t.tagId);
+    return getCurrentTags().map(t => t.id);
   });
   
   const [quote, setQuote] = useState({ text: MOTIVATIONAL_QUOTES[0], author: null });
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
-  const [eventListOpen, setEventListOpen] = useState(false);
+  const [eventListOpen, setEventListOpen] = useState(true);
   const [tagManagerOpen, setTagManagerOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [notifications, setNotifications] = useState([]);
@@ -860,7 +781,6 @@ function TimelineOS() {
     } catch {}
     return {
       darkMode: true,
-      selectedTheme: 'dark',
       use24Hour: false,
       blurPast: true,
       weekStartMon: true,
@@ -921,10 +841,6 @@ function TimelineOS() {
     }
   });
   const [newGoal, setNewGoal] = useState('');
-
-  // Calculate goals progress
-  const goalsCompleted = goals.filter(g => g.done).length;
-  const goalsProgress = goals.length > 0 ? Math.round((goalsCompleted / goals.length) * 100) : 0;
 
   // Multi-Timer Effect - manages all timers globally
   useEffect(() => {
@@ -1054,7 +970,7 @@ function TimelineOS() {
   const currentFocusMode = FOCUS_MODES[config.focusMode] || FOCUS_MODES.normal;
 
   const scrollRef = useRef(null);
-  const theme = THEMES[config.selectedTheme] || (config.darkMode ? THEMES.dark : THEMES.light);
+  const theme = config.darkMode ? THEMES.dark : THEMES.light;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
 
   // Calculate week start date for header display
@@ -1322,10 +1238,7 @@ function TimelineOS() {
   
   useEffect(() => {
     const currentTags = tags[context] || [];
-    // Only update if we have tags to prevent flashing empty state
-    if (currentTags.length > 0) {
-      setActiveTagIds(currentTags.map(t => t.tagId));
-    }
+    setActiveTagIds(currentTags.map(t => t.id));
   }, [context, tags]);
   
   useEffect(() => {
@@ -1636,19 +1549,12 @@ function TimelineOS() {
       {config.showSidebar && (
         <aside style={{
           width: LAYOUT.SIDEBAR_WIDTH,
-          background: config.darkMode
-            ? (theme.premiumGlass || `linear-gradient(135deg, ${theme.bg} 0%, ${theme.sidebar} 100%)`)
-            : (theme.premiumGlass || theme.sidebar),
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          borderRight: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+          background: config.darkMode ? theme.cardGradient : theme.sidebar,
+          borderRight: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`,
           display: "flex",
           flexDirection: "column",
           padding: "20px",
-          overflow: "hidden",
-          boxShadow: theme.premiumShadow || (config.darkMode
-            ? 'inset -1px 0 0 rgba(255,255,255,0.03)'
-            : 'none')
+          overflow: "hidden"
         }}>
           {/* Premium Header with Logo */}
           <div style={{ marginBottom: 20 }}>
@@ -2055,7 +1961,7 @@ function TimelineOS() {
               }}>
                 {unifiedUpcoming.map(event => {
                   const allTags = getAllTags();
-                  const tag = allTags.find(t => t.tagId === event.category) || allTags[0];
+                  const tag = allTags.find(t => t.id === event.category) || allTags[0];
                   const eventDate = new Date(event.start);
                   const isToday = eventDate.toDateString() === new Date().toDateString();
                   const isFamily = event.context === 'family';
@@ -2233,16 +2139,16 @@ function TimelineOS() {
               marginBottom: 12
             }}>
               {currentTags.map(tag => {
-                const isActive = activeTagIds.includes(tag.tagId);
+                const isActive = activeTagIds.includes(tag.id);
 
                 return (
                   <button
                     key={tag.id}
                     onClick={() => {
                       setActiveTagIds(prev =>
-                        prev.includes(tag.tagId)
-                          ? prev.filter(id => id !== tag.tagId)
-                          : [...prev, tag.tagId]
+                        prev.includes(tag.id)
+                          ? prev.filter(id => id !== tag.id)
+                          : [...prev, tag.id]
                       );
                     }}
                     style={{
@@ -2400,43 +2306,42 @@ function TimelineOS() {
           display: "flex",
           alignItems: "center",
           padding: "0 24px",
-          borderBottom: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          boxShadow: theme.metallicShadow || theme.premiumShadow,
+          borderBottom: `1px solid ${theme.border}`,
+          background: theme.bg,
           flexShrink: 0,
-          position: 'relative',
-          zIndex: 10
+          position: 'relative'
         }}>
           {/* Left Section - Date & Navigation */}
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
-            {viewMode !== 'day' && (
-              <h2 style={{
-                fontSize: 28,
-                fontWeight: 600,
-                fontFamily: theme.fontDisplay,
-                letterSpacing: '-0.02em',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis'
-              }}>
-                {viewMode === 'year'
-                  ? currentDate.getFullYear()
-                  : viewMode === 'month'
-                  ? `${config.showWeekNumbers ? `W${getWeekNumber(currentDate)} · ` : ''}${currentDate.toLocaleDateString('en-US', {
-                      month: 'long',
-                      year: 'numeric'
-                    })}`
-                  : viewMode === 'week'
-                  ? `${config.showWeekNumbers ? `W${getWeekNumber(weekStartDate)} · ` : ''}Week of ${weekStartDate.toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric'
-                    })}`
-                  : ''
-                }
-              </h2>
-            )}
+            <h2 style={{
+              fontSize: 28,
+              fontWeight: 600,
+              fontFamily: theme.fontDisplay,
+              letterSpacing: '-0.02em',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis'
+            }}>
+              {viewMode === 'year'
+                ? currentDate.getFullYear()
+                : viewMode === 'month'
+                ? currentDate.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric'
+                  })
+                : viewMode === 'week'
+                ? `${config.showWeekNumbers ? `W${getWeekNumber(weekStartDate)} · ` : ''}Week of ${weekStartDate.toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric'
+                  })}`
+                : currentDate.toLocaleDateString('en-US', {
+                    weekday: 'long',
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric'
+                  })
+              }
+            </h2>
 
             <div style={{ display: "flex", gap: 6 }}>
               <button
@@ -2445,25 +2350,18 @@ function TimelineOS() {
                   width: 30,
                   height: 30,
                   borderRadius: "50%",
-                  border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-                  background: theme.metallicGradient || theme.card,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.card,
                   color: theme.text,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   transition: "all 0.2s",
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  boxShadow: theme.metallicShadow || theme.shadow
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = theme.metallicGradient || theme.card;
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
+                onMouseLeave={e => e.currentTarget.style.background = theme.card}
               >
                 <ICONS.ChevronLeft width={16} height={16} />
               </button>
@@ -2474,25 +2372,18 @@ function TimelineOS() {
                   padding: "0 14px",
                   height: 30,
                   borderRadius: 15,
-                  border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-                  background: theme.chromeGradient || theme.card,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.card,
                   color: theme.text,
                   fontSize: 11,
                   fontWeight: 600,
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   letterSpacing: '0.02em',
                   cursor: "pointer",
-                  transition: "all 0.2s",
-                  boxShadow: theme.metallicShadow || theme.shadow
+                  transition: "all 0.2s"
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = theme.chromeGradient || theme.card;
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
+                onMouseLeave={e => e.currentTarget.style.background = theme.card}
               >
                 Today
               </button>
@@ -2503,25 +2394,18 @@ function TimelineOS() {
                   width: 30,
                   height: 30,
                   borderRadius: "50%",
-                  border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-                  background: theme.metallicGradient || theme.card,
+                  border: `1px solid ${theme.border}`,
+                  background: theme.card,
                   color: theme.text,
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
                   transition: "all 0.2s",
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  boxShadow: theme.metallicShadow || theme.shadow
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
                 }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
-                  e.currentTarget.style.transform = 'scale(1.05)';
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.background = theme.metallicGradient || theme.card;
-                  e.currentTarget.style.transform = 'scale(1)';
-                }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
+                onMouseLeave={e => e.currentTarget.style.background = theme.card}
               >
                 <ICONS.ChevronRight width={16} height={16} />
               </button>
@@ -2534,15 +2418,12 @@ function TimelineOS() {
             left: '50%',
             transform: 'translateX(-50%)',
             display: "flex",
-            background: theme.premiumGlass || theme.borderLight,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
+            background: theme.borderLight,
             padding: 3,
             borderRadius: 10,
-            border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-            boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
+            boxShadow: `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus'].map(mode => (
+            {['day', 'week', 'month', 'year'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -2550,7 +2431,7 @@ function TimelineOS() {
                   padding: "7px 16px",
                   borderRadius: 7,
                   border: "none",
-                  background: viewMode === mode ? (theme.chromeGradient || theme.card) : "transparent",
+                  background: viewMode === mode ? theme.card : "transparent",
                   color: viewMode === mode ? theme.text : theme.textSec,
                   fontSize: 11,
                   fontWeight: 600,
@@ -2559,7 +2440,7 @@ function TimelineOS() {
                   cursor: "pointer",
                   textTransform: "capitalize",
                   transition: "all 0.2s",
-                  boxShadow: viewMode === mode ? (theme.metallicShadow || `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}`) : 'none'
+                  boxShadow: viewMode === mode ? `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}` : 'none'
                 }}
               >
                 {mode}
@@ -2597,7 +2478,7 @@ function TimelineOS() {
         </header>
 
         {/* Main Content Area with optional Event List Panel */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden' }}>
           <div
             ref={scrollRef}
             className="scroll-container"
@@ -2701,27 +2582,6 @@ function TimelineOS() {
                 newGoal={newGoal}
                 setNewGoal={setNewGoal}
               />
-            ) : viewMode === 'focus' ? (
-              <FocusView
-                theme={theme}
-                config={config}
-                goals={goals}
-                toggleGoal={toggleGoal}
-                addGoal={addGoal}
-                removeGoal={removeGoal}
-                newGoal={newGoal}
-                setNewGoal={setNewGoal}
-                timers={timers}
-                toggleTimer={toggleTimer}
-                resetTimer={resetTimer}
-                formatTimer={formatTimer}
-                accentColor={accentColor}
-                goalsProgress={goalsProgress}
-                goalsCompleted={goalsCompleted}
-                events={events}
-                tags={currentTags}
-                setEditingEvent={setEditingEvent}
-              />
             ) : null}
           </div>
 
@@ -2788,14 +2648,12 @@ function TimelineOS() {
             width: 520,
             maxHeight: "85vh",
             overflow: "auto",
-            background: theme.liquidGlass,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderRadius: 20,
-            border: `1px solid ${theme.liquidBorder}`,
+            background: config.darkMode ? theme.card : "#FFFFFF",
+            borderRadius: 16,
+            border: `1px solid ${config.darkMode ? theme.border : 'rgba(0,0,0,0.08)'}`,
             boxShadow: config.darkMode
-              ? '0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
-              : '0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)',
+              ? '0 24px 48px rgba(0,0,0,0.5)'
+              : '0 25px 50px -12px rgba(0,0,0,0.25)',
           }}>
             {/* Header */}
             <div style={{
@@ -2807,23 +2665,10 @@ function TimelineOS() {
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
             }}>
               <div>
-                <h2 style={{
-                  fontSize: 20,
-                  fontWeight: 600,
-                  fontFamily: theme.fontDisplay,
-                  color: theme.text,
-                  marginBottom: 4,
-                  letterSpacing: '-0.02em'
-                }}>
+                <h2 style={{ fontSize: 16, fontWeight: 700, color: config.darkMode ? theme.text : '#1F2937', marginBottom: 2 }}>
                   Insights
                 </h2>
-                <p style={{
-                  fontSize: 11,
-                  color: theme.textMuted,
-                  fontFamily: theme.fontFamily,
-                  fontWeight: 500,
-                  letterSpacing: '0.01em'
-                }}>
+                <p style={{ fontSize: 11, color: config.darkMode ? theme.textMuted : '#6B7280' }}>
                   Analytics & patterns
                 </p>
               </div>
@@ -2858,21 +2703,18 @@ function TimelineOS() {
                     <div style={{
                       fontSize: 10,
                       fontWeight: 600,
-                      fontFamily: theme.fontFamily,
                       color: config.darkMode ? `${stat.color}` : stat.color,
-                      marginBottom: 6,
+                      marginBottom: 4,
                       textTransform: 'uppercase',
-                      letterSpacing: '0.06em'
+                      letterSpacing: '0.3px'
                     }}>
                       {stat.label}
                     </div>
                     <div style={{
-                      fontSize: 32,
-                      fontWeight: 600,
-                      fontFamily: theme.fontDisplay,
+                      fontSize: 26,
+                      fontWeight: 700,
                       color: stat.color,
-                      lineHeight: 1,
-                      letterSpacing: '-0.02em'
+                      lineHeight: 1
                     }}>
                       {stat.value}
                     </div>
@@ -2884,18 +2726,17 @@ function TimelineOS() {
               <div style={{ marginBottom: 20 }}>
                 <h3 style={{
                   fontSize: 11,
-                  fontWeight: 700,
-                  fontFamily: theme.fontFamily,
-                  color: theme.textSec,
+                  fontWeight: 600,
+                  color: config.darkMode ? theme.text : '#374151',
                   marginBottom: 12,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.08em'
+                  letterSpacing: '0.5px'
                 }}>
                   By Category
                 </h3>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {currentTags.map(tag => {
-                    const count = events.filter(e => e.category === tag.tagId).length;
+                    const count = events.filter(e => e.category === tag.id).length;
                     const pct = events.length > 0 ? Math.round((count / events.length) * 100) : 0;
                     return (
                       <div key={tag.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -3059,26 +2900,15 @@ function TimelineOS() {
             style={{
               padding: "12px 16px",
               background: notification.type === 'error'
-                ? `linear-gradient(135deg, ${theme.indicator}, ${theme.indicator}dd)`
+                ? theme.indicator
                 : notification.type === 'success'
-                ? `linear-gradient(135deg, ${theme.familyAccent}, ${theme.familyAccentHover})`
-                : theme.liquidGlass,
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+                ? theme.familyAccent
+                : theme.card,
               color: notification.type === 'error' || notification.type === 'success'
                 ? "#fff"
                 : theme.text,
-              borderRadius: 12,
-              border: notification.type === 'error'
-                ? `1px solid ${theme.indicator}40`
-                : notification.type === 'success'
-                ? `1px solid ${theme.familyAccent}40`
-                : `1px solid ${theme.liquidBorder}`,
-              boxShadow: notification.type === 'error'
-                ? `0 8px 24px ${theme.indicator}40, inset 0 1px 0 rgba(255,255,255,0.2)`
-                : notification.type === 'success'
-                ? `0 8px 24px ${theme.familyAccent}40, inset 0 1px 0 rgba(255,255,255,0.2)`
-                : theme.liquidShadow,
+              borderRadius: 10,
+              boxShadow: theme.shadowLg,
               fontSize: 13,
               fontWeight: 600,
               minWidth: 180,
@@ -3122,12 +2952,16 @@ function TimelineOS() {
             bottom: 80,
             right: 20,
             width: 280,
-            background: theme.liquidGlass,
-            backdropFilter: 'blur(24px)',
-            WebkitBackdropFilter: 'blur(24px)',
+            background: config.darkMode
+              ? 'rgba(30,30,35,0.95)'
+              : 'rgba(255,255,255,0.98)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
             borderRadius: 16,
-            border: `1px solid ${theme.liquidBorder}`,
-            boxShadow: theme.liquidShadow,
+            border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            boxShadow: config.darkMode
+              ? '0 20px 40px rgba(0,0,0,0.5), 0 0 1px rgba(255,255,255,0.1)'
+              : '0 20px 40px rgba(0,0,0,0.15), 0 0 1px rgba(0,0,0,0.1)',
             zIndex: 10000,
             overflow: 'hidden',
           }}>
@@ -3439,534 +3273,91 @@ function TimelineOS() {
 }
 
 function AuthScreen({ onLogin, theme }) {
-  const [email, setEmail] = React.useState('');
-  const [showEmailInput, setShowEmailInput] = React.useState(false);
-
-  const handleEmailSubmit = (e) => {
-    e.preventDefault();
-    if (email.trim()) {
-      // For now, just call onLogin - email auth can be implemented later
-      console.log('Email auth:', email);
-      alert('Email authentication will be available soon. Please use Google or Apple Sign In.');
-    }
-  };
-
   return (
     <div style={{
       height: "100vh",
-      background: `linear-gradient(135deg, ${theme.bg} 0%, ${theme.sidebar} 100%)`,
+      background: theme.bg,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
       justifyContent: "center",
       padding: 32,
-      textAlign: "center",
-      position: "relative",
-      overflow: "hidden"
+      textAlign: "center"
     }}>
-      {/* Premium Animated Background - Symmetrical */}
       <div style={{
-        position: "absolute",
-        top: "20%",
-        left: "10%",
-        width: 450,
-        height: 450,
-        background: `radial-gradient(circle, ${theme.accent}20 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(80px)",
-        animation: "glassFloat 12s ease-in-out infinite"
-      }} />
-      <div style={{
-        position: "absolute",
-        top: "20%",
-        right: "10%",
-        width: 450,
-        height: 450,
-        background: `radial-gradient(circle, ${theme.familyAccent}20 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(80px)",
-        animation: "glassFloat 12s ease-in-out infinite 1.5s"
-      }} />
-      <div style={{
-        position: "absolute",
-        bottom: "15%",
-        left: "50%",
-        width: 380,
-        height: 380,
-        background: `radial-gradient(circle, ${theme.accent}15 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(100px)",
-        animation: "glassFloat 15s ease-in-out infinite 3s",
-        transform: "translateX(-50%)"
-      }} />
-
-      <div className="fade-in" style={{
-        maxWidth: 500,
+        maxWidth: 380,
         width: "100%",
-        background: theme.premiumGlass || theme.liquidGlass,
-        backdropFilter: theme.glassBlur || "blur(40px)",
-        WebkitBackdropFilter: theme.glassBlur || "blur(40px)",
-        borderRadius: 24,
-        padding: "48px 44px",
-        boxShadow: theme.premiumShadow || theme.liquidShadow,
-        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-        position: "relative",
-        zIndex: 1
+        background: theme.card,
+        borderRadius: 16,
+        padding: 40,
+        boxShadow: theme.shadowLg
       }}>
-        {/* Premium Logo - Centered */}
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          marginBottom: 24
-        }}>
-          <AppLogo size={64} theme={theme} animated={true} />
-        </div>
-
-        {/* Brand Name - Premium Typography with Superscript OS */}
-        <div style={{ marginBottom: 16 }}>
-          <h1 style={{
-            fontSize: 44,
-            fontWeight: 700,
-            fontFamily: theme.fontDisplay,
-            color: theme.text,
-            letterSpacing: '-0.03em',
-            lineHeight: 1,
-            margin: 0,
-            marginBottom: 10,
-            background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
-            backgroundClip: 'text',
-            position: 'relative',
-            display: 'inline-block'
-          }}>
-            Timeline
-            <sup style={{
-              fontSize: 16,
-              fontWeight: 700,
-              fontFamily: theme.fontFamily,
-              color: theme.textSec,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              opacity: 0.85,
-              marginLeft: 2,
-              position: 'relative',
-              top: -4,
-              background: 'none',
-              WebkitBackgroundClip: 'initial',
-              WebkitTextFillColor: 'initial'
-            }}>OS</sup>
-          </h1>
-
-          {/* Status Indicators - Centered */}
-          <div style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "center",
-            marginTop: 10
-          }}>
-            {[0, 0.5, 1].map((delay, i) => (
-              <div key={i} style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: i === 1 ? theme.familyAccent : theme.accent,
-                boxShadow: `0 0 14px ${(i === 1 ? theme.familyAccent : theme.accent)}70`,
-                animation: `pulse 2s ease-in-out infinite ${delay}s`
-              }} />
-            ))}
-          </div>
-        </div>
-
-        {/* Tagline */}
-        <p style={{
-          fontSize: 16,
-          fontFamily: theme.fontFamily,
-          color: theme.text,
-          marginBottom: 8,
-          lineHeight: 1.5,
-          fontWeight: 500,
-          letterSpacing: '0.01em'
-        }}>
-          Your Personal Operating System for Time
-        </p>
-
-        {/* Motto */}
-        <p style={{
-          fontSize: 13,
-          fontStyle: "italic",
+        <h1 style={{
+          fontSize: 48,
+          fontWeight: 700,
           fontFamily: theme.fontDisplay,
+          color: theme.text,
+          marginBottom: 12,
+          letterSpacing: '-0.03em'
+        }}>
+          Timeline
+        </h1>
+        
+        <p style={{
+          fontSize: 14,
           color: theme.textSec,
           marginBottom: 32,
           lineHeight: 1.5
         }}>
-          "{APP_META.motto}"
+          Your personal operating system for time.
+          <br />
+          <span style={{ fontStyle: "italic", color: theme.textMuted, fontSize: 12 }}>
+            "Time is the luxury you cannot buy."
+          </span>
         </p>
-
-        {/* Feature Pills - Premium 4K Icons */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(2, 1fr)',
-          gap: 10,
-          marginBottom: 36
-        }}>
-          {[
-            {
-              name: 'Smart Calendar',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-                <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="16" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="12" cy="18" r="1.5" fill="currentColor"/>
-              </svg>
-            },
-            {
-              name: 'Focus Mode',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <circle cx="12" cy="12" r="6"/>
-                <circle cx="12" cy="12" r="2" fill="currentColor"/>
-              </svg>
-            },
-            {
-              name: 'Daily Goals',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            },
-            {
-              name: 'Multi-Context',
-              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="3" width="7" height="7" rx="1"/>
-                <rect x="14" y="14" width="7" height="7" rx="1"/>
-                <rect x="3" y="14" width="7" height="7" rx="1"/>
-              </svg>
-            }
-          ].map((feature, i) => (
-            <div key={feature.name} style={{
-              padding: '11px 16px',
-              background: theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              borderRadius: 16,
-              fontSize: 12,
-              fontFamily: theme.fontFamily,
-              fontWeight: 600,
-              color: theme.text,
-              border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-              boxShadow: theme.metallicShadow || `0 2px 8px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.1)`,
-              animation: `fadeIn 0.5s ease-out ${i * 0.1}s both`,
-              textAlign: 'center',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              cursor: 'default'
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = theme.premiumShadow || '0 4px 12px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = theme.metallicShadow || '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.1)';
-            }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', opacity: 0.85 }}>
-                {feature.icon}
-              </span>
-              <span style={{ letterSpacing: '0.01em' }}>{feature.name}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Authentication Buttons - Premium Compact */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {/* Google Sign In - Primary */}
-          <button
-            onClick={onLogin}
-            style={{
-              width: "100%",
-              padding: "15px 28px",
-              background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
-              color: "#fff",
-              border: 'none',
-              borderRadius: 14,
-              fontSize: 14.5,
-              fontWeight: 600,
-              fontFamily: theme.fontFamily,
-              letterSpacing: '0.01em',
-              cursor: "pointer",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              boxShadow: `0 6px 20px ${theme.accent}50, 0 12px 40px ${theme.accent}30, inset 0 1px 2px rgba(255,255,255,0.3)`,
-              position: "relative",
-              overflow: "hidden"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-              e.currentTarget.style.boxShadow = `0 8px 28px ${theme.accent}60, 0 16px 48px ${theme.accent}40, inset 0 1px 2px rgba(255,255,255,0.4)`;
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = `0 6px 20px ${theme.accent}50, 0 12px 40px ${theme.accent}30, inset 0 1px 2px rgba(255,255,255,0.3)`;
-            }}
-          >
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 3s ease-in-out infinite'
-            }} />
-            <svg width="19" height="19" viewBox="0 0 24 24" style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            <span style={{ position: 'relative', zIndex: 1 }}>Continue with Google</span>
-          </button>
-
-          {/* Apple Sign In - Secondary */}
-          <button
-            onClick={() => alert('Apple Sign In will be available soon!')}
-            style={{
-              width: "100%",
-              padding: "15px 28px",
-              background: theme.id === 'dark'
-                ? 'linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 100%)'
-                : 'linear-gradient(135deg, #000000 0%, #1C1C1C 100%)',
-              color: theme.id === 'dark' ? '#000' : '#fff',
-              border: 'none',
-              borderRadius: 14,
-              fontSize: 14.5,
-              fontWeight: 600,
-              fontFamily: theme.fontFamily,
-              letterSpacing: '0.01em',
-              cursor: "pointer",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              boxShadow: theme.id === 'dark'
-                ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)',
-              position: "relative",
-              overflow: "hidden"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-              e.currentTarget.style.boxShadow = theme.id === 'dark'
-                ? '0 8px 28px rgba(255,255,255,0.25), 0 16px 48px rgba(255,255,255,0.15), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 8px 28px rgba(0,0,0,0.5), 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = theme.id === 'dark'
-                ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)';
-            }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.09l-.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            <span style={{ position: 'relative', zIndex: 1 }}>Continue with Apple</span>
-          </button>
-
-          {/* Email Sign In - Tertiary */}
-          {!showEmailInput ? (
-            <button
-              onClick={() => setShowEmailInput(true)}
-              style={{
-                width: "100%",
-                padding: "15px 28px",
-                background: theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
-                color: theme.text,
-                border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
-                borderRadius: 14,
-                fontSize: 14.5,
-                fontWeight: 600,
-                fontFamily: theme.fontFamily,
-                letterSpacing: '0.01em',
-                cursor: "pointer",
-                transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 10,
-                backdropFilter: 'blur(16px)',
-                WebkitBackdropFilter: 'blur(16px)',
-                boxShadow: theme.metallicShadow || '0 4px 12px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.1)'
-              }}
-              onMouseEnter={e => {
-                e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.background = theme.metallicGradientHover || (theme.id === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)');
-                e.currentTarget.style.borderColor = theme.accent;
-                e.currentTarget.style.boxShadow = `0 6px 20px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.15)`;
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.background = theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)');
-                e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
-                e.currentTarget.style.boxShadow = theme.metallicShadow || '0 4px 12px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.1)';
-              }}
-            >
-              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
-                <rect x="3" y="5" width="18" height="14" rx="2"/>
-                <path d="M3 7l9 6 9-6"/>
-              </svg>
-              <span>Continue with Email</span>
-            </button>
-          ) : (
-            <form onSubmit={handleEmailSubmit} style={{ width: '100%' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                  autoFocus
-                  style={{
-                    flex: 1,
-                    padding: "15px 18px",
-                    background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
-                    color: theme.text,
-                    border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
-                    borderRadius: 14,
-                    fontSize: 14.5,
-                    fontFamily: theme.fontFamily,
-                    outline: 'none',
-                    transition: 'all 0.2s',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)'
-                  }}
-                  onFocus={(e) => {
-                    e.currentTarget.style.borderColor = theme.accent;
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}20`;
-                  }}
-                  onBlur={(e) => {
-                    e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
-                    e.currentTarget.style.boxShadow = 'none';
-                  }}
-                />
-                <button
-                  type="submit"
-                  style={{
-                    padding: "15px 22px",
-                    background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                    color: "#fff",
-                    border: 'none',
-                    borderRadius: 14,
-                    fontSize: 18,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.3s",
-                    boxShadow: `0 6px 20px ${theme.accent}50, inset 0 1px 2px rgba(255,255,255,0.3)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-                    e.currentTarget.style.boxShadow = `0 8px 28px ${theme.accent}60, inset 0 1px 2px rgba(255,255,255,0.4)`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "translateY(0) scale(1)";
-                    e.currentTarget.style.boxShadow = `0 6px 20px ${theme.accent}50, inset 0 1px 2px rgba(255,255,255,0.3)`;
-                  }}
-                >
-                  →
-                </button>
-              </div>
-            </form>
-          )}
-        </div>
-
-        {/* Trust & Security Badges - Compact */}
+        
+        <button
+          onClick={onLogin}
+          style={{
+            width: "100%",
+            padding: "14px 20px",
+            background: theme.accent,
+            color: "#fff",
+            border: "none",
+            borderRadius: 10,
+            fontSize: 14,
+            fontWeight: 600,
+            cursor: "pointer",
+            transition: "all 0.2s",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 10
+          }}
+          onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
+          onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+        
         <div style={{
           marginTop: 24,
-          display: 'flex',
-          gap: 12,
-          alignItems: 'center',
-          justifyContent: 'center',
-          fontSize: 11,
-          color: theme.textSec,
-          fontFamily: theme.fontFamily,
-          fontWeight: 500
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-              <path d="M9 12l2 2 4-4"/>
-            </svg>
-            <span>Secure & Private</span>
-          </div>
-          <span style={{ opacity: 0.3 }}>•</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
-              <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-            </svg>
-            <span>Encrypted</span>
-          </div>
-          <span style={{ opacity: 0.3 }}>•</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-            <span>No credit card</span>
-          </div>
-        </div>
-
-        {/* Premium Footer - Compact */}
-        <div style={{
-          marginTop: 28,
           paddingTop: 24,
-          borderTop: `1px solid ${theme.premiumGlassBorder || theme.subtleBorder}`,
-          display: "flex",
-          flexDirection: "column",
-          gap: 10,
-          alignItems: "center"
+          borderTop: `1px solid ${theme.border}`
         }}>
           <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            fontSize: 11,
-            color: theme.textSec,
-            fontFamily: theme.fontFamily,
-            fontWeight: 500
+            fontSize: 10,
+            color: theme.textMuted,
+            lineHeight: 1.5
           }}>
-            <span>v{APP_META.version}</span>
-            <span style={{ opacity: 0.4 }}>•</span>
-            <span>© {new Date().getFullYear()} {APP_META.author}</span>
-          </div>
-          <div style={{
-            fontSize: 11,
-            fontFamily: theme.fontDisplay,
-            fontStyle: 'italic',
-            color: theme.textSec,
-            opacity: 0.9,
-            lineHeight: 1.5,
-            fontWeight: 500
-          }}>
-            Crafted with precision for those who value their time
+            <div>Version {APP_META.version}</div>
+            <div>© {new Date().getFullYear()} {APP_META.author}</div>
           </div>
         </div>
       </div>
@@ -4272,7 +3663,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
       title: 'New Event',
       start: startTime,
       end: endTime,
-      category: tags[0]?.tagId || '',
+      category: tags[0]?.id || '',
       context: context
     });
   };
@@ -4475,7 +3866,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
           }}>
             {currentDate.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase()}
           </div>
-
+          
           {isToday && (
             <div style={{
               fontSize: 9,
@@ -4500,9 +3891,9 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
             </div>
           )}
         </div>
-
+        
         <div style={{ display: 'flex', alignItems: 'flex-end', gap: 10 }}>
-          <div style={{ fontFamily: theme.fontDisplay,
+          <div className="serif" style={{
             fontSize: 40,
             fontWeight: 400,
             color: theme.text,
@@ -4511,11 +3902,11 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
           }}>
             {currentDate.getDate()}
           </div>
-          <div style={{
+          <div style={{ 
             paddingBottom: 4,
             borderBottom: `1px solid ${accentColor}30`
           }}>
-            <div style={{ fontFamily: theme.fontDisplay,
+            <div className="serif" style={{
               fontSize: 16,
               fontWeight: 400,
               color: theme.text,
@@ -4536,7 +3927,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
             </div>
           </div>
         </div>
-
+        
         {isToday && (
           <div style={{
             marginTop: 12,
@@ -4775,7 +4166,7 @@ function DayView({ currentDate, nowTime, events, allCalendarEvents = [], theme, 
 
           {calculateEventPositions.map((pos) => {
             const { event, top, height, left, width } = pos;
-            const tag = tags.find(t => t.tagId === event.category) || tags[0] || {};
+            const tag = tags.find(t => t.id === event.category) || tags[0] || {};
             const isDragged = draggedEvent?.id === event.id;
             const isShortEvent = height < 60;
             const eventHasConflict = hasConflict(event);
@@ -5319,7 +4710,7 @@ function WeekView({ currentDate, nowTime, events, allCalendarEvents = [], theme,
 
               {/* Events */}
               {eventsWithLayout.map(event => {
-                const tag = tags.find(t => t.tagId === event.category) || tags[0] || {};
+                const tag = tags.find(t => t.id === event.category) || tags[0] || {};
                 const eventStart = new Date(event.start);
                 const eventHasConflict = hasConflict(event);
 
@@ -5676,7 +5067,17 @@ const isCurrentYear = year === today.getFullYear();
 const [hoveredDay, setHoveredDay] = React.useState(null);
 const [tooltipPos, setTooltipPos] = React.useState({ x: 0, y: 0 });
 
-// Auto-reload removed - app handles day changes internally
+React.useEffect(() => {
+if (isCurrentYear) {
+const interval = setInterval(() => {
+const now = new Date();
+if (now.getDate() !== today.getDate()) {
+window.location.reload();
+}
+}, 60000);
+  return () => clearInterval(interval);
+}
+}, [isCurrentYear, today]);
 const eventsByDay = React.useMemo(() => {
 const grouped = {};
 events.forEach(event => {
@@ -5741,7 +5142,7 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-const CELL_SIZE = 32;
+const CELL_SIZE = 28;
 return (
 <div style={{
 width: "100%",
@@ -5754,7 +5155,7 @@ paddingBottom: 12
 }}>
 <div style={{
 width: "100%",
-maxWidth: 1400,
+maxWidth: 1200,
 margin: "0 auto",
 display: "flex",
 flexDirection: "column",
@@ -5775,7 +5176,7 @@ alignItems: "center",
 gap: 0
 }}>
 <div style={{
-width: 50,
+width: 40,
 flexShrink: 0
 }} />
         <div style={{
@@ -5788,12 +5189,10 @@ flexShrink: 0
               style={{
                 width: CELL_SIZE,
                 textAlign: "center",
-                fontSize: 11,
+                fontSize: 8,
                 fontWeight: 600,
                 color: (i % 7 === 5 || i % 7 === 6) ? theme.familyAccent : theme.textMuted,
-                padding: "4px 0",
-                fontFamily: theme.fontFamily,
-                letterSpacing: '0.02em'
+                padding: "2px 0"
               }}
             >
               {weekDayAbbr[i % 7]}
@@ -5817,12 +5216,12 @@ flexShrink: 0
           }}
         >
           <div style={{
-            width: 50,
+            width: 40,
             flexShrink: 0,
-            fontSize: 12,
+            fontSize: 10,
             fontWeight: 600,
             color: accentColor,
-            paddingRight: 8,
+            paddingRight: 6,
             textAlign: "right"
           }}>
             {monthNames[monthIndex]}
@@ -5899,7 +5298,7 @@ flexShrink: 0
                       ? `1px solid ${accentColor}30`
                       : "1px solid transparent",
                     transition: "all 0.15s",
-                    fontSize: 11,
+                    fontSize: 9,
                     fontWeight: isToday ? 700 : hasEvents ? 600 : 500,
                     color: isToday
                       ? "#fff"
@@ -5987,7 +5386,429 @@ flexShrink: 0
       const goalsCompleted = goals.filter(g => g.done).length;
       const goalsProgress = goals.length > 0 ? Math.round((goalsCompleted / goals.length) * 100) : 0;
 
-      return null;
+      return (
+        <div style={{
+          marginTop: 16,
+          paddingTop: 14,
+          borderTop: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+        }}>
+          {/* Compact Stats + Tools Row */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: 10,
+            marginBottom: 12
+          }}>
+            {/* Year Progress */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: `${accentColor}20`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.TrendingUp width={11} height={11} style={{ color: accentColor }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Progress</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: theme.text }}>{progress}%</div>
+              <div style={{ width: '100%', height: 3, background: config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)', borderRadius: 2, marginTop: 6 }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: accentColor, borderRadius: 2 }} />
+              </div>
+            </div>
+
+            {/* Events */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#6366f120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Calendar width={11} height={11} style={{ color: '#6366f1' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Events</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#6366f1' }}>{totalEvents}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>This year</div>
+            </div>
+
+            {/* Active Days */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#10b98120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Check width={11} height={11} style={{ color: '#10b981' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Active</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#10b981' }}>{daysWithEvents}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Days busy</div>
+            </div>
+
+            {/* This Week */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#f5970020',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Star width={11} height={11} style={{ color: '#f59700' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Week</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#f59700' }}>{upcomingEvents.length}</div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Coming up</div>
+            </div>
+
+            {/* Focus Timer - Compact */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              {timers.slice(0, 2).map((timer, idx) => (
+                <React.Fragment key={timer.id}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: idx === 0 ? 4 : 0, marginTop: idx > 0 ? 8 : 0 }}>
+                    <div style={{
+                      width: 16, height: 16, borderRadius: 4,
+                      background: `${timer.color}20`,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center'
+                    }}>
+                      <ICONS.Clock width={9} height={9} style={{ color: timer.color }} />
+                    </div>
+                    <span style={{ fontSize: 9, color: theme.textMuted }}>{timer.name}</span>
+                  </div>
+                  <div style={{
+                    fontSize: 15,
+                    fontWeight: 600,
+                    color: timer.running ? timer.color : theme.text,
+                    fontFamily: 'SF Mono, monospace',
+                    marginBottom: 4
+                  }}>{formatTimer(timer.seconds)}</div>
+                  <div style={{ display: 'flex', gap: 3 }}>
+                    <button onClick={() => toggleTimer(timer.id)} style={{
+                      flex: 1, padding: '3px', fontSize: 8, fontWeight: 600,
+                      background: timer.running ? `${timer.color}20` : timer.color,
+                      color: timer.running ? timer.color : '#fff', border: 'none', borderRadius: 4, cursor: 'pointer'
+                    }}>{timer.running ? 'Pause' : 'Start'}</button>
+                    <button onClick={() => resetTimer(timer.id)} style={{
+                      padding: '3px 5px', fontSize: 8,
+                      background: 'transparent', color: theme.textMuted,
+                      border: `1px solid ${theme.border}`, borderRadius: 4, cursor: 'pointer'
+                    }}>↻</button>
+                  </div>
+                </React.Fragment>
+              ))}
+              {timers.length > 2 && (
+                <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 6, textAlign: 'center' }}>
+                  +{timers.length - 2} more timers
+                </div>
+              )}
+            </div>
+
+            {/* Avg Events/Day */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#8b5cf620',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Target width={11} height={11} style={{ color: '#8b5cf6' }} />
+                </div>
+                <span style={{ fontSize: 10, color: theme.textMuted }}>Avg/Day</span>
+              </div>
+              <div style={{ fontSize: 22, fontWeight: 700, color: '#8b5cf6' }}>
+                {daysWithEvents > 0 ? (totalEvents / daysWithEvents).toFixed(1) : '0'}
+              </div>
+              <div style={{ fontSize: 9, color: theme.textMuted, marginTop: 4 }}>Events</div>
+            </div>
+          </div>
+
+          {/* Goals + Upcoming Row */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            {/* Daily Goals - With Scroll */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`,
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: 200
+            }}>
+              {/* Header */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, flexShrink: 0 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: goalsProgress === 100 ? '#10b981' : '#10b98120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  {goalsProgress === 100 ? (
+                    <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/></svg>
+                  ) : (
+                    <ICONS.Target width={11} height={11} style={{ color: '#10b981' }} />
+                  )}
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Daily Goals</span>
+                <div style={{
+                  marginLeft: 'auto',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6
+                }}>
+                  {/* Progress */}
+                  <div style={{
+                    width: 40,
+                    height: 4,
+                    background: config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                    borderRadius: 2,
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${goalsProgress}%`,
+                      height: '100%',
+                      background: '#10b981',
+                      borderRadius: 2,
+                      transition: 'width 0.3s'
+                    }} />
+                  </div>
+                  <span style={{ fontSize: 10, color: goalsProgress === 100 ? '#10b981' : theme.textMuted, fontWeight: 500 }}>
+                    {goalsCompleted}/{goals.length}
+                  </span>
+                </div>
+              </div>
+
+              {/* Goals List - Scrollable */}
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4,
+                marginBottom: 8,
+                paddingRight: 4
+              }}>
+                {goals.map(goal => (
+                  <div
+                    key={goal.id}
+                    className="goal-item"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      padding: '6px 8px',
+                      background: goal.done
+                        ? (config.darkMode ? 'rgba(16,185,129,0.1)' : 'rgba(16,185,129,0.06)')
+                        : 'transparent',
+                      borderRadius: 6,
+                      transition: 'background 0.15s'
+                    }}
+                  >
+                    {/* Checkbox */}
+                    <div
+                      onClick={() => toggleGoal(goal.id)}
+                      style={{
+                        width: 16,
+                        height: 16,
+                        borderRadius: 4,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        border: `1.5px solid ${goal.done ? '#10b981' : theme.border}`,
+                        background: goal.done ? '#10b981' : 'transparent',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'all 0.15s'
+                      }}
+                    >
+                      {goal.done && (
+                        <svg width="9" height="9" viewBox="0 0 12 12">
+                          <path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/>
+                        </svg>
+                      )}
+                    </div>
+                    {/* Text */}
+                    <span style={{
+                      fontSize: 11,
+                      flex: 1,
+                      color: goal.done ? theme.textMuted : theme.text,
+                      textDecoration: goal.done ? 'line-through' : 'none',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap'
+                    }}>{goal.text}</span>
+                    {/* Edit Button */}
+                    <button
+                      onClick={() => {
+                        const newText = prompt('Edit goal:', goal.text);
+                        if (newText && newText.trim()) {
+                          setGoals(prev => prev.map(g => g.id === goal.id ? { ...g, text: newText.trim() } : g));
+                        }
+                      }}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: theme.textMuted,
+                        fontSize: 10,
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        opacity: 0.5,
+                        borderRadius: 3
+                      }}
+                      title="Edit"
+                    >
+                      <ICONS.Edit width={10} height={10} />
+                    </button>
+                    {/* Delete Button */}
+                    <button
+                      onClick={() => removeGoal(goal.id)}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#ef4444',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: '2px 4px',
+                        opacity: 0.6,
+                        borderRadius: 3
+                      }}
+                      title="Delete"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Goal Input */}
+              <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+                <input
+                  type="text"
+                  value={newGoal}
+                  onChange={e => setNewGoal(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addGoal()}
+                  placeholder="Add goal..."
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    fontSize: 11,
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                    border: 'none',
+                    borderRadius: 6,
+                    color: theme.text,
+                    outline: 'none'
+                  }}
+                />
+                <button
+                  onClick={addGoal}
+                  style={{
+                    padding: '6px 10px',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    background: '#10b981',
+                    color: '#fff',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: 'pointer'
+                  }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Upcoming Events - Compact */}
+            <div style={{
+              background: config.darkMode ? theme.card : theme.sidebar,
+              padding: "12px",
+              borderRadius: 10,
+              border: `1px solid ${config.darkMode ? theme.subtleBorder : theme.border}`
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10 }}>
+                <div style={{
+                  width: 20, height: 20, borderRadius: 5,
+                  background: '#6366f120',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <ICONS.Calendar width={11} height={11} style={{ color: '#6366f1' }} />
+                </div>
+                <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>Upcoming</span>
+              </div>
+              {upcomingEvents.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                  {upcomingEvents.slice(0, 3).map(event => {
+                    const tag = tags.find(t => t.id === event.category) || tags[0];
+                    const start = new Date(event.start);
+                    const isToday = start.toDateString() === today.toDateString();
+                    return (
+                      <div key={event.id} style={{
+                        display: 'flex', alignItems: 'center', gap: 8,
+                        padding: '6px 8px',
+                        background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                        borderRadius: 6,
+                        borderLeft: `2px solid ${tag?.color || accentColor}`
+                      }}>
+                        <div style={{
+                          width: 28, height: 28, borderRadius: 6, flexShrink: 0,
+                          background: `${tag?.color || accentColor}15`,
+                          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'
+                        }}>
+                          <span style={{ fontSize: 10, fontWeight: 700, color: tag?.color || accentColor, lineHeight: 1 }}>{start.getDate()}</span>
+                          <span style={{ fontSize: 7, color: tag?.color || accentColor, textTransform: 'uppercase' }}>{start.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 11, fontWeight: 500, color: theme.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{event.title}</div>
+                          <div style={{ fontSize: 9, color: theme.textMuted }}>
+                            {isToday ? <span style={{ color: accentColor }}>Today</span> : start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            {' • '}{start.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '16px 0', color: theme.textMuted }}>
+                  <ICONS.Calendar width={18} height={18} style={{ opacity: 0.3, marginBottom: 4 }} />
+                  <div style={{ fontSize: 10 }}>No events this week</div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
     })()}
   </div>
   
@@ -5996,13 +5817,11 @@ flexShrink: 0
       position: "fixed",
       left: tooltipPos.x,
       top: tooltipPos.y,
-      background: theme.liquidGlass,
-      backdropFilter: 'blur(20px)',
-      WebkitBackdropFilter: 'blur(20px)',
-      borderRadius: 12,
-      padding: "12px",
-      boxShadow: theme.liquidShadow,
-      border: `1px solid ${theme.liquidBorder}`,
+      background: theme.card,
+      borderRadius: 8,
+      padding: "10px",
+      boxShadow: theme.shadowLg,
+      border: `1px solid ${theme.border}`,
       zIndex: 1000,
       minWidth: "180px",
       maxWidth: "280px",
@@ -6036,7 +5855,7 @@ flexShrink: 0
         gap: 5
       }}>
         {hoveredDay.events.slice(0, 3).map(event => {
-          const tag = tags.find(t => t.tagId === event.category) || tags[0];
+          const tag = tags.find(t => t.id === event.category) || tags[0];
           return (
             <div 
               key={event.id}
@@ -6191,689 +6010,6 @@ const EventListItem = React.memo(({ event, tag, accentColor, theme, isDark, form
   );
 });
 
-// Focus View - For Goals and Timers
-function FocusView({
-  theme,
-  config,
-  goals,
-  toggleGoal,
-  addGoal,
-  removeGoal,
-  newGoal,
-  setNewGoal,
-  timers,
-  toggleTimer,
-  resetTimer,
-  formatTimer,
-  accentColor,
-  goalsProgress,
-  goalsCompleted,
-  events,
-  tags,
-  setEditingEvent
-}) {
-  const isDark = theme.id === 'dark';
-  const [quickNotes, setQuickNotes] = React.useState(() => {
-    const saved = localStorage.getItem('quickNotes');
-    return saved || '';
-  });
-
-  // Save quick notes to localStorage whenever they change
-  React.useEffect(() => {
-    localStorage.setItem('quickNotes', quickNotes);
-  }, [quickNotes]);
-
-  // Get today's events
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const tomorrow = new Date(today);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const todayEvents = events
-    .filter(e => {
-      const eventDate = new Date(e.start);
-      return eventDate >= today && eventDate < tomorrow;
-    })
-    .sort((a, b) => new Date(a.start) - new Date(b.start));
-
-  return (
-    <div style={{
-      maxWidth: 1200,
-      margin: '0 auto',
-      padding: '40px 20px'
-    }}>
-      {/* Header */}
-      <div style={{ marginBottom: 40 }}>
-        <h1 style={{
-          fontSize: 48,
-          fontWeight: 700,
-          fontFamily: theme.fontDisplay,
-          color: theme.text,
-          marginBottom: 12,
-          letterSpacing: '-0.03em',
-          background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          backgroundClip: 'text'
-        }}>
-          Focus Mode
-        </h1>
-        <p style={{
-          fontSize: 16,
-          color: theme.textSec,
-          fontFamily: theme.fontFamily,
-          fontWeight: 500,
-          letterSpacing: '0.01em'
-        }}>
-          Your productivity command center - goals, timers, agenda, and notes
-        </p>
-      </div>
-
-      {/* Main Grid */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-        gap: 20
-      }}>
-        {/* Daily Goals Card */}
-        <div style={{
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
-        }}>
-          {/* Goals Header */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginBottom: 16
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: `linear-gradient(135deg, #10b981, #059669)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 16px rgba(16, 185, 129, 0.3)'
-              }}>
-                {goalsProgress === 100 ? (
-                  <svg width="24" height="24" viewBox="0 0 24 24"><path d="M4 12L10 18L20 6" stroke="#fff" strokeWidth="3" fill="none"/></svg>
-                ) : (
-                  <ICONS.Target width={24} height={24} style={{ color: '#fff' }} />
-                )}
-              </div>
-              <div style={{ flex: 1 }}>
-                <h2 style={{
-                  fontSize: 22,
-                  fontWeight: 600,
-                  fontFamily: theme.fontDisplay,
-                  color: theme.text,
-                  marginBottom: 4,
-                  letterSpacing: '-0.02em'
-                }}>
-                  Daily Goals
-                </h2>
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12
-                }}>
-                  <div style={{
-                    flex: 1,
-                    height: 6,
-                    background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                    borderRadius: 3,
-                    overflow: 'hidden'
-                  }}>
-                    <div style={{
-                      width: `${goalsProgress}%`,
-                      height: '100%',
-                      background: 'linear-gradient(90deg, #10b981, #059669)',
-                      borderRadius: 3,
-                      transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                    }} />
-                  </div>
-                  <span style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    fontFamily: theme.fontFamily,
-                    color: goalsProgress === 100 ? '#10b981' : theme.textSec,
-                    minWidth: 50
-                  }}>
-                    {goalsCompleted}/{goals.length}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Goals List */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10,
-            marginBottom: 20
-          }}>
-            {goals.map(goal => (
-              <div
-                key={goal.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '14px 16px',
-                  background: goal.done
-                    ? (isDark ? 'rgba(16,185,129,0.12)' : 'rgba(16,185,129,0.08)')
-                    : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
-                  border: `1px solid ${goal.done ? 'rgba(16,185,129,0.2)' : theme.liquidBorder}`,
-                  borderRadius: 12,
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
-              >
-                <div
-                  onClick={() => toggleGoal(goal.id)}
-                  style={{
-                    width: 22,
-                    height: 22,
-                    borderRadius: 7,
-                    cursor: 'pointer',
-                    flexShrink: 0,
-                    border: `2px solid ${goal.done ? '#10b981' : theme.border}`,
-                    background: goal.done ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  {goal.done && (
-                    <svg width="12" height="12" viewBox="0 0 12 12">
-                      <path d="M2 6L5 9L10 3" stroke="#fff" strokeWidth="2" fill="none"/>
-                    </svg>
-                  )}
-                </div>
-                <span style={{
-                  flex: 1,
-                  fontSize: 14,
-                  fontWeight: 500,
-                  fontFamily: theme.fontFamily,
-                  color: goal.done ? theme.textMuted : theme.text,
-                  textDecoration: goal.done ? 'line-through' : 'none',
-                  letterSpacing: '0.01em'
-                }}>
-                  {goal.text}
-                </span>
-                <button
-                  onClick={() => removeGoal(goal.id)}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: theme.textMuted,
-                    cursor: 'pointer',
-                    padding: 6,
-                    borderRadius: 6,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.hoverBg;
-                    e.currentTarget.style.color = theme.indicator;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = theme.textMuted;
-                  }}
-                >
-                  <ICONS.Close width={14} height={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add Goal Input */}
-          <div style={{
-            display: 'flex',
-            gap: 10
-          }}>
-            <input
-              type="text"
-              value={newGoal}
-              onChange={(e) => setNewGoal(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && addGoal()}
-              placeholder="Add a new goal..."
-              style={{
-                flex: 1,
-                padding: '12px 16px',
-                background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${theme.liquidBorder}`,
-                borderRadius: 10,
-                color: theme.text,
-                fontSize: 14,
-                fontFamily: theme.fontFamily,
-                outline: 'none'
-              }}
-            />
-            <button
-              onClick={addGoal}
-              disabled={!newGoal.trim()}
-              style={{
-                padding: '12px 20px',
-                background: newGoal.trim() ? `linear-gradient(135deg, #10b981, #059669)` : theme.hoverBg,
-                border: 'none',
-                borderRadius: 10,
-                color: newGoal.trim() ? '#fff' : theme.textMuted,
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: theme.fontFamily,
-                cursor: newGoal.trim() ? 'pointer' : 'not-allowed',
-                transition: 'all 0.2s',
-                boxShadow: newGoal.trim() ? '0 4px 12px rgba(16, 185, 129, 0.25)' : 'none'
-              }}
-            >
-              Add
-            </button>
-          </div>
-        </div>
-
-        {/* Focus Timers Card - Compact */}
-        <div style={{
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
-        }}>
-          <div style={{ marginBottom: 20 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: theme.metallicShadow || `0 4px 16px ${accentColor}40`
-              }}>
-                <ICONS.Clock width={24} height={24} style={{ color: '#fff' }} />
-              </div>
-              <h2 style={{
-                fontSize: 22,
-                fontWeight: 600,
-                fontFamily: theme.fontDisplay,
-                color: theme.text,
-                letterSpacing: '-0.02em'
-              }}>
-                Focus Timers
-              </h2>
-            </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              Track your focused work sessions
-            </p>
-          </div>
-
-          {/* Timers List - Compact */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 10
-          }}>
-            {timers.map(timer => (
-              <div
-                key={timer.id}
-                style={{
-                  padding: 14,
-                  background: timer.running
-                    ? (theme.premiumGlass || `linear-gradient(135deg, ${timer.color}15, ${timer.color}08)`)
-                    : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
-                  border: `1px solid ${timer.running ? `${timer.color}40` : theme.premiumGlassBorder || theme.liquidBorder}`,
-                  borderRadius: 12,
-                  boxShadow: timer.running ? (theme.metallicShadow || `0 2px 8px ${timer.color}20`) : 'none',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12
-                }}
-              >
-                {/* Timer Info - Left Side */}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    marginBottom: 6
-                  }}>
-                    <div style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: '50%',
-                      background: timer.color,
-                      boxShadow: timer.running ? `0 0 10px ${timer.color}` : 'none',
-                      animation: timer.running ? 'pulse 1.5s ease-in-out infinite' : 'none'
-                    }} />
-                    <span style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      fontFamily: theme.fontFamily,
-                      color: timer.running ? timer.color : theme.text,
-                      letterSpacing: '0.01em'
-                    }}>
-                      {timer.name}
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: 24,
-                    fontWeight: 600,
-                    fontFamily: 'SF Mono, monospace',
-                    color: timer.running ? timer.color : theme.text,
-                    letterSpacing: '-0.01em'
-                  }}>
-                    {formatTimer(timer.seconds)}
-                  </div>
-                </div>
-
-                {/* Timer Controls - Right Side */}
-                <div style={{
-                  display: 'flex',
-                  gap: 6
-                }}>
-                  <button
-                    onClick={() => toggleTimer(timer.id)}
-                    style={{
-                      padding: '8px 16px',
-                      background: timer.running
-                        ? `${timer.color}20`
-                        : (theme.metallicAccent || `linear-gradient(135deg, ${timer.color}, ${timer.color}dd)`),
-                      color: timer.running ? timer.color : '#fff',
-                      border: timer.running ? `1px solid ${timer.color}40` : 'none',
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      fontFamily: theme.fontFamily,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: timer.running ? 'none' : (theme.metallicShadow || `0 2px 8px ${timer.color}30`),
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {timer.running ? 'Pause' : 'Start'}
-                  </button>
-                  <button
-                    onClick={() => resetTimer(timer.id)}
-                    style={{
-                      padding: '8px 12px',
-                      background: theme.metallicGradient || 'transparent',
-                      color: theme.textMuted,
-                      border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-                      borderRadius: 8,
-                      fontSize: 12,
-                      fontWeight: 600,
-                      fontFamily: theme.fontFamily,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      boxShadow: theme.metallicShadow || 'none'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
-                      e.currentTarget.style.borderColor = theme.border;
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = theme.metallicGradient || 'transparent';
-                      e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.liquidBorder;
-                    }}
-                  >
-                    ↻
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Today's Agenda Card */}
-        <div style={{
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
-        }}>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: `linear-gradient(135deg, #6366f1, #818cf8)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 4px 16px rgba(99, 102, 241, 0.4)`
-              }}>
-                <ICONS.Calendar width={24} height={24} style={{ color: '#fff' }} />
-              </div>
-              <h2 style={{
-                fontSize: 22,
-                fontWeight: 600,
-                fontFamily: theme.fontDisplay,
-                color: theme.text,
-                letterSpacing: '-0.02em'
-              }}>
-                Today's Agenda
-              </h2>
-            </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              {todayEvents.length} {todayEvents.length === 1 ? 'event' : 'events'} scheduled
-            </p>
-          </div>
-
-          {/* Today's Events List */}
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 12,
-            maxHeight: 400,
-            overflowY: 'auto'
-          }}>
-            {todayEvents.length > 0 ? (
-              todayEvents.map(event => {
-                const tag = tags.find(t => t.tagId === event.category) || tags[0];
-                const start = new Date(event.start);
-                const end = new Date(event.end);
-                return (
-                  <div
-                    key={event.id}
-                    onClick={() => setEditingEvent(event)}
-                    style={{
-                      padding: 16,
-                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                      border: `1px solid ${theme.liquidBorder}`,
-                      borderLeft: `3px solid ${tag?.color || accentColor}`,
-                      borderRadius: 12,
-                      cursor: 'pointer',
-                      transition: 'all 0.2s'
-                    }}
-                    onMouseEnter={e => {
-                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
-                      e.currentTarget.style.transform = 'translateX(2px)';
-                    }}
-                    onMouseLeave={e => {
-                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
-                      e.currentTarget.style.transform = 'translateX(0)';
-                    }}
-                  >
-                    <div style={{
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: theme.text,
-                      marginBottom: 4,
-                      fontFamily: theme.fontFamily
-                    }}>
-                      {event.title}
-                    </div>
-                    <div style={{
-                      fontSize: 12,
-                      color: theme.textMuted,
-                      fontFamily: theme.fontFamily
-                    }}>
-                      {start.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                      {' - '}
-                      {end.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                    </div>
-                    {event.location && (
-                      <div style={{
-                        fontSize: 11,
-                        color: theme.textSec,
-                        marginTop: 4,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 4
-                      }}>
-                        <ICONS.MapPin width={10} height={10} />
-                        {event.location}
-                      </div>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div style={{
-                textAlign: 'center',
-                padding: '40px 20px',
-                color: theme.textMuted
-              }}>
-                <ICONS.Calendar width={32} height={32} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <div style={{ fontSize: 13 }}>No events scheduled for today</div>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Quick Notes Card */}
-        <div style={{
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: theme.glassBlur || 'blur(32px)',
-          WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          borderRadius: 20,
-          padding: 28,
-          boxShadow: theme.premiumShadow || theme.liquidShadow
-        }}>
-          <div style={{ marginBottom: 24 }}>
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 12,
-              marginBottom: 8
-            }}>
-              <div style={{
-                width: 48,
-                height: 48,
-                borderRadius: 14,
-                background: `linear-gradient(135deg, #f59e0b, #f97316)`,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: `0 4px 16px rgba(245, 158, 11, 0.4)`
-              }}>
-                <ICONS.Edit width={24} height={24} style={{ color: '#fff' }} />
-              </div>
-              <h2 style={{
-                fontSize: 22,
-                fontWeight: 600,
-                fontFamily: theme.fontDisplay,
-                color: theme.text,
-                letterSpacing: '-0.02em'
-              }}>
-                Quick Notes
-              </h2>
-            </div>
-            <p style={{
-              fontSize: 13,
-              color: theme.textMuted,
-              fontFamily: theme.fontFamily,
-              fontWeight: 500
-            }}>
-              Jot down quick thoughts and ideas
-            </p>
-          </div>
-
-          {/* Notes Textarea */}
-          <textarea
-            value={quickNotes}
-            onChange={(e) => setQuickNotes(e.target.value)}
-            placeholder="Start typing..."
-            style={{
-              width: '100%',
-              minHeight: 200,
-              padding: '16px',
-              background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${theme.liquidBorder}`,
-              borderRadius: 12,
-              color: theme.text,
-              fontSize: 14,
-              fontFamily: theme.fontFamily,
-              lineHeight: 1.6,
-              outline: 'none',
-              resize: 'vertical',
-              transition: 'all 0.2s'
-            }}
-            onFocus={(e) => {
-              e.currentTarget.style.borderColor = accentColor;
-              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
-            }}
-            onBlur={(e) => {
-              e.currentTarget.style.borderColor = theme.liquidBorder;
-              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
-            }}
-          />
-          <div style={{
-            marginTop: 8,
-            fontSize: 11,
-            color: theme.textMuted,
-            textAlign: 'right'
-          }}>
-            {quickNotes.length} characters • Auto-saved
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function EventListPanel({
   events,
   theme,
@@ -6923,7 +6059,7 @@ function EventListPanel({
     return showAllDays ? allGroups : allGroups.slice(0, 30); // Limit to next 30 days with events or show all
   }, [events, searchTerm, filterCategory, showAllDays]);
 
-  const getTag = (categoryId) => tags.find(t => t.tagId === categoryId);
+  const getTag = (categoryId) => tags.find(t => t.id === categoryId);
 
   const formatEventTime = (date) => {
     return new Date(date).toLocaleTimeString('en-US', {
@@ -6990,22 +6126,13 @@ function EventListPanel({
 
   return (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      right: 0,
-      bottom: 0,
-      width: 360,
-      background: theme.premiumGlass || theme.liquidGlass,
-      backdropFilter: theme.glassBlur || 'blur(32px)',
-      WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-      borderLeft: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-      boxShadow: theme.premiumShadow || '-8px 0 32px rgba(0,0,0,0.15)',
+      width: 320,
+      height: '100%',
+      background: isDark ? '#0F172A' : '#FFFFFF',
+      borderLeft: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#E2E8F0'}`,
       display: 'flex',
       flexDirection: 'column',
-      overflow: 'hidden',
-      zIndex: 1000,
-      transform: 'translateX(0)',
-      transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+      overflow: 'hidden'
     }}>
       {/* Header */}
       <div style={{
@@ -7114,15 +6241,15 @@ function EventListPanel({
           {tags.slice(0, 4).map(tag => (
             <button
               key={tag.id}
-              onClick={() => setFilterCategory(tag.tagId)}
+              onClick={() => setFilterCategory(tag.id)}
               style={{
                 padding: '4px 10px',
                 fontSize: 10,
                 fontWeight: 600,
-                background: filterCategory === tag.tagId ? `${tag.color}15` : 'transparent',
-                border: `1px solid ${filterCategory === tag.tagId ? tag.color : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
+                background: filterCategory === tag.id ? `${tag.color}15` : 'transparent',
+                border: `1px solid ${filterCategory === tag.id ? tag.color : isDark ? 'rgba(255,255,255,0.08)' : '#E2E8F0'}`,
                 borderRadius: 6,
-                color: filterCategory === tag.tagId ? tag.color : theme.textSec,
+                color: filterCategory === tag.id ? tag.color : theme.textSec,
                 cursor: 'pointer'
               }}
             >
@@ -7288,7 +6415,7 @@ function EventListPanel({
 function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
   const [form, setForm] = React.useState({
     title: event?.title || '',
-    category: event?.category || (tags[0]?.tagId || ''),
+    category: event?.category || (tags[0]?.id || ''),
     description: event?.description || '',
     location: event?.location || '',
     start: event?.start ? new Date(event.start) : new Date(),
@@ -7370,16 +6497,13 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, 
       <div
         className="scale-enter"
         style={{
-          background: theme.liquidGlass,
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
+          background: isDark ? '#1E293B' : '#FFFFFF',
           borderRadius: 20,
           width: '100%',
           maxWidth: 400,
-          border: `1px solid ${theme.liquidBorder}`,
           boxShadow: isDark
-            ? '0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
-            : '0 24px 48px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.9)',
+            ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+            : '0 24px 48px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.03)',
           position: 'relative'
         }}
       >
@@ -7553,12 +6677,12 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {tags.map(tag => {
                 const IconComponent = getTagIcon(tag, ICONS);
-                const isSelected = form.category === tag.tagId;
+                const isSelected = form.category === tag.id;
                 return (
                   <button
                     key={tag.id}
                     type="button"
-                    onClick={() => setForm({ ...form, category: tag.tagId })}
+                    onClick={() => setForm({ ...form, category: tag.id })}
                     style={{
                       padding: '6px 10px',
                       background: isSelected ? `${tag.color}15` : 'transparent',
@@ -7751,6 +6875,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 
   const settingsGroups = {
     appearance: [
+      { key: 'darkMode', label: 'Dark Mode', desc: 'Switch to dark theme' },
       { key: 'use24Hour', label: '24-Hour Time', desc: 'Use military time format' },
       { key: 'weekStartMon', label: 'Week Starts Monday', desc: 'Change first day of week' }
     ],
@@ -7775,14 +6900,13 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       left: 0,
       right: 0,
       bottom: 0,
-      background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
+      background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.7)' : 'rgba(0, 0, 0, 0.4)',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
       zIndex: 1000,
       padding: 20,
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)'
+      backdropFilter: 'blur(8px)'
     }}>
       <div
         onClick={onClose}
@@ -7797,37 +6921,27 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       <div
         className="scale-enter"
         style={{
-        background: theme.premiumGlass || theme.liquidGlass,
-        backdropFilter: theme.glassBlur || 'blur(32px)',
-        WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
+        background: theme.id === 'dark' ? theme.cardGradient : theme.card,
         borderRadius: 20,
         width: '100%',
-        maxWidth: 520,
+        maxWidth: 480,
         maxHeight: '85vh',
         overflow: 'hidden',
-        boxShadow: theme.premiumShadow || (theme.id === 'dark'
-          ? '0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
-          : '0 24px 48px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9)'),
-        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+        boxShadow: theme.id === 'dark'
+          ? '0 24px 48px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.05)'
+          : '0 24px 48px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.05)',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {/* Header with Premium Glass Effect */}
+        {/* Header */}
         <div style={{
-          padding: '24px 28px',
-          borderBottom: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+          padding: '20px 24px',
+          borderBottom: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: theme.metallicGradient || (theme.id === 'dark'
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-            : 'linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.5))'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: theme.metallicShadow || (theme.id === 'dark'
-            ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9)')
+          background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'transparent'
         }}>
           <div>
             <h3 style={{
@@ -7853,8 +6967,8 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           <button
             onClick={onClose}
             style={{
-              background: theme.metallicGradient || theme.hoverBg,
-              border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
+              background: theme.hoverBg,
+              border: 'none',
               color: theme.textSec,
               cursor: 'pointer',
               padding: 8,
@@ -7862,35 +6976,27 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s',
-              boxShadow: theme.metallicShadow || 'none'
+              transition: 'all 0.2s'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = theme.metallicGradientHover || theme.activeBg;
+              e.currentTarget.style.background = theme.activeBg;
               e.currentTarget.style.color = theme.text;
-              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = theme.metallicGradient || theme.hoverBg;
+              e.currentTarget.style.background = theme.hoverBg;
               e.currentTarget.style.color = theme.textSec;
-              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
             <ICONS.Close width={16} height={16} />
           </button>
         </div>
 
-        {/* Tabs with Premium Glass Effect */}
+        {/* Tabs */}
         <div style={{
           display: 'flex',
-          padding: '16px 28px',
-          gap: 8,
-          borderBottom: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          background: theme.premiumGlass || (theme.id === 'dark'
-            ? 'rgba(255,255,255,0.02)'
-            : 'rgba(0,0,0,0.01)'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)'
+          padding: '12px 24px',
+          gap: 6,
+          borderBottom: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`
         }}>
           {tabs.map(tab => (
             <button
@@ -7898,37 +7004,28 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               onClick={() => setActiveTab(tab.id)}
               style={{
                 flex: 1,
-                padding: '12px 14px',
+                padding: '10px 12px',
                 background: activeTab === tab.id
-                  ? (theme.chromeGradient || `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`)
+                  ? theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'
                   : 'transparent',
-                border: activeTab === tab.id
-                  ? `1px solid ${theme.premiumGlassBorder || theme.accent + '40'}`
-                  : '1px solid transparent',
+                border: 'none',
                 borderRadius: 10,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 gap: 6,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                color: activeTab === tab.id ? theme.accent : theme.textMuted,
-                backdropFilter: activeTab === tab.id ? 'blur(20px)' : 'none',
-                WebkitBackdropFilter: activeTab === tab.id ? 'blur(20px)' : 'none',
-                boxShadow: activeTab === tab.id ? (theme.metallicShadow || `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`) : 'none'
+                transition: 'all 0.2s',
+                color: activeTab === tab.id ? theme.text : theme.textMuted
               }}
               onMouseEnter={e => {
                 if (activeTab !== tab.id) {
-                  e.currentTarget.style.background = theme.metallicGradient || theme.hoverBg;
-                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.liquidBorder;
-                  e.currentTarget.style.transform = 'translateY(-1px)';
+                  e.currentTarget.style.background = theme.hoverBg;
                 }
               }}
               onMouseLeave={e => {
                 if (activeTab !== tab.id) {
                   e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.transform = 'translateY(0)';
                 }
               }}
             >
@@ -8025,272 +7122,61 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             </div>
           )}
 
-          {/* Theme Selector */}
-          {activeTab === 'appearance' && (
-            <div style={{ marginBottom: 28 }}>
-              {/* Section Header with Glass Effect */}
-              <div style={{
-                padding: '10px 14px',
-                background: theme.id === 'dark'
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))'
-                  : 'linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))',
-                backdropFilter: 'blur(10px)',
-                borderRadius: 10,
-                marginBottom: 14,
-                border: `1px solid ${theme.liquidBorder}`,
-                boxShadow: theme.id === 'dark'
-                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-                  : 'inset 0 1px 0 rgba(255,255,255,0.5)'
-              }}>
-                <div style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: theme.text,
-                  letterSpacing: '0.06em',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8
-                }}>
-                  <div style={{
-                    width: 3,
-                    height: 12,
-                    background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                    borderRadius: 2,
-                    boxShadow: `0 0 8px ${theme.accent}40`
-                  }} />
-                  Color Themes
-                </div>
-              </div>
-
-              {/* Compact 3-Column Grid */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 8
-              }}>
-                {Object.values(THEMES).map(themeOption => {
-                  const isSelected = config.selectedTheme === themeOption.id;
-                  return (
-                    <button
-                      key={themeOption.id}
-                      onClick={() => {
-                        setConfig({ ...config, selectedTheme: themeOption.id, darkMode: themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' });
-                      }}
-                      style={{
-                        padding: 10,
-                        background: isSelected
-                          ? `linear-gradient(135deg, ${themeOption.selection}, ${themeOption.hoverBg})`
-                          : theme.id === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                        backdropFilter: 'blur(10px)',
-                        border: isSelected
-                          ? `1.5px solid ${themeOption.accent}`
-                          : `1px solid ${theme.liquidBorder}`,
-                        borderRadius: 10,
-                        cursor: 'pointer',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        boxShadow: isSelected
-                          ? `0 4px 12px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
-                          : 'none'
-                      }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = isSelected
-                          ? `0 6px 16px ${themeOption.accent}30, inset 0 1px 0 rgba(255,255,255,0.1)`
-                          : `0 4px 8px ${themeOption.accent}15`;
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = themeOption.accent + '60';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = isSelected
-                          ? `0 4px 12px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
-                          : 'none';
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = theme.liquidBorder;
-                        }
-                      }}
-                    >
-                      {/* Compact Color Dots */}
-                      <div style={{
-                        display: 'flex',
-                        gap: 4,
-                        marginBottom: 8,
-                        justifyContent: 'center'
-                      }}>
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 6,
-                          background: `linear-gradient(135deg, ${themeOption.accent}, ${themeOption.accentHover})`,
-                          border: `1px solid ${themeOption.liquidBorder}`,
-                          boxShadow: `0 2px 6px ${themeOption.accent}30, inset 0 1px 0 rgba(255,255,255,0.15)`
-                        }} />
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 6,
-                          background: themeOption.bg,
-                          border: `1px solid ${themeOption.border}`,
-                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)'
-                        }} />
-                      </div>
-
-                      {/* Theme Name */}
-                      <div style={{
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: isSelected ? themeOption.accent : theme.text,
-                        textAlign: 'center',
-                        letterSpacing: '0.01em',
-                        lineHeight: 1.3
-                      }}>
-                        {themeOption.name}
-                      </div>
-
-                      {/* Selected Indicator */}
-                      {isSelected && (
-                        <div style={{
-                          position: 'absolute',
-                          top: 6,
-                          right: 6,
-                          width: 16,
-                          height: 16,
-                          borderRadius: '50%',
-                          background: themeOption.accent,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: `0 2px 6px ${themeOption.accent}50`
-                        }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
           {/* Settings List */}
-          <div>
-            {/* Section Header */}
-            <div style={{
-              padding: '10px 14px',
-              background: theme.id === 'dark'
-                ? 'linear-gradient(135deg, rgba(255,255,255,0.05), rgba(255,255,255,0.02))'
-                : 'linear-gradient(135deg, rgba(0,0,0,0.03), rgba(0,0,0,0.01))',
-              backdropFilter: 'blur(10px)',
-              borderRadius: 10,
-              marginBottom: 12,
-              border: `1px solid ${theme.liquidBorder}`,
-              boxShadow: theme.id === 'dark'
-                ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-                : 'inset 0 1px 0 rgba(255,255,255,0.5)'
-            }}>
-              <div style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: theme.text,
-                letterSpacing: '0.06em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 8
-              }}>
-                <div style={{
-                  width: 3,
-                  height: 12,
-                  background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                  borderRadius: 2,
-                  boxShadow: `0 0 8px ${theme.accent}40`
-                }} />
-                {activeTab === 'appearance' ? 'Display Settings' :
-                 activeTab === 'interface' ? 'Interface Options' :
-                 'General Settings'}
-              </div>
-            </div>
-
-            {/* Settings Items with Glass Cards */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 6
-            }}>
-              {settingsGroups[activeTab].map(({ key, label, desc}) => (
-                <div
-                  key={key}
-                  onClick={() => handleToggle(key)}
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    padding: '12px 14px',
-                    borderRadius: 10,
-                    cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                    border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}`,
-                    backdropFilter: 'blur(5px)'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.hoverBg;
-                    e.currentTarget.style.borderColor = theme.liquidBorder;
-                    e.currentTarget.style.transform = 'translateX(2px)';
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)';
-                    e.currentTarget.style.borderColor = theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)';
-                    e.currentTarget.style.transform = 'translateX(0)';
-                  }}
-                >
-                  <div>
-                    <div style={{
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: theme.text,
-                      marginBottom: 2,
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      letterSpacing: '0.01em'
-                    }}>
-                      {label}
-                    </div>
-                    <div style={{
-                      fontSize: 10,
-                      color: theme.textMuted,
-                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                      fontWeight: 500,
-                      letterSpacing: '0.01em',
-                      lineHeight: 1.4
-                    }}>
-                      {desc}
-                    </div>
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 4
+          }}>
+            {settingsGroups[activeTab].map(({ key, label, desc }) => (
+              <div
+                key={key}
+                onClick={() => handleToggle(key)}
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 16px',
+                  borderRadius: 12,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  background: 'transparent'
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = theme.hoverBg}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <div>
+                  <div style={{
+                    fontSize: 13,
+                    fontWeight: 600,
+                    color: theme.text,
+                    marginBottom: 3,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    letterSpacing: '0.01em'
+                  }}>
+                    {label}
                   </div>
-                  <ToggleSwitch value={config[key]} label={label} />
+                  <div style={{
+                    fontSize: 11,
+                    color: theme.textMuted,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 500,
+                    letterSpacing: '0.01em'
+                  }}>
+                    {desc}
+                  </div>
                 </div>
-              ))}
-            </div>
+                <ToggleSwitch value={config[key]} label={label} />
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Footer with Premium Metallic Effect */}
+        {/* Footer */}
         <div style={{
-          padding: '18px 28px',
-          borderTop: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          background: theme.metallicGradient || (theme.id === 'dark'
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-            : 'linear-gradient(135deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03))'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: theme.metallicShadow || (theme.id === 'dark'
-            ? 'inset 0 1px 0 rgba(255,255,255,0.08)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9)')
+          padding: '16px 24px',
+          borderTop: `1px solid ${theme.id === 'dark' ? theme.subtleBorder : theme.border}`,
+          background: theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'
         }}>
           <div style={{
             display: 'flex',
@@ -8298,34 +7184,30 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             justifyContent: 'space-between'
           }}>
             <div>
-              <div style={{
-                fontFamily: theme.fontDisplay,
-                fontSize: 13,
-                fontWeight: 600,
-                color: theme.text,
-                letterSpacing: '0.01em',
-                marginBottom: 2
+              <div className="serif" style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: theme.textSec,
+                letterSpacing: '0.01em'
               }}>
                 Timeline OS
               </div>
               <div style={{
-                fontSize: 11,
-                color: theme.textSec,
+                fontSize: 10,
+                color: theme.textMuted,
                 fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                 fontWeight: 500
               }}>
                 v{APP_META.version}
               </div>
             </div>
-            <div style={{
-              fontFamily: theme.fontDisplay,
+            <div className="serif" style={{
               fontSize: 11,
-              color: theme.textSec,
+              color: theme.textMuted,
               fontStyle: 'italic',
-              maxWidth: 220,
+              maxWidth: 200,
               textAlign: 'right',
-              letterSpacing: '0.01em',
-              lineHeight: 1.4
+              letterSpacing: '0.01em'
             }}>
               {APP_META.motto}
             </div>
@@ -8362,17 +7244,15 @@ bottom: 0
 }}
 />
   <div style={{
-    background: theme.liquidGlass,
-    backdropFilter: 'blur(20px)',
-    WebkitBackdropFilter: 'blur(20px)',
-    borderRadius: 20,
+    background: theme.card,
+    borderRadius: 16,
     width: '100%',
     maxWidth: 540,
     maxHeight: '90vh',
     overflow: 'auto',
-    boxShadow: theme.liquidShadow,
+    boxShadow: theme.shadowLg,
     position: 'relative',
-    border: `1px solid ${theme.liquidBorder}`
+    border: `1px solid ${theme.border}`
   }}>
     <div style={{
       padding: '20px',

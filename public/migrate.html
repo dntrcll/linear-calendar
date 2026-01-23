@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Migrate Firebase to Supabase</title>
+  <style>
+    body {
+      font-family: monospace;
+      padding: 20px;
+      background: #1a1a1a;
+      color: #00ff00;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      margin: 10px;
+      cursor: pointer;
+    }
+    #output {
+      white-space: pre-wrap;
+      margin-top: 20px;
+      border: 1px solid #00ff00;
+      padding: 10px;
+      max-height: 600px;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>Firebase → Supabase Migration</h1>
+  <div id="auth-section">
+    <button onclick="loginWithGoogle()" style="background: #4285f4; color: white;">Login with Google</button>
+    <p id="user-info"></p>
+  </div>
+  <div id="migration-buttons" style="display: none;">
+    <button onclick="runMigration(true)">DRY RUN (test only)</button>
+    <button onclick="runMigration(false)" style="background: #ff4444; color: white;">MIGRATE FOR REAL</button>
+  </div>
+  <div id="output"></div>
+
+  <script type="module">
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+    import { getFirestore, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm';
+
+    const output = document.getElementById('output');
+    const userInfo = document.getElementById('user-info');
+    const migrationButtons = document.getElementById('migration-buttons');
+
+    function log(msg) {
+      output.textContent += msg + '\n';
+      console.log(msg);
+    }
+
+    // Check if user is already logged in
+    async function checkAuth() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        userInfo.textContent = `Logged in as: ${user.email}`;
+        migrationButtons.style.display = 'block';
+        log('✅ Ready! Click a button above to start migration.');
+      } else {
+        log('Please log in with Google to continue.');
+      }
+    }
+
+    // Login with Google
+    window.loginWithGoogle = async function() {
+      log('Opening Google login...');
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: window.location.href
+        }
+      });
+      if (error) {
+        log(`❌ Login error: ${error.message}`);
+      }
+    };
+
+    // Check auth on load
+    checkAuth();
+
+    // Listen for auth changes
+    supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN') {
+        checkAuth();
+      }
+    });
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyD98eOILfbS-IYGFtjzBUki2JhokmNhtCQ",
+      authDomain: "timeline-os-45bf7.firebaseapp.com",
+      projectId: "timeline-os-45bf7",
+      storageBucket: "timeline-os-45bf7.firebasestorage.app",
+      messagingSenderId: "1032738943862",
+      appId: "1:1032738943862:web:1e301f89adcb6ff0234057"
+    };
+
+    // Supabase config
+    const supabaseUrl = 'https://zywodfjarbppgdgmvfxw.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp5d29kZmphcmJwcGdkZ212Znh3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4MjQxMTYsImV4cCI6MjA4NDQwMDExNn0.jzU7cexpgG6lgdeI3vQIP8IGEGXiJ3P364osBclelMs';
+
+    // Initialize
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    window.runMigration = async function(dryRun) {
+      output.textContent = '';
+      log('🚀 Starting migration...');
+      log(`Mode: ${dryRun ? 'DRY RUN (no data will be written)' : 'ACTUAL MIGRATION'}`);
+
+      // Get current user from Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        log('❌ ERROR: Not logged in! Click "Login with Google" first.');
+        return;
+      }
+
+      log(`✅ User: ${user.email}`);
+      const userId = user.id;
+
+      const results = {
+        tags: { total: 0, success: 0, failed: 0 },
+        events: { total: 0, success: 0, failed: 0 },
+        errors: []
+      };
+
+      try {
+        // Step 1: Migrate Tags
+        log('\n📋 Step 1: Migrating Tags...');
+
+        const tagsQuery = query(collection(db, 'tags'), where('userId', '==', userId));
+        const tagsSnapshot = await getDocs(tagsQuery);
+
+        results.tags.total = tagsSnapshot.size;
+        log(`Found ${tagsSnapshot.size} tags in Firebase`);
+
+        const tagMapping = {};
+
+        for (const tagDoc of tagsSnapshot.docs) {
+          const firebaseTag = tagDoc.data();
+
+          try {
+            if (dryRun) {
+              log(`  [DRY RUN] Would migrate: ${firebaseTag.name}`);
+              results.tags.success++;
+            } else {
+              const { data: existingTag } = await supabase
+                .from('tags')
+                .select('id, tag_id')
+                .eq('user_id', userId)
+                .eq('tag_id', firebaseTag.tagId)
+                .eq('context', firebaseTag.context)
+                .maybeSingle();
+
+              if (existingTag) {
+                log(`  ℹ️  Tag '${firebaseTag.name}' already exists`);
+                tagMapping[firebaseTag.tagId] = existingTag.id;
+                results.tags.success++;
+              } else {
+                const { data: newTag, error } = await supabase
+                  .from('tags')
+                  .insert({
+                    user_id: userId,
+                    tag_id: firebaseTag.tagId,
+                    name: firebaseTag.name,
+                    icon_name: firebaseTag.iconName,
+                    context: firebaseTag.context,
+                    color: firebaseTag.color,
+                    bg_color: firebaseTag.bgColor,
+                    text_color: firebaseTag.textColor,
+                    border_color: firebaseTag.borderColor
+                  })
+                  .select()
+                  .single();
+
+                if (error) throw error;
+
+                tagMapping[firebaseTag.tagId] = newTag.id;
+                log(`  ✅ Migrated: ${firebaseTag.name}`);
+                results.tags.success++;
+              }
+            }
+          } catch (error) {
+            log(`  ❌ Failed: ${firebaseTag.name} - ${error.message}`);
+            results.tags.failed++;
+            results.errors.push({ type: 'tag', data: firebaseTag, error: error.message });
+          }
+        }
+
+        // Step 2: Migrate Events
+        log('\n📅 Step 2: Migrating Events...');
+
+        const eventsQuery = query(collection(db, 'events'), where('uid', '==', userId));
+        const eventsSnapshot = await getDocs(eventsQuery);
+
+        results.events.total = eventsSnapshot.size;
+        log(`Found ${eventsSnapshot.size} events in Firebase`);
+
+        for (const eventDoc of eventsSnapshot.docs) {
+          const firebaseEvent = eventDoc.data();
+
+          try {
+            if (dryRun) {
+              log(`  [DRY RUN] Would migrate: ${firebaseEvent.title}`);
+              results.events.success++;
+            } else {
+              const tagUuid = tagMapping[firebaseEvent.category];
+
+              if (!tagUuid) {
+                throw new Error(`Tag not found: ${firebaseEvent.category}`);
+              }
+
+              const startTime = firebaseEvent.startTime?.toDate ?
+                firebaseEvent.startTime.toDate().toISOString() :
+                new Date(firebaseEvent.startTime).toISOString();
+
+              const endTime = firebaseEvent.endTime?.toDate ?
+                firebaseEvent.endTime.toDate().toISOString() :
+                new Date(firebaseEvent.endTime).toISOString();
+
+              const { data: existingEvent } = await supabase
+                .from('events')
+                .select('id')
+                .eq('user_id', userId)
+                .eq('title', firebaseEvent.title)
+                .eq('start_time', startTime)
+                .maybeSingle();
+
+              if (existingEvent) {
+                log(`  ℹ️  Event '${firebaseEvent.title}' already exists`);
+                results.events.success++;
+              } else {
+                const { error } = await supabase
+                  .from('events')
+                  .insert({
+                    user_id: userId,
+                    title: firebaseEvent.title,
+                    description: firebaseEvent.description || '',
+                    location: firebaseEvent.location || '',
+                    tag_id: tagUuid,
+                    context: firebaseEvent.context,
+                    start_time: startTime,
+                    end_time: endTime,
+                    deleted: firebaseEvent.deleted || false,
+                    deleted_at: firebaseEvent.deletedAt?.toDate ?
+                      firebaseEvent.deletedAt.toDate().toISOString() :
+                      null
+                  });
+
+                if (error) throw error;
+
+                log(`  ✅ Migrated: ${firebaseEvent.title}`);
+                results.events.success++;
+              }
+            }
+          } catch (error) {
+            log(`  ❌ Failed: ${firebaseEvent.title} - ${error.message}`);
+            results.events.failed++;
+            results.errors.push({ type: 'event', data: firebaseEvent, error: error.message });
+          }
+        }
+
+        // Summary
+        log('\n' + '='.repeat(60));
+        log('📊 MIGRATION SUMMARY');
+        log('='.repeat(60));
+        log(`Tags: ${results.tags.success}/${results.tags.total} successful, ${results.tags.failed} failed`);
+        log(`Events: ${results.events.success}/${results.events.total} successful, ${results.events.failed} failed`);
+
+        if (results.errors.length > 0) {
+          log('\n❌ Errors:');
+          results.errors.forEach((err, idx) => {
+            log(`  ${idx + 1}. [${err.type}] ${err.error}`);
+          });
+        }
+
+        if (dryRun) {
+          log('\n⚠️  DRY RUN complete - no data was written');
+        } else {
+          log('\n✅ MIGRATION COMPLETE!');
+          log('Close this page and refresh your app to see the migrated data.');
+        }
+
+      } catch (error) {
+        log(`\n❌ MIGRATION FAILED: ${error.message}`);
+        console.error(error);
+      }
+    };
+  </script>
+</body>
+</html>
