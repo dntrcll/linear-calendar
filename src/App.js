@@ -8078,7 +8078,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderRadius: 16,
-              marginBottom: 20,
+              marginBottom: 16,
               display: 'flex',
               alignItems: 'center',
               gap: 14,
@@ -8187,48 +8187,12 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 
           {/* Theme Selector */}
           {activeTab === 'appearance' && (
-            <div style={{ marginBottom: 20 }}>
-              {/* Section Header with Premium Effect */}
-              <div style={{
-                padding: '12px 16px',
-                background: theme.metallicGradient || (theme.id === 'dark'
-                  ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-                  : 'linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))'),
-                backdropFilter: 'blur(20px)',
-                WebkitBackdropFilter: 'blur(20px)',
-                borderRadius: 12,
-                marginBottom: 16,
-                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-                boxShadow: theme.metallicShadow || (theme.id === 'dark'
-                  ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)'
-                  : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)')
-              }}>
-                <div style={{
-                  fontSize: 11,
-                  fontWeight: 700,
-                  color: theme.text,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10
-                }}>
-                  <div style={{
-                    width: 4,
-                    height: 14,
-                    background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                    borderRadius: 2,
-                    boxShadow: `0 0 10px ${theme.accent}50, inset 0 1px 0 rgba(255,255,255,0.2)`
-                  }} />
-                  Color Themes
-                </div>
-              </div>
-
-              {/* Compact 3-Column Grid */}
+            <div style={{ marginBottom: 16 }}>
+              {/* Compact 4-Column Grid for Themes */}
               <div style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
-                gap: 8
+                gridTemplateColumns: 'repeat(4, 1fr)',
+                gap: 6
               }}>
                 {Object.values(THEMES).map(themeOption => {
                   const isSelected = config.selectedTheme === themeOption.id;
@@ -8239,7 +8203,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         setConfig({ ...config, selectedTheme: themeOption.id, darkMode: themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' });
                       }}
                       style={{
-                        padding: 10,
+                        padding: 8,
                         background: isSelected
                           ? `linear-gradient(135deg, ${themeOption.selection}, ${themeOption.hoverBg})`
                           : theme.id === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
@@ -8247,13 +8211,13 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         border: isSelected
                           ? `1.5px solid ${themeOption.accent}`
                           : `1px solid ${theme.liquidBorder}`,
-                        borderRadius: 10,
+                        borderRadius: 8,
                         cursor: 'pointer',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                         position: 'relative',
                         overflow: 'hidden',
                         boxShadow: isSelected
-                          ? `0 4px 12px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
+                          ? `0 3px 10px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
                           : 'none'
                       }}
                       onMouseEnter={e => {
@@ -8275,51 +8239,45 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         }
                       }}
                     >
-                      {/* Compact Color Dots */}
+                      {/* Single Large Color Circle */}
                       <div style={{
                         display: 'flex',
-                        gap: 4,
-                        marginBottom: 8,
-                        justifyContent: 'center'
+                        justifyContent: 'center',
+                        marginBottom: 6
                       }}>
                         <div style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 6,
+                          width: 28,
+                          height: 28,
+                          borderRadius: '50%',
                           background: `linear-gradient(135deg, ${themeOption.accent}, ${themeOption.accentHover})`,
-                          border: `1px solid ${themeOption.liquidBorder}`,
-                          boxShadow: `0 2px 6px ${themeOption.accent}30, inset 0 1px 0 rgba(255,255,255,0.15)`
-                        }} />
-                        <div style={{
-                          width: 18,
-                          height: 18,
-                          borderRadius: 6,
-                          background: themeOption.bg,
-                          border: `1px solid ${themeOption.border}`,
-                          boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.1)'
+                          border: `2px solid ${isSelected ? themeOption.accent : themeOption.liquidBorder}`,
+                          boxShadow: isSelected
+                            ? `0 3px 10px ${themeOption.accent}40, inset 0 1px 0 rgba(255,255,255,0.2)`
+                            : `0 2px 6px ${themeOption.accent}20, inset 0 1px 0 rgba(255,255,255,0.15)`,
+                          transition: 'all 0.2s'
                         }} />
                       </div>
 
                       {/* Theme Name */}
                       <div style={{
-                        fontSize: 11,
+                        fontSize: 10,
                         fontWeight: 600,
                         color: isSelected ? themeOption.accent : theme.text,
                         textAlign: 'center',
                         letterSpacing: '0.01em',
-                        lineHeight: 1.3
+                        lineHeight: 1.2
                       }}>
                         {themeOption.name}
                       </div>
 
-                      {/* Selected Indicator */}
+                      {/* Selected Indicator - Checkmark inside circle */}
                       {isSelected && (
                         <div style={{
                           position: 'absolute',
-                          top: 6,
-                          right: 6,
-                          width: 16,
-                          height: 16,
+                          top: 4,
+                          right: 4,
+                          width: 14,
+                          height: 14,
                           borderRadius: '50%',
                           background: themeOption.accent,
                           display: 'flex',
@@ -8327,7 +8285,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                           justifyContent: 'center',
                           boxShadow: `0 2px 6px ${themeOption.accent}50`
                         }}>
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"></polyline>
                           </svg>
                         </div>
@@ -8341,49 +8299,26 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 
           {/* Settings List */}
           <div>
-            {/* Section Header with Premium Effect */}
+            {/* Compact Section Title */}
             <div style={{
-              padding: '12px 16px',
-              background: theme.metallicGradient || (theme.id === 'dark'
-                ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-                : 'linear-gradient(135deg, rgba(0,0,0,0.04), rgba(0,0,0,0.02))'),
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: 12,
-              marginBottom: 14,
-              border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-              boxShadow: theme.metallicShadow || (theme.id === 'dark'
-                ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.08)'
-                : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)')
+              fontSize: 10,
+              fontWeight: 700,
+              color: theme.textMuted,
+              letterSpacing: '0.1em',
+              textTransform: 'uppercase',
+              marginBottom: 10,
+              paddingLeft: 4
             }}>
-              <div style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: theme.text,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: 10
-              }}>
-                <div style={{
-                  width: 4,
-                  height: 14,
-                  background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                  borderRadius: 2,
-                  boxShadow: `0 0 10px ${theme.accent}50, inset 0 1px 0 rgba(255,255,255,0.2)`
-                }} />
-                {activeTab === 'appearance' ? 'Display Settings' :
-                 activeTab === 'interface' ? 'Interface Options' :
-                 'General Settings'}
-              </div>
+              {activeTab === 'appearance' ? 'Display' :
+               activeTab === 'interface' ? 'Interface' :
+               'Features'}
             </div>
 
-            {/* Settings Items with Premium Glass Cards */}
+            {/* Settings Items - Compact List */}
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 8
+              gap: 6
             }}>
               {settingsGroups[activeTab].map(({ key, label, desc, icon }) => (
                 <div
@@ -8393,8 +8328,8 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '14px 16px',
-                    borderRadius: 12,
+                    padding: '12px 14px',
+                    borderRadius: 10,
                     cursor: 'pointer',
                     transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     background: config[key]
@@ -8424,19 +8359,19 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                       : 'none';
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
                     {/* Icon Container */}
                     <div style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 11,
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
                       background: config[key]
                         ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)`)
                         : (theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)')),
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: config[key] ? '#FFFFFF' : theme.text,
+                      color: config[key] ? '#FFFFFF' : theme.textSec,
                       flexShrink: 0,
                       border: `1.5px solid ${config[key] ? (theme.accent + '50') : (theme.premiumGlassBorder || theme.liquidBorder)}`,
                       boxShadow: config[key]
