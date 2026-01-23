@@ -5880,12 +5880,14 @@ width: "100%",
 maxWidth: 1400,
 margin: "0 auto",
 padding: '10px 16px',
-background: theme.premiumGlass || theme.liquidGlass,
-backdropFilter: 'blur(32px)',
-WebkitBackdropFilter: 'blur(32px)',
-border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+background: theme.id === 'dark'
+  ? 'linear-gradient(135deg, #1a1a1d 0%, #18181b 100%)'
+  : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
+border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
 borderRadius: 20,
-boxShadow: theme.premiumShadow || theme.liquidShadow,
+boxShadow: theme.id === 'dark'
+  ? '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
+  : '0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
 display: 'flex',
 alignItems: 'center',
 gap: 16,
