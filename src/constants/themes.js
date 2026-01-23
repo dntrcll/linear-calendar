@@ -16,7 +16,7 @@ export const PALETTE = {
 export const THEMES = {
   light: {
     id: 'light',
-    name: 'Default',
+    name: 'Sky',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FAFAFA",
@@ -61,7 +61,7 @@ export const THEMES = {
   },
   dark: {
     id: 'dark',
-    name: 'Graphite',
+    name: 'Charcoal',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#09090B",
@@ -72,11 +72,11 @@ export const THEMES = {
     textMuted: "#6B6B76",
     border: "#2A2A30",
     borderLight: "#1A1A1F",
-    accent: "#8B5CF6",
-    accentHover: "#A78BFA",
+    accent: "#06B6D4",
+    accentHover: "#22D3EE",
     familyAccent: "#10B981",
     familyAccentHover: "#34D399",
-    selection: "rgba(139, 92, 246, 0.18)",
+    selection: "rgba(6, 182, 212, 0.18)",
     shadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)",
     shadowLg: "0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6)",
     glass: "rgba(15, 15, 18, 0.9)",
@@ -84,8 +84,8 @@ export const THEMES = {
     manifestoLine: "#2A2A30",
     hoverBg: "rgba(255, 255, 255, 0.05)",
     activeBg: "rgba(255, 255, 255, 0.1)",
-    pulse: "rgba(139, 92, 246, 0.25)",
-    glow: "0 0 20px rgba(139, 92, 246, 0.35)",
+    pulse: "rgba(6, 182, 212, 0.25)",
+    glow: "0 0 20px rgba(6, 182, 212, 0.35)",
     cardGradient: "linear-gradient(145deg, #1C1C20 0%, #18181B 100%)",
     subtleBorder: "rgba(255, 255, 255, 0.06)",
     liquidGlass: "rgba(24, 24, 27, 0.75)",
@@ -94,7 +94,7 @@ export const THEMES = {
     // Premium Metallic & Glass Effects
     metallicGradient: "linear-gradient(135deg, #2A2A2E 0%, #18181B 50%, #2A2A2E 100%)",
     metallicGradientHover: "linear-gradient(135deg, #323236 0%, #1F1F23 50%, #323236 100%)",
-    metallicAccent: "linear-gradient(135deg, #A78BFA 0%, #8B5CF6 50%, #7C3AED 100%)",
+    metallicAccent: "linear-gradient(135deg, #22D3EE 0%, #06B6D4 50%, #0891B2 100%)",
     chromeGradient: "linear-gradient(135deg, #1A1A1F 0%, #27272A 25%, #3F3F46 50%, #27272A 75%, #1A1A1F 100%)",
     premiumGlass: "rgba(24, 24, 27, 0.6)",
     premiumGlassBorder: "rgba(255, 255, 255, 0.12)",
@@ -106,7 +106,7 @@ export const THEMES = {
   },
   midnight: {
     id: 'midnight',
-    name: 'Midnight',
+    name: 'Sapphire',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#0A0E1A",
@@ -151,7 +151,7 @@ export const THEMES = {
   },
   forest: {
     id: 'forest',
-    name: 'Forest',
+    name: 'Jade',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#0A120D",
@@ -196,7 +196,7 @@ export const THEMES = {
   },
   sunset: {
     id: 'sunset',
-    name: 'Sunset',
+    name: 'Coral',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FFF7ED",
@@ -241,7 +241,7 @@ export const THEMES = {
   },
   lavender: {
     id: 'lavender',
-    name: 'Lavender Dream',
+    name: 'Amethyst',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FAF5FF",
@@ -286,7 +286,7 @@ export const THEMES = {
   },
   barbie: {
     id: 'barbie',
-    name: 'Barbie',
+    name: 'Orchid',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FFF5FA",
@@ -331,7 +331,7 @@ export const THEMES = {
   },
   arctic: {
     id: 'arctic',
-    name: 'Arctic',
+    name: 'Platinum',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#F8FAFB",
@@ -376,7 +376,7 @@ export const THEMES = {
   },
   monochrome: {
     id: 'monochrome',
-    name: 'Monochrome',
+    name: 'Noir',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FAFAFA",
@@ -421,7 +421,7 @@ export const THEMES = {
   },
   golden: {
     id: 'golden',
-    name: 'Golden Hour',
+    name: 'Amber',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FFFBEB",
@@ -465,7 +465,7 @@ export const THEMES = {
   },
   emerald: {
     id: 'emerald',
-    name: 'Emerald',
+    name: 'Malachite',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#F0FDFA",
@@ -509,7 +509,7 @@ export const THEMES = {
   },
   rose: {
     id: 'rose',
-    name: 'Rose',
+    name: 'Ruby',
     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
     fontDisplay: "'Playfair Display', Georgia, serif",
     bg: "#FFF1F2",
