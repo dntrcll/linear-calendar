@@ -5886,8 +5886,8 @@ background: theme.id === 'dark'
 border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
 borderRadius: 20,
 boxShadow: theme.id === 'dark'
-  ? '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
-  : '0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)',
+  ? 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.2)'
+  : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)',
 display: 'flex',
 alignItems: 'center',
 gap: 16,
