@@ -8239,11 +8239,12 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         }
                       }}
                     >
-                      {/* Single Large Color Circle */}
+                      {/* Single Large Color Circle with Mode Badge */}
                       <div style={{
                         display: 'flex',
                         justifyContent: 'center',
-                        marginBottom: 6
+                        marginBottom: 6,
+                        position: 'relative'
                       }}>
                         <div style={{
                           width: 28,
@@ -8254,37 +8255,59 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                           boxShadow: isSelected
                             ? `0 3px 10px ${themeOption.accent}40, inset 0 1px 0 rgba(255,255,255,0.2)`
                             : `0 2px 6px ${themeOption.accent}20, inset 0 1px 0 rgba(255,255,255,0.15)`,
-                          transition: 'all 0.2s'
-                        }} />
+                          transition: 'all 0.2s',
+                          position: 'relative'
+                        }}>
+                          {/* Mode Indicator Badge */}
+                          <div style={{
+                            position: 'absolute',
+                            bottom: -1,
+                            right: -1,
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            background: themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest'
+                              ? 'rgba(0, 0, 0, 0.7)'
+                              : 'rgba(255, 255, 255, 0.95)',
+                            border: `1.5px solid ${themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest'
+                              ? 'rgba(255, 255, 255, 0.4)'
+                              : 'rgba(0, 0, 0, 0.2)'}`,
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                          }}>
+                            {themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' ? (
+                              // Filled circle for dark mode
+                              <div style={{
+                                width: 4,
+                                height: 4,
+                                borderRadius: '50%',
+                                background: 'rgba(255, 255, 255, 0.9)'
+                              }} />
+                            ) : (
+                              // Hollow circle for light mode
+                              <div style={{
+                                width: 5,
+                                height: 5,
+                                borderRadius: '50%',
+                                border: '1px solid rgba(0, 0, 0, 0.5)'
+                              }} />
+                            )}
+                          </div>
+                        </div>
                       </div>
 
-                      {/* Theme Name with Mode Indicator */}
+                      {/* Theme Name */}
                       <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: 3
+                        fontSize: 10,
+                        fontWeight: 600,
+                        color: isSelected ? themeOption.accent : theme.text,
+                        textAlign: 'center',
+                        letterSpacing: '0.01em',
+                        lineHeight: 1.2
                       }}>
-                        <div style={{
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: isSelected ? themeOption.accent : theme.text,
-                          textAlign: 'center',
-                          letterSpacing: '0.01em',
-                          lineHeight: 1.2
-                        }}>
-                          {themeOption.name}
-                        </div>
-                        <div style={{
-                          fontSize: 8,
-                          fontWeight: 500,
-                          color: theme.textMuted,
-                          textTransform: 'uppercase',
-                          letterSpacing: '0.05em',
-                          opacity: 0.6
-                        }}>
-                          {themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' ? '● Dark' : '○ Light'}
-                        </div>
+                        {themeOption.name}
                       </div>
 
                       {/* Selected Indicator - Checkmark inside circle */}
