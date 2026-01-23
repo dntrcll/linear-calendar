@@ -5873,70 +5873,123 @@ gap: 16,
 overflow: "auto",
 paddingBottom: 12
 }}>
-{/* Year Progress Indicator */}
+{/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
 <div style={{
 width: "100%",
 maxWidth: 1400,
 margin: "0 auto",
-padding: '16px 20px',
-background: theme.premiumGlass || theme.liquidGlass,
-backdropFilter: 'blur(32px)',
-WebkitBackdropFilter: 'blur(32px)',
-border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-borderRadius: 14,
-boxShadow: theme.premiumShadow || theme.liquidShadow
-}}>
-<div style={{
+padding: '10px 16px',
+background: theme.id === 'dark'
+? 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0.02) 100%)'
+: 'linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%)',
+backdropFilter: 'blur(40px)',
+WebkitBackdropFilter: 'blur(40px)',
+border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.08)'}`,
+borderRadius: 20,
+boxShadow: theme.id === 'dark'
+? '0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.2)'
+: '0 8px 32px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.05)',
 display: 'flex',
 alignItems: 'center',
-justifyContent: 'space-between',
-marginBottom: 12
+gap: 16,
+position: 'relative',
+overflow: 'hidden'
 }}>
-<div>
+{/* Subtle gradient overlay for depth */}
+<div style={{
+position: 'absolute',
+inset: 0,
+background: theme.id === 'dark'
+? 'radial-gradient(circle at top left, rgba(255,255,255,0.03) 0%, transparent 50%)'
+: 'radial-gradient(circle at top left, rgba(255,255,255,0.6) 0%, transparent 50%)',
+pointerEvents: 'none'
+}} />
+
+{/* Left side - Text content */}
+<div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
+<div style={{
+display: 'flex',
+alignItems: 'baseline',
+gap: 8,
+marginBottom: 3
+}}>
 <h3 style={{
-fontSize: 16,
-fontWeight: 600,
+fontSize: 14,
+fontWeight: 700,
 fontFamily: theme.fontDisplay,
 color: theme.text,
-marginBottom: 2,
-letterSpacing: '-0.01em'
+letterSpacing: '-0.02em',
+lineHeight: 1
 }}>
 {year} Progress
 </h3>
-<p style={{
-fontSize: 11,
-color: theme.textSec,
-fontFamily: theme.fontFamily
+<span style={{
+fontSize: 10,
+fontWeight: 600,
+color: theme.textMuted,
+fontFamily: theme.fontFamily,
+letterSpacing: '0.02em'
 }}>
-{daysElapsed} days complete • {daysRemaining} days remaining
-</p>
+{daysElapsed}d • {daysRemaining}d left
+</span>
 </div>
+
+{/* Premium Progress Bar */}
 <div style={{
-fontSize: 20,
-fontWeight: 700,
-fontFamily: 'SF Mono, monospace',
-background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-WebkitBackgroundClip: 'text',
-WebkitTextFillColor: 'transparent',
-backgroundClip: 'text'
-}}>
-{yearProgress.toFixed(1)}%
-</div>
-</div>
-<div style={{
-height: 8,
-background: theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-borderRadius: 4,
-overflow: 'hidden'
+height: 6,
+background: theme.id === 'dark'
+? 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)'
+: 'linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.04) 100%)',
+borderRadius: 10,
+overflow: 'hidden',
+position: 'relative',
+boxShadow: theme.id === 'dark'
+? 'inset 0 1px 2px rgba(0,0,0,0.3)'
+: 'inset 0 1px 2px rgba(0,0,0,0.1)'
 }}>
 <div style={{
 width: `${yearProgress}%`,
 height: '100%',
-background: theme.metallicAccent || accentColor,
-borderRadius: 4,
-transition: 'width 0.5s ease'
+background: theme.metallicAccent || `linear-gradient(90deg, ${accentColor}, ${accentColor}dd, ${accentColor}aa)`,
+borderRadius: 10,
+transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+boxShadow: `0 0 12px ${accentColor}40, inset 0 1px 0 rgba(255,255,255,0.3)`,
+position: 'relative'
+}}>
+{/* Shimmer effect */}
+<div style={{
+position: 'absolute',
+inset: 0,
+background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+backgroundSize: '200% 100%',
+animation: yearProgress > 0 ? 'shimmer 2s infinite' : 'none'
 }} />
+</div>
+</div>
+</div>
+
+{/* Right side - Premium percentage badge */}
+<div style={{
+padding: '6px 14px',
+background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+borderRadius: 12,
+boxShadow: `0 4px 16px ${accentColor}40, inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)`,
+border: `1px solid ${accentColor}30`,
+position: 'relative',
+zIndex: 1
+}}>
+<div style={{
+fontSize: 16,
+fontWeight: 800,
+fontFamily: 'SF Mono, monospace',
+color: '#FFFFFF',
+letterSpacing: '-0.02em',
+textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+lineHeight: 1
+}}>
+{yearProgress.toFixed(1)}%
+</div>
 </div>
 </div>
 )}
