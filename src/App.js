@@ -9781,7 +9781,7 @@ function MetricsView({ theme, accentColor, user }) {
       {showAddMetric && (
         <div style={{
           background: isDark ? '#1a1a1d' : '#ffffff',
-          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
           borderRadius: 16,
           padding: 20,
           boxShadow: isDark
