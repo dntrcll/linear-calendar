@@ -2542,7 +2542,7 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus', 'life'].map(mode => (
+            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -2726,6 +2726,12 @@ function TimelineOS() {
               <LifeView
                 theme={theme}
                 accentColor={accentColor}
+              />
+            ) : viewMode === 'metrics' ? (
+              <MetricsView
+                theme={theme}
+                accentColor={accentColor}
+                user={user}
               />
             ) : null}
           </div>
@@ -9551,6 +9557,667 @@ bottom: 0
   </div>
 </div>
 );
+}
+
+// MetricsView Component - Track and visualize life metrics
+function MetricsView({ theme, accentColor, user }) {
+  const [metrics, setMetrics] = React.useState([]);
+  const [timeRange, setTimeRange] = React.useState('month'); // week, month, year, all
+  const [selectedMetrics, setSelectedMetrics] = React.useState(['sleep', 'weight', 'workouts']);
+  const [showAddMetric, setShowAddMetric] = React.useState(false);
+  const [newMetric, setNewMetric] = React.useState({ date: new Date().toISOString().split('T')[0], sleep: '', weight: '', workouts: '' });
+  const [loading, setLoading] = React.useState(true);
+
+  const isDark = theme.id === 'dark';
+
+  // Load metrics from Supabase
+  React.useEffect(() => {
+    if (!user) return;
+
+    const loadMetrics = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('life_metrics')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('date', { ascending: true });
+
+        if (error) throw error;
+        setMetrics(data || []);
+      } catch (error) {
+        console.error('Error loading metrics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadMetrics();
+  }, [user]);
+
+  // Save metric to database
+  const saveMetric = async () => {
+    if (!user || !newMetric.date) return;
+
+    try {
+      const metricData = {
+        user_id: user.id,
+        date: newMetric.date,
+        sleep_hours: parseFloat(newMetric.sleep) || null,
+        weight_kg: parseFloat(newMetric.weight) || null,
+        workouts_count: parseInt(newMetric.workouts) || null
+      };
+
+      const { data, error } = await supabase
+        .from('life_metrics')
+        .upsert(metricData, { onConflict: 'user_id,date' })
+        .select();
+
+      if (error) throw error;
+
+      // Update local state
+      setMetrics(prev => {
+        const existing = prev.findIndex(m => m.date === newMetric.date);
+        if (existing >= 0) {
+          const updated = [...prev];
+          updated[existing] = data[0];
+          return updated;
+        }
+        return [...prev, data[0]].sort((a, b) => new Date(a.date) - new Date(b.date));
+      });
+
+      // Reset form
+      setNewMetric({ date: new Date().toISOString().split('T')[0], sleep: '', weight: '', workouts: '' });
+      setShowAddMetric(false);
+    } catch (error) {
+      console.error('Error saving metric:', error);
+    }
+  };
+
+  // Filter metrics by time range
+  const filteredMetrics = React.useMemo(() => {
+    const now = new Date();
+    const filtered = metrics.filter(m => {
+      const metricDate = new Date(m.date);
+      switch (timeRange) {
+        case 'week':
+          return (now - metricDate) / (1000 * 60 * 60 * 24) <= 7;
+        case 'month':
+          return (now - metricDate) / (1000 * 60 * 60 * 24) <= 30;
+        case 'year':
+          return (now - metricDate) / (1000 * 60 * 60 * 24) <= 365;
+        default:
+          return true;
+      }
+    });
+    return filtered;
+  }, [metrics, timeRange]);
+
+  // Calculate stats
+  const stats = React.useMemo(() => {
+    if (filteredMetrics.length === 0) return null;
+
+    const sleepData = filteredMetrics.filter(m => m.sleep_hours).map(m => m.sleep_hours);
+    const weightData = filteredMetrics.filter(m => m.weight_kg).map(m => m.weight_kg);
+    const workoutData = filteredMetrics.filter(m => m.workouts_count).map(m => m.workouts_count);
+
+    return {
+      avgSleep: sleepData.length > 0 ? (sleepData.reduce((a, b) => a + b, 0) / sleepData.length).toFixed(1) : null,
+      currentWeight: weightData.length > 0 ? weightData[weightData.length - 1] : null,
+      weightChange: weightData.length > 1 ? (weightData[weightData.length - 1] - weightData[0]).toFixed(1) : null,
+      totalWorkouts: workoutData.reduce((a, b) => a + b, 0)
+    };
+  }, [filteredMetrics]);
+
+  if (!user) {
+    return (
+      <div style={{
+        height: 'calc(100vh - 120px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.textSec
+      }}>
+        Please sign in to track metrics
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      height: 'calc(100vh - 120px)',
+      maxWidth: 1400,
+      margin: '0 auto',
+      padding: '20px',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16
+    }}>
+      {/* Header */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between'
+      }}>
+        <div>
+          <h1 style={{
+            fontSize: 32,
+            fontWeight: 700,
+            fontFamily: theme.fontDisplay,
+            color: theme.text,
+            marginBottom: 4,
+            letterSpacing: '-0.03em',
+            background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+            backgroundClip: 'text'
+          }}>
+            Life Metrics
+          </h1>
+          <p style={{
+            fontSize: 12,
+            color: theme.textSec,
+            fontFamily: theme.fontFamily,
+            fontWeight: 500
+          }}>
+            Track and visualize your health & performance data
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+          {/* Time Range Selector */}
+          <div style={{
+            display: 'flex',
+            gap: 6,
+            background: isDark ? '#1a1a1d' : '#ffffff',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            borderRadius: 10,
+            padding: 4
+          }}>
+            {['week', 'month', 'year', 'all'].map(range => (
+              <button
+                key={range}
+                onClick={() => setTimeRange(range)}
+                style={{
+                  padding: '6px 12px',
+                  borderRadius: 7,
+                  border: 'none',
+                  background: timeRange === range ? accentColor : 'transparent',
+                  color: timeRange === range ? '#fff' : theme.textSec,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  textTransform: 'capitalize',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {range}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowAddMetric(!showAddMetric)}
+            style={{
+              padding: '8px 16px',
+              background: accentColor,
+              border: 'none',
+              borderRadius: 10,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6
+            }}
+          >
+            <span style={{ fontSize: 16 }}>+</span>
+            Add Entry
+          </button>
+        </div>
+      </div>
+
+      {/* Add Metric Form */}
+      {showAddMetric && (
+        <div style={{
+          background: isDark ? '#1a1a1d' : '#ffffff',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}',
+          borderRadius: 16,
+          padding: 20,
+          boxShadow: isDark
+            ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.8)'
+        }}>
+          <h3 style={{
+            fontSize: 14,
+            fontWeight: 600,
+            color: theme.text,
+            marginBottom: 16
+          }}>
+            New Metric Entry
+          </h3>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSec, display: 'block', marginBottom: 6 }}>
+                Date
+              </label>
+              <input
+                type="date"
+                value={newMetric.date}
+                onChange={(e) => setNewMetric({ ...newMetric, date: e.target.value })}
+                max={new Date().toISOString().split('T')[0]}
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  borderRadius: 8,
+                  color: theme.text,
+                  fontSize: 13,
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSec, display: 'block', marginBottom: 6 }}>
+                Sleep (hours)
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                value={newMetric.sleep}
+                onChange={(e) => setNewMetric({ ...newMetric, sleep: e.target.value })}
+                placeholder="e.g. 7.5"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  borderRadius: 8,
+                  color: theme.text,
+                  fontSize: 13,
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSec, display: 'block', marginBottom: 6 }}>
+                Weight (kg)
+              </label>
+              <input
+                type="number"
+                step="0.1"
+                value={newMetric.weight}
+                onChange={(e) => setNewMetric({ ...newMetric, weight: e.target.value })}
+                placeholder="e.g. 75.5"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  borderRadius: 8,
+                  color: theme.text,
+                  fontSize: 13,
+                  outline: 'none'
+                }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: theme.textSec, display: 'block', marginBottom: 6 }}>
+                Workouts
+              </label>
+              <input
+                type="number"
+                value={newMetric.workouts}
+                onChange={(e) => setNewMetric({ ...newMetric, workouts: e.target.value })}
+                placeholder="e.g. 3"
+                style={{
+                  width: '100%',
+                  padding: '8px 12px',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                  borderRadius: 8,
+                  color: theme.text,
+                  fontSize: 13,
+                  outline: 'none'
+                }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+            <button
+              onClick={() => setShowAddMetric(false)}
+              style={{
+                padding: '8px 16px',
+                background: 'transparent',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: 8,
+                color: theme.textSec,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveMetric}
+              style={{
+                padding: '8px 16px',
+                background: accentColor,
+                border: 'none',
+                borderRadius: 8,
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Overview */}
+      {stats && (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(4, 1fr)',
+          gap: 12
+        }}>
+          {[
+            { label: 'Avg Sleep', value: stats.avgSleep ? `${stats.avgSleep}h` : '—', icon: '😴', color: '#8B5CF6' },
+            { label: 'Current Weight', value: stats.currentWeight ? `${stats.currentWeight}kg` : '—', icon: '⚖️', color: '#06B6D4' },
+            { label: 'Weight Change', value: stats.weightChange ? `${stats.weightChange > 0 ? '+' : ''}${stats.weightChange}kg` : '—', icon: '📊', color: '#10B981' },
+            { label: 'Total Workouts', value: stats.totalWorkouts || '—', icon: '💪', color: '#F59E0B' }
+          ].map(stat => (
+            <div key={stat.label} style={{
+              background: isDark ? '#1a1a1d' : '#ffffff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: 12,
+              padding: 16,
+              boxShadow: isDark
+                ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.8)'
+            }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{stat.icon}</div>
+              <div style={{
+                fontSize: 24,
+                fontWeight: 700,
+                color: stat.color,
+                fontFamily: 'SF Mono, monospace',
+                marginBottom: 4
+              }}>
+                {stat.value}
+              </div>
+              <div style={{
+                fontSize: 11,
+                fontWeight: 600,
+                color: theme.textSec,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em'
+              }}>
+                {stat.label}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Charts */}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <MultiLineChart
+          data={filteredMetrics}
+          theme={theme}
+          accentColor={accentColor}
+          selectedMetrics={selectedMetrics}
+          loading={loading}
+        />
+      </div>
+    </div>
+  );
+}
+
+// Multi-Line Chart Component
+function MultiLineChart({ data, theme, accentColor, selectedMetrics, loading }) {
+  const isDark = theme.id === 'dark';
+
+  if (loading) {
+    return (
+      <div style={{
+        height: '100%',
+        background: isDark ? '#1a1a1d' : '#ffffff',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+        borderRadius: 16,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        color: theme.textSec
+      }}>
+        Loading metrics...
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div style={{
+        height: '100%',
+        background: isDark ? '#1a1a1d' : '#ffffff',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+        borderRadius: 16,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 40,
+        textAlign: 'center'
+      }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>📈</div>
+        <h3 style={{ fontSize: 16, fontWeight: 600, color: theme.text, marginBottom: 8 }}>
+          No metrics yet
+        </h3>
+        <p style={{ fontSize: 13, color: theme.textSec }}>
+          Start tracking your metrics to see beautiful visualizations
+        </p>
+      </div>
+    );
+  }
+
+  const metrics = {
+    sleep: { key: 'sleep_hours', label: 'Sleep (hours)', color: '#8B5CF6' },
+    weight: { key: 'weight_kg', label: 'Weight (kg)', color: '#06B6D4' },
+    workouts: { key: 'workouts_count', label: 'Workouts', color: '#F59E0B' }
+  };
+
+  // Chart dimensions
+  const padding = { top: 20, right: 20, bottom: 40, left: 50 };
+  const chartWidth = 1000;
+  const chartHeight = 400;
+  const width = chartWidth - padding.left - padding.right;
+  const height = chartHeight - padding.top - padding.bottom;
+
+  // Get data ranges
+  const getRange = (key) => {
+    const values = data.filter(d => d[key] != null).map(d => d[key]);
+    if (values.length === 0) return [0, 10];
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const padding = (max - min) * 0.1 || 1;
+    return [min - padding, max + padding];
+  };
+
+  // Create scales
+  const dates = data.map(d => new Date(d.date));
+  const minDate = Math.min(...dates);
+  const maxDate = Math.max(...dates);
+  const xScale = (date) => {
+    const d = new Date(date);
+    return ((d - minDate) / (maxDate - minDate)) * width;
+  };
+
+  const createYScale = (key) => {
+    const [min, max] = getRange(key);
+    return (value) => height - ((value - min) / (max - min)) * height;
+  };
+
+  // Generate path for a metric
+  const generatePath = (metricKey) => {
+    const yScale = createYScale(metricKey);
+    const points = data
+      .filter(d => d[metricKey] != null)
+      .map(d => ({ x: xScale(d.date), y: yScale(d[metricKey]) }));
+
+    if (points.length === 0) return '';
+
+    let path = `M ${points[0].x} ${points[0].y}`;
+    for (let i = 1; i < points.length; i++) {
+      const prev = points[i - 1];
+      const curr = points[i];
+      const cpx = (prev.x + curr.x) / 2;
+      path += ` C ${cpx} ${prev.y}, ${cpx} ${curr.y}, ${curr.x} ${curr.y}`;
+    }
+    return path;
+  };
+
+  return (
+    <div style={{
+      height: '100%',
+      background: isDark ? '#1a1a1d' : '#ffffff',
+      border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+      borderRadius: 16,
+      padding: 24,
+      boxShadow: isDark
+        ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+        : 'inset 0 1px 0 rgba(255,255,255,0.8)',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
+      {/* Legend */}
+      <div style={{
+        display: 'flex',
+        gap: 20,
+        marginBottom: 20,
+        paddingBottom: 16,
+        borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`
+      }}>
+        {selectedMetrics.map(key => {
+          const metric = metrics[key];
+          return (
+            <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{
+                width: 12,
+                height: 12,
+                borderRadius: 2,
+                background: metric.color
+              }} />
+              <span style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: theme.text
+              }}>
+                {metric.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Chart */}
+      <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
+        <svg width="100%" height="100%" viewBox={`0 0 ${chartWidth} ${chartHeight}`} style={{ overflow: 'visible' }}>
+          {/* Grid lines */}
+          {[0, 1, 2, 3, 4].map(i => {
+            const y = padding.top + (height / 4) * i;
+            return (
+              <line
+                key={i}
+                x1={padding.left}
+                y1={y}
+                x2={padding.left + width}
+                y2={y}
+                stroke={isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
+                strokeWidth="1"
+              />
+            );
+          })}
+
+          {/* Lines for each metric */}
+          <g transform={`translate(${padding.left}, ${padding.top})`}>
+            {selectedMetrics.map(key => {
+              const metric = metrics[key];
+              const path = generatePath(metric.key);
+              if (!path) return null;
+
+              return (
+                <g key={key}>
+                  {/* Gradient for line */}
+                  <defs>
+                    <linearGradient id={`gradient-${key}`} x1="0%" y1="0%" x2="0%" y2="100%">
+                      <stop offset="0%" stopColor={metric.color} stopOpacity="0.3" />
+                      <stop offset="100%" stopColor={metric.color} stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+
+                  {/* Area under curve */}
+                  <path
+                    d={`${path} L ${xScale(data[data.length - 1].date)} ${height} L ${xScale(data[0].date)} ${height} Z`}
+                    fill={`url(#gradient-${key})`}
+                  />
+
+                  {/* Line */}
+                  <path
+                    d={path}
+                    fill="none"
+                    stroke={metric.color}
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+
+                  {/* Data points */}
+                  {data.filter(d => d[metric.key] != null).map((d, i) => {
+                    const yScale = createYScale(metric.key);
+                    return (
+                      <circle
+                        key={i}
+                        cx={xScale(d.date)}
+                        cy={yScale(d[metric.key])}
+                        r="4"
+                        fill={metric.color}
+                        stroke={isDark ? '#1a1a1d' : '#ffffff'}
+                        strokeWidth="2"
+                      />
+                    );
+                  })}
+                </g>
+              );
+            })}
+          </g>
+
+          {/* X-axis labels */}
+          {data.filter((_, i) => i % Math.max(1, Math.floor(data.length / 6)) === 0).map((d, i) => {
+            const date = new Date(d.date);
+            const label = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return (
+              <text
+                key={i}
+                x={padding.left + xScale(d.date)}
+                y={chartHeight - 10}
+                fill={theme.textMuted}
+                fontSize="10"
+                fontWeight="500"
+                textAnchor="middle"
+              >
+                {label}
+              </text>
+            );
+          })}
+        </svg>
+      </div>
+    </div>
+  );
 }
 
 // LifeView Component - Visualize life in weeks
