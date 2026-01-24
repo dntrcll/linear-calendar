@@ -9591,7 +9591,6 @@ function LifeView({ theme, accentColor }) {
 
     // More interesting calculations
     const minutesLived = Math.floor(diffMs / (1000 * 60));
-    const secondsLived = Math.floor(diffMs / 1000);
     const heartbeats = Math.floor(minutesLived * 70); // 70 bpm
     const breaths = Math.floor(minutesLived * 16); // 16 per minute
     const sleepHours = Math.floor(diffDays * 8); // 8h per day
