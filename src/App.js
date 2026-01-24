@@ -9560,6 +9560,11 @@ function LifeView({ theme, accentColor }) {
     return saved || '';
   });
 
+  const [lifeExpectancy, setLifeExpectancy] = React.useState(() => {
+    const saved = localStorage.getItem('lifeExpectancy');
+    return saved ? parseInt(saved) : 80;
+  });
+
   const [hoveredWeek, setHoveredWeek] = React.useState(null);
 
   React.useEffect(() => {
@@ -9567,6 +9572,10 @@ function LifeView({ theme, accentColor }) {
       localStorage.setItem('userBirthDate', birthDate);
     }
   }, [birthDate]);
+
+  React.useEffect(() => {
+    localStorage.setItem('lifeExpectancy', lifeExpectancy.toString());
+  }, [lifeExpectancy]);
 
   // Calculate life statistics
   const lifeStats = React.useMemo(() => {
@@ -9578,21 +9587,45 @@ function LifeView({ theme, accentColor }) {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const diffWeeks = Math.floor(diffDays / 7);
     const diffYears = diffWeeks / 52;
+    const age = Math.floor(diffYears);
+
+    // More interesting calculations
+    const minutesLived = Math.floor(diffMs / (1000 * 60));
+    const secondsLived = Math.floor(diffMs / 1000);
+    const heartbeats = Math.floor(minutesLived * 70); // 70 bpm
+    const breaths = Math.floor(minutesLived * 16); // 16 per minute
+    const sleepHours = Math.floor(diffDays * 8); // 8h per day
+    const mealsEaten = Math.floor(diffDays * 3); // 3 meals per day
+    const blinks = Math.floor(minutesLived * 20); // ~20 blinks per minute
+
+    // Future milestones
+    const retirementAge = 65;
+    const weeksUntilRetirement = retirementAge > age ? (retirementAge - age) * 52 : 0;
+    const weekendsLived = Math.floor(diffWeeks / 7 * 2);
+    const weekendsRemaining = Math.floor((lifeExpectancy - age) * 52 * 2 / 7);
 
     return {
       weeks: diffWeeks,
       days: diffDays,
       years: diffYears.toFixed(2),
+      age,
       months: Math.floor(diffDays / 30.44),
       hours: Math.floor(diffMs / (1000 * 60 * 60)),
-      heartbeats: Math.floor(diffMs / (1000 * 60 * 60) * 70 * 60), // ~70 bpm
-      breaths: Math.floor(diffMs / (1000 * 60 * 60) * 16 * 60), // ~16 per minute
-      sleepHours: Math.floor(diffMs / (1000 * 60 * 60) * 0.33), // ~8h/day
+      minutes: minutesLived,
+      heartbeats,
+      breaths,
+      sleepHours,
+      mealsEaten,
+      blinks,
+      weekendsLived,
+      weekendsRemaining,
+      weeksUntilRetirement,
+      percentLived: ((diffYears / lifeExpectancy) * 100).toFixed(1)
     };
-  }, [birthDate]);
+  }, [birthDate, lifeExpectancy]);
 
   const isDark = theme.id === 'dark';
-  const totalWeeks = 52 * 80; // 80 years in weeks
+  const totalWeeks = 52 * lifeExpectancy;
   const weeksLived = lifeStats?.weeks || 0;
 
   return (
@@ -9614,11 +9647,11 @@ function LifeView({ theme, accentColor }) {
       }}>
         <div>
           <h1 style={{
-            fontSize: 36,
+            fontSize: 32,
             fontWeight: 700,
             fontFamily: theme.fontDisplay,
             color: theme.text,
-            marginBottom: 6,
+            marginBottom: 4,
             letterSpacing: '-0.03em',
             background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
             WebkitBackgroundClip: 'text',
@@ -9628,74 +9661,118 @@ function LifeView({ theme, accentColor }) {
             Life in Weeks
           </h1>
           <p style={{
-            fontSize: 13,
+            fontSize: 12,
             color: theme.textSec,
             fontFamily: theme.fontFamily,
             fontWeight: 500
           }}>
-            {birthDate ? `${weeksLived.toLocaleString()} weeks lived • ${(totalWeeks - weeksLived).toLocaleString()} weeks remaining` : 'Enter your birth date to visualize your life'}
+            {birthDate ? `${weeksLived.toLocaleString()} weeks lived • ${(totalWeeks - weeksLived).toLocaleString()} remaining` : 'Enter your details to begin'}
           </p>
         </div>
 
-        <input
-          type="date"
-          value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          max={new Date().toISOString().split('T')[0]}
-          style={{
-            padding: '10px 16px',
-            background: theme.premiumGlass || theme.liquidGlass,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-            borderRadius: 10,
-            color: theme.text,
-            fontSize: 13,
-            fontWeight: 500,
-            fontFamily: theme.fontFamily,
-            outline: 'none',
-            cursor: 'pointer'
-          }}
-        />
+        <div style={{ display: 'flex', gap: 10 }}>
+          <input
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+            max={new Date().toISOString().split('T')[0]}
+            style={{
+              padding: '8px 14px',
+              background: isDark ? '#1a1a1d' : '#ffffff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: 10,
+              color: theme.text,
+              fontSize: 13,
+              fontWeight: 500,
+              fontFamily: theme.fontFamily,
+              outline: 'none',
+              cursor: 'pointer'
+            }}
+          />
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '8px 14px',
+            background: isDark ? '#1a1a1d' : '#ffffff',
+            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+            borderRadius: 10
+          }}>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: theme.textSec
+            }}>
+              Life expectancy:
+            </span>
+            <input
+              type="number"
+              value={lifeExpectancy}
+              onChange={(e) => setLifeExpectancy(Math.max(1, Math.min(120, parseInt(e.target.value) || 80)))}
+              min="1"
+              max="120"
+              style={{
+                width: 50,
+                padding: '4px 8px',
+                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                borderRadius: 6,
+                color: theme.text,
+                fontSize: 13,
+                fontWeight: 600,
+                fontFamily: theme.fontFamily,
+                textAlign: 'center',
+                outline: 'none'
+              }}
+            />
+            <span style={{
+              fontSize: 12,
+              fontWeight: 500,
+              color: theme.textSec
+            }}>
+              yrs
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Main Content Grid */}
       <div style={{
         flex: 1,
         display: 'grid',
-        gridTemplateColumns: '1fr 320px',
+        gridTemplateColumns: '400px 1fr',
         gap: 16,
         minHeight: 0
       }}>
-        {/* Life Grid - Left Side */}
+        {/* Life Grid - Left Side (Compact) */}
         <div style={{
-          background: theme.premiumGlass || theme.liquidGlass,
-          backdropFilter: 'blur(32px)',
-          WebkitBackdropFilter: 'blur(32px)',
-          border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+          background: isDark ? '#1a1a1d' : '#ffffff',
+          border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
           borderRadius: 16,
-          padding: 20,
-          boxShadow: theme.premiumShadow || theme.liquidShadow,
+          padding: 16,
+          boxShadow: isDark
+            ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+            : 'inset 0 1px 0 rgba(255,255,255,0.8)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden'
         }}>
           <div style={{
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 600,
             color: theme.textSec,
-            marginBottom: 12,
+            marginBottom: 10,
             textTransform: 'uppercase',
             letterSpacing: '0.05em'
           }}>
-            80 Years • 4,160 Weeks
+            {lifeExpectancy} Years • {totalWeeks.toLocaleString()} Weeks
           </div>
 
-          {/* Weeks Grid */}
+          {/* Weeks Grid - Smaller */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(52, 1fr)',
-            gap: 3,
+            gap: 2,
             overflow: 'auto',
             paddingRight: 4
           }}>
@@ -9712,16 +9789,16 @@ function LifeView({ theme, accentColor }) {
                   onMouseLeave={() => setHoveredWeek(null)}
                   style={{
                     aspectRatio: '1',
-                    borderRadius: 2,
+                    borderRadius: 1.5,
                     background: isCurrent
                       ? accentColor
                       : isLived
-                        ? (isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)')
-                        : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
-                    border: isCurrent ? `1.5px solid ${accentColor}` : 'none',
-                    transition: 'all 0.15s',
+                        ? (isDark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.3)')
+                        : (isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'),
+                    border: isCurrent ? `1px solid ${accentColor}` : 'none',
+                    transition: 'all 0.12s',
                     cursor: 'default',
-                    boxShadow: isCurrent ? `0 0 8px ${accentColor}40` : 'none'
+                    boxShadow: isCurrent ? `0 0 6px ${accentColor}40` : 'none'
                   }}
                   title={`Year ${year + 1}, Week ${week + 1}`}
                 />
@@ -9731,11 +9808,11 @@ function LifeView({ theme, accentColor }) {
 
           {hoveredWeek && (
             <div style={{
-              marginTop: 12,
-              padding: '8px 12px',
-              background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
-              borderRadius: 8,
-              fontSize: 11,
+              marginTop: 10,
+              padding: '6px 10px',
+              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              borderRadius: 6,
+              fontSize: 10,
               fontWeight: 500,
               color: theme.textSec,
               textAlign: 'center'
@@ -9745,24 +9822,25 @@ function LifeView({ theme, accentColor }) {
           )}
         </div>
 
-        {/* Statistics - Right Side */}
+        {/* Insights Grid - Right Side */}
         <div style={{
-          display: 'flex',
-          flexDirection: 'column',
+          display: 'grid',
+          gridTemplateColumns: 'repeat(2, 1fr)',
           gap: 12,
-          overflow: 'auto'
+          overflow: 'auto',
+          alignContent: 'start'
         }}>
           {birthDate && lifeStats && (
             <>
               {/* Life Highlights */}
               <div style={{
-                background: theme.premiumGlass || theme.liquidGlass,
-                backdropFilter: 'blur(32px)',
-                WebkitBackdropFilter: 'blur(32px)',
-                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                background: isDark ? '#1a1a1d' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
                 borderRadius: 12,
                 padding: 16,
-                boxShadow: theme.premiumShadow || theme.liquidShadow
+                boxShadow: isDark
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.8)'
               }}>
                 <h3 style={{
                   fontSize: 13,
@@ -9811,13 +9889,13 @@ function LifeView({ theme, accentColor }) {
 
               {/* Body's Work */}
               <div style={{
-                background: theme.premiumGlass || theme.liquidGlass,
-                backdropFilter: 'blur(32px)',
-                WebkitBackdropFilter: 'blur(32px)',
-                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                background: isDark ? '#1a1a1d' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
                 borderRadius: 12,
                 padding: 16,
-                boxShadow: theme.premiumShadow || theme.liquidShadow
+                boxShadow: isDark
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.8)'
               }}>
                 <h3 style={{
                   fontSize: 13,
@@ -9867,15 +9945,15 @@ function LifeView({ theme, accentColor }) {
                 </div>
               </div>
 
-              {/* Perspective */}
+              {/* Milestones & Future */}
               <div style={{
-                background: theme.premiumGlass || theme.liquidGlass,
-                backdropFilter: 'blur(32px)',
-                WebkitBackdropFilter: 'blur(32px)',
-                border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+                background: isDark ? '#1a1a1d' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
                 borderRadius: 12,
                 padding: 16,
-                boxShadow: theme.premiumShadow || theme.liquidShadow
+                boxShadow: isDark
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.8)'
               }}>
                 <h3 style={{
                   fontSize: 13,
@@ -9885,57 +9963,152 @@ function LifeView({ theme, accentColor }) {
                   marginBottom: 12,
                   letterSpacing: '-0.01em'
                 }}>
-                  Time Perspective
+                  Milestones
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
-                    { label: 'Weeks Lived', value: Math.floor((weeksLived / totalWeeks) * 100) + '%' },
-                    { label: 'Life Progress', value: Math.floor((weeksLived / totalWeeks) * 100), isProgress: true }
+                    { label: '🎯 Current Age', value: lifeStats.age + ' yrs' },
+                    { label: '⏳ Life Progress', value: lifeStats.percentLived + '%' },
+                    { label: '📅 Weeks Until 65', value: lifeStats.weeksUntilRetirement > 0 ? lifeStats.weeksUntilRetirement.toLocaleString() : '—' }
                   ].map(stat => (
                     <div key={stat.label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
                       padding: '6px 10px',
                       background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                       borderRadius: 6
                     }}>
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        marginBottom: stat.isProgress ? 8 : 0
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: theme.textSec
                       }}>
-                        <span style={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          color: theme.textSec
-                        }}>
-                          {stat.label}
-                        </span>
-                        {!stat.isProgress && (
-                          <span style={{
-                            fontSize: 13,
-                            fontWeight: 600,
-                            color: accentColor,
-                            fontFamily: 'monospace'
-                          }}>
-                            {stat.value}
-                          </span>
-                        )}
-                      </div>
-                      {stat.isProgress && (
-                        <div style={{
-                          height: 6,
-                          background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
-                          borderRadius: 3,
-                          overflow: 'hidden'
-                        }}>
-                          <div style={{
-                            width: `${stat.value}%`,
-                            height: '100%',
-                            background: theme.metallicAccent || accentColor,
-                            borderRadius: 3,
-                            transition: 'width 0.5s ease'
-                          }} />
-                        </div>
-                      )}
+                        {stat.label}
+                      </span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: accentColor,
+                        fontFamily: 'monospace'
+                      }}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Weekends & Free Time */}
+              <div style={{
+                background: isDark ? '#1a1a1d' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: isDark
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.8)'
+              }}>
+                <h3 style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  marginBottom: 12,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Weekends & Time
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {[
+                    { label: '🌅 Weekends Lived', value: lifeStats.weekendsLived.toLocaleString() },
+                    { label: '🎉 Weekends Left', value: lifeStats.weekendsRemaining.toLocaleString() },
+                    { label: '🍽️ Meals Eaten', value: (lifeStats.mealsEaten / 1000).toFixed(0) + 'K' }
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      padding: '6px 10px',
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 6
+                    }}>
+                      <span style={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: theme.textSec
+                      }}>
+                        {stat.label}
+                      </span>
+                      <span style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: theme.text,
+                        fontFamily: 'monospace'
+                      }}>
+                        {stat.value}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Interesting Facts */}
+              <div style={{
+                background: isDark ? '#1a1a1d' : '#ffffff',
+                border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+                borderRadius: 12,
+                padding: 16,
+                boxShadow: isDark
+                  ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                  : 'inset 0 1px 0 rgba(255,255,255,0.8)',
+                gridColumn: 'span 2'
+              }}>
+                <h3 style={{
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontDisplay,
+                  color: theme.text,
+                  marginBottom: 12,
+                  letterSpacing: '-0.01em'
+                }}>
+                  Interesting Perspective
+                </h3>
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: 10
+                }}>
+                  {[
+                    { label: '👁️ Blinks', value: (lifeStats.blinks / 1e9).toFixed(2) + 'B' },
+                    { label: '⏰ Minutes', value: (lifeStats.minutes / 1e6).toFixed(2) + 'M' },
+                    { label: '🌍 Earth Trips', value: (lifeStats.days * 1037 / 40075).toFixed(0) }
+                  ].map(stat => (
+                    <div key={stat.label} style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      padding: '12px',
+                      background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      borderRadius: 8
+                    }}>
+                      <span style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: accentColor,
+                        fontFamily: 'monospace',
+                        marginBottom: 4
+                      }}>
+                        {stat.value}
+                      </span>
+                      <span style={{
+                        fontSize: 10,
+                        fontWeight: 500,
+                        color: theme.textSec,
+                        textAlign: 'center'
+                      }}>
+                        {stat.label}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -9945,19 +10118,23 @@ function LifeView({ theme, accentColor }) {
 
           {!birthDate && (
             <div style={{
-              background: theme.premiumGlass || theme.liquidGlass,
-              backdropFilter: 'blur(32px)',
-              WebkitBackdropFilter: 'blur(32px)',
-              border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+              gridColumn: 'span 2',
+              background: isDark ? '#1a1a1d' : '#ffffff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
               borderRadius: 12,
-              padding: 24,
-              boxShadow: theme.premiumShadow || theme.liquidShadow,
+              padding: 32,
+              boxShadow: isDark
+                ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
+                : 'inset 0 1px 0 rgba(255,255,255,0.8)',
               textAlign: 'center',
               color: theme.textSec,
               fontSize: 13
             }}>
-              <div style={{ fontSize: 32, marginBottom: 12 }}>📅</div>
-              <p>Enter your birth date to see your life visualized in weeks</p>
+              <div style={{ fontSize: 48, marginBottom: 16 }}>📅</div>
+              <p style={{ fontSize: 14, fontWeight: 500, color: theme.text, marginBottom: 8 }}>
+                Visualize Your Life in Weeks
+              </p>
+              <p>Enter your birth date and life expectancy to begin</p>
             </div>
           )}
         </div>
