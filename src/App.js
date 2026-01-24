@@ -9567,6 +9567,8 @@ function MetricsView({ theme, accentColor, user }) {
   const [showAddMetric, setShowAddMetric] = React.useState(false);
   const [newMetric, setNewMetric] = React.useState({ date: new Date().toISOString().split('T')[0], sleep: '', weight: '', workouts: '' });
   const [loading, setLoading] = React.useState(true);
+  const [saving, setSaving] = React.useState(false);
+  const [saveError, setSaveError] = React.useState(null);
 
   const isDark = theme.id === 'dark';
 
@@ -9596,23 +9598,54 @@ function MetricsView({ theme, accentColor, user }) {
 
   // Save metric to database
   const saveMetric = async () => {
-    if (!user || !newMetric.date) return;
+    if (!user) {
+      alert('You must be signed in to save metrics');
+      return;
+    }
+
+    if (!newMetric.date) {
+      alert('Please select a date');
+      return;
+    }
+
+    // Check if at least one metric is filled
+    if (!newMetric.sleep && !newMetric.weight && !newMetric.workouts) {
+      alert('Please enter at least one metric value');
+      return;
+    }
+
+    setSaving(true);
+    setSaveError(null);
+    console.log('[MetricsView] Saving metric:', newMetric);
 
     try {
       const metricData = {
         user_id: user.id,
         date: newMetric.date,
-        sleep_hours: parseFloat(newMetric.sleep) || null,
-        weight_kg: parseFloat(newMetric.weight) || null,
-        workouts_count: parseInt(newMetric.workouts) || null
+        sleep_hours: newMetric.sleep ? parseFloat(newMetric.sleep) : null,
+        weight_kg: newMetric.weight ? parseFloat(newMetric.weight) : null,
+        workouts_count: newMetric.workouts ? parseInt(newMetric.workouts) : null
       };
+
+      console.log('[MetricsView] Prepared data:', metricData);
 
       const { data, error } = await supabase
         .from('life_metrics')
         .upsert(metricData, { onConflict: 'user_id,date' })
         .select();
 
-      if (error) throw error;
+      console.log('[MetricsView] Supabase response:', { data, error });
+
+      if (error) {
+        console.error('[MetricsView] Supabase error:', error);
+        throw error;
+      }
+
+      if (!data || data.length === 0) {
+        throw new Error('No data returned from database');
+      }
+
+      console.log('[MetricsView] Successfully saved metric');
 
       // Update local state
       setMetrics(prev => {
@@ -9628,8 +9661,14 @@ function MetricsView({ theme, accentColor, user }) {
       // Reset form
       setNewMetric({ date: new Date().toISOString().split('T')[0], sleep: '', weight: '', workouts: '' });
       setShowAddMetric(false);
+      alert('Metric saved successfully!');
     } catch (error) {
-      console.error('Error saving metric:', error);
+      console.error('[MetricsView] Error saving metric:', error);
+      const errorMessage = error.message || 'Failed to save metric. Please check console for details.';
+      setSaveError(errorMessage);
+      alert(`Error: ${errorMessage}\n\nMake sure:\n1. You've run the database setup SQL\n2. The table exists\n3. RLS policies are configured`);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -9902,20 +9941,36 @@ function MetricsView({ theme, accentColor, user }) {
             </button>
             <button
               onClick={saveMetric}
+              disabled={saving}
               style={{
                 padding: '8px 16px',
-                background: accentColor,
+                background: saving ? 'rgba(128,128,128,0.5)' : accentColor,
                 border: 'none',
                 borderRadius: 8,
                 color: '#fff',
                 fontSize: 13,
                 fontWeight: 600,
-                cursor: 'pointer'
+                cursor: saving ? 'not-allowed' : 'pointer',
+                opacity: saving ? 0.6 : 1
               }}
             >
-              Save
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
+          {saveError && (
+            <div style={{
+              marginTop: 12,
+              padding: '10px 12px',
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.3)',
+              borderRadius: 8,
+              color: '#ef4444',
+              fontSize: 12,
+              lineHeight: 1.5
+            }}>
+              <strong>Error:</strong> {saveError}
+            </div>
+          )}
         </div>
       )}
 
