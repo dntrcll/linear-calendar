@@ -2,10 +2,12 @@ import { supabase } from '../supabaseClient';
 
 export const signInWithGoogle = async () => {
   try {
+    console.log('[Auth] Starting Google sign-in...');
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: `${window.location.origin}/`,
+        skipBrowserRedirect: false,
         queryParams: {
           access_type: 'offline',
           prompt: 'consent',
@@ -13,11 +15,15 @@ export const signInWithGoogle = async () => {
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Auth] Sign-in error:', error);
+      throw error;
+    }
+    console.log('[Auth] OAuth initiated successfully');
     return { data, error: null };
   } catch (error) {
     console.error('Error signing in with Google:', error);
-    return { data: null, error };
+    return { data, null, error };
   }
 };
 

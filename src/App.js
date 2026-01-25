@@ -1267,11 +1267,23 @@ function TimelineOS() {
 
     const setupAuth = async () => {
       try {
+        console.log('[Auth Setup] Starting...');
+
+        // Clean up URL after OAuth callback (removes ugly tokens from address bar)
+        if (window.location.hash && window.location.hash.includes('access_token')) {
+          console.log('[Auth Setup] Cleaning OAuth tokens from URL');
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        // Add a small delay to allow OAuth callback to be processed
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         // First check if there's an existing session
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('[Auth Setup] Session check:', session ? 'Found' : 'None');
 
         if (session?.user) {
-          console.log('Found existing session');
+          console.log('[Auth Setup] Found existing session for:', session.user.email);
           setUser({
             uid: session.user.id,
             email: session.user.email,
@@ -1280,17 +1292,18 @@ function TimelineOS() {
           });
           loadData({ uid: session.user.id });
         } else {
-          console.log('No existing session, showing login screen');
+          console.log('[Auth Setup] No existing session, showing login screen');
           setUser(null);
           setLoading(false);
         }
 
         // Then listen for changes
         subscription = onAuthStateChange(async (event, session) => {
-          console.log('Auth state changed:', event);
+          console.log('[Auth State Change]', event, session ? 'with session' : 'no session');
           const user = session?.user || null;
 
           if (user) {
+            console.log('[Auth State Change] User signed in:', user.email);
             setUser({
               uid: user.id,
               email: user.email,
@@ -1299,12 +1312,13 @@ function TimelineOS() {
             });
             loadData({ uid: user.id });
           } else {
+            console.log('[Auth State Change] User signed out');
             setUser(null);
             setLoading(false);
           }
         });
       } catch (error) {
-        console.error('Auth setup error:', error);
+        console.error('[Auth Setup] Error:', error);
         setLoading(false);
       }
     };
