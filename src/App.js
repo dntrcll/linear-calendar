@@ -366,6 +366,13 @@ const ICONS = {
       <polyline points="17 6 23 6 23 12"/>
     </svg>
   ),
+  BarChart: (props) => (
+    <svg {...props} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10"/>
+      <line x1="12" y1="20" x2="12" y2="4"/>
+      <line x1="6" y1="20" x2="6" y2="14"/>
+    </svg>
+  ),
   Bell: (props) => (
     <svg {...props} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -10877,6 +10884,49 @@ function LifeView({ theme, accentColor }) {
           )}
         </div>
       </div>
+
+      {/* Footer with Privacy Policy and Terms links */}
+      <footer style={{
+        padding: '24px 0',
+        textAlign: 'center',
+        borderTop: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}`,
+        marginTop: 40
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          gap: 24,
+          fontSize: 12,
+          color: theme.textSec
+        }}>
+          <a
+            href="/privacy"
+            style={{
+              color: theme.textSec,
+              textDecoration: 'none',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.color = theme.text}
+            onMouseLeave={(e) => e.target.style.color = theme.textSec}
+          >
+            Privacy Policy
+          </a>
+          <span style={{ opacity: 0.3 }}>•</span>
+          <a
+            href="/terms"
+            style={{
+              color: theme.textSec,
+              textDecoration: 'none',
+              transition: 'color 0.2s'
+            }}
+            onMouseEnter={(e) => e.target.style.color = theme.text}
+            onMouseLeave={(e) => e.target.style.color = theme.textSec}
+          >
+            Terms of Service
+          </a>
+        </div>
+      </footer>
     </div>
   );
 }
