@@ -23,7 +23,7 @@ export const signInWithGoogle = async () => {
     return { data, error: null };
   } catch (error) {
     console.error('Error signing in with Google:', error);
-    return { data, null, error };
+    return { data: null, error };
   }
 };
 
