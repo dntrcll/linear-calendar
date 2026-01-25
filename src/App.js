@@ -1,4 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
+import { Routes, Route } from "react-router-dom";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
+import TermsOfService from "./pages/TermsOfService";
 import {
   PALETTE,
   THEMES,
@@ -10881,7 +10884,11 @@ function LifeView({ theme, accentColor }) {
 export default function App() {
 return (
 <ErrorBoundary>
-<TimelineOS />
+<Routes>
+<Route path="/" element={<TimelineOS />} />
+<Route path="/privacy" element={<PrivacyPolicy />} />
+<Route path="/terms" element={<TermsOfService />} />
+</Routes>
 </ErrorBoundary>
 );
 }
