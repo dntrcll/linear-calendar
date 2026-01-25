@@ -336,7 +336,7 @@ export default function TermsOfService() {
               margin: 0
             }}>
               <strong>Email:</strong> legal@timeline.app<br/>
-              <strong>Website:</strong> https://linear-calendar.vercel.app
+              <strong>Website:</strong> https://timeline-os.vercel.app
             </p>
           </div>
         </div>

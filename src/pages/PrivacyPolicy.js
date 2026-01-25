@@ -260,7 +260,7 @@ export default function PrivacyPolicy() {
               margin: 0
             }}>
               <strong>Email:</strong> privacy@timeline.app<br/>
-              <strong>Website:</strong> https://linear-calendar.vercel.app
+              <strong>Website:</strong> https://timeline-os.vercel.app
             </p>
           </div>
         </div>

@@ -6,25 +6,24 @@ Copy these URLs into your Google Cloud Console OAuth consent screen:
 
 ### Application Home Page
 ```
-https://linear-calendar.vercel.app
+https://timeline-os.vercel.app
 ```
-*(Replace with your actual Vercel deployment URL if different)*
 
-To find your Vercel URL:
+To find your exact Vercel URL:
 1. Go to https://vercel.com/dashboard
-2. Find your `linear-calendar` project
-3. Copy the production URL (usually ends in `.vercel.app`)
+2. Find your Timeline.OS project
+3. Copy the production URL (usually `timeline-os.vercel.app`)
 
 ---
 
 ### Privacy Policy
 ```
-https://linear-calendar.vercel.app/privacy
+https://timeline-os.vercel.app/privacy
 ```
 
 ### Terms of Service
 ```
-https://linear-calendar.vercel.app/terms
+https://timeline-os.vercel.app/terms
 ```
 
 ---
@@ -34,8 +33,8 @@ https://linear-calendar.vercel.app/terms
 If you don't have Privacy Policy and Terms of Service pages yet, you can:
 
 **Use placeholder URLs** - Google allows this for apps in "Testing" mode:
-- Privacy Policy: `https://linear-calendar.vercel.app`
-- Terms of Service: `https://linear-calendar.vercel.app`
+- Privacy Policy: `https://timeline-os.vercel.app`
+- Terms of Service: `https://timeline-os.vercel.app`
 
 Just use your homepage URL for both. You can update these later when you create proper pages.
 
@@ -64,9 +63,9 @@ Would you like me to generate these pages?
 3. **Fill in the URLs**
    ```
    App name: Timeline.OS
-   Application home page: https://linear-calendar.vercel.app
-   Privacy Policy: https://linear-calendar.vercel.app/privacy
-   Terms of Service: https://linear-calendar.vercel.app/terms
+   Application home page: https://timeline-os.vercel.app
+   Privacy Policy: https://timeline-os.vercel.app/privacy
+   Terms of Service: https://timeline-os.vercel.app/terms
    ```
 
 4. **Upload your logo**
@@ -92,8 +91,8 @@ If you're not sure what your Vercel URL is:
    - Click on the latest deployment to see the URL
 
 3. **Common formats**
-   - `https://linear-calendar.vercel.app` (most common)
-   - `https://linear-calendar-[username].vercel.app`
+   - `https://timeline-os.vercel.app` (most common)
+   - `https://timeline-os-[username].vercel.app`
    - Or your custom domain if you've set one up
 
 ---
