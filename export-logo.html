@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timeline.OS Logo Export - 4K</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 40px;
+      font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+      color: white;
+    }
+
+    .controls {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(20px);
+      padding: 30px;
+      border-radius: 16px;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    button {
+      background: linear-gradient(135deg, #F97316 0%, #EA580C 100%);
+      color: white;
+      border: none;
+      padding: 14px 28px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 14px;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    }
+
+    button:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+    }
+
+    .preview-container {
+      display: flex;
+      gap: 30px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .preview-box {
+      text-align: center;
+    }
+
+    .preview-label {
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      font-weight: 500;
+    }
+
+    .logo-preview {
+      width: 200px;
+      height: 200px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .white-bg { background: white; }
+    .dark-bg { background: #0a0a0a; }
+    .gray-bg { background: #f5f5f5; }
+    .gradient-bg {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+
+    #canvas {
+      display: none;
+    }
+
+    .size-info {
+      color: rgba(255, 255, 255, 0.4);
+      font-size: 12px;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <h1>Timeline.OS Logo - Official Export</h1>
+    <p style="color: rgba(255,255,255,0.7); margin-bottom: 25px; font-size: 14px;">
+      Export your app logo in multiple formats
+    </p>
+    <div class="button-group">
+      <button onclick="downloadLogo(4096, 'timeline-os-logo-4k.png')">📥 4K (4096×4096)</button>
+      <button onclick="downloadLogo(2048, 'timeline-os-logo-2k.png')">📥 2K (2048×2048)</button>
+      <button onclick="downloadLogo(1024, 'timeline-os-logo-1024.png')">📥 1024×1024</button>
+      <button onclick="downloadLogo(512, 'timeline-os-logo-512.png')">📥 512×512</button>
+      <button onclick="downloadLogo(192, 'timeline-os-logo-192.png')">📥 Favicon (192×192)</button>
+    </div>
+    <div class="size-info">
+      Perfect for Google OAuth, app icons, and branding
+    </div>
+  </div>
+
+  <div class="preview-container">
+    <div class="preview-box">
+      <div class="preview-label">White Background</div>
+      <div class="logo-preview white-bg" id="whitePreview"></div>
+    </div>
+    <div class="preview-box">
+      <div class="preview-label">Dark Background</div>
+      <div class="logo-preview dark-bg" id="darkPreview"></div>
+    </div>
+    <div class="preview-box">
+      <div class="preview-label">Light Gray</div>
+      <div class="logo-preview gray-bg" id="grayPreview"></div>
+    </div>
+    <div class="preview-box">
+      <div class="preview-label">Gradient</div>
+      <div class="logo-preview gradient-bg" id="gradientPreview"></div>
+    </div>
+  </div>
+
+  <canvas id="canvas"></canvas>
+
+  <script>
+    function drawTimelineLogo(canvas, size) {
+      const ctx = canvas.getContext('2d');
+      canvas.width = size;
+      canvas.height = size;
+
+      // Clear canvas
+      ctx.clearRect(0, 0, size, size);
+
+      // Calculate scaling and centering
+      const logoSize = size * 0.58;
+      const scale = logoSize / 48;
+      const offsetX = (size - logoSize) / 2;
+      const offsetY = (size - logoSize) / 2;
+
+      // Save context
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+      ctx.scale(scale, scale);
+
+      // Color
+      const color = '#F97316';
+
+      // Draw main vertical timeline
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 3.5;
+      ctx.lineCap = 'round';
+      ctx.globalAlpha = 1;
+      ctx.beginPath();
+      ctx.moveTo(24, 4);
+      ctx.lineTo(24, 44);
+      ctx.stroke();
+
+      // Draw horizontal branches
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = 0.95;
+
+      // Top branch
+      ctx.beginPath();
+      ctx.moveTo(24, 12);
+      ctx.lineTo(38, 12);
+      ctx.stroke();
+
+      // Middle branch
+      ctx.beginPath();
+      ctx.moveTo(24, 24);
+      ctx.lineTo(34, 24);
+      ctx.stroke();
+
+      // Bottom branch
+      ctx.beginPath();
+      ctx.moveTo(24, 36);
+      ctx.lineTo(42, 36);
+      ctx.stroke();
+
+      // Draw timeline nodes
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 1;
+
+      // Main nodes
+      ctx.beginPath();
+      ctx.arc(24, 12, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(24, 24, 4.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(24, 36, 4, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Endpoint nodes
+      ctx.globalAlpha = 0.9;
+
+      ctx.beginPath();
+      ctx.arc(38, 12, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(34, 24, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(42, 36, 3, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Restore context
+      ctx.restore();
+    }
+
+    function downloadLogo(size, filename) {
+      const canvas = document.getElementById('canvas');
+      drawTimelineLogo(canvas, size);
+
+      const link = document.createElement('a');
+      link.download = filename;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    }
+
+    // Generate previews
+    function generatePreviews() {
+      const canvas = document.getElementById('canvas');
+      drawTimelineLogo(canvas, 400);
+      const dataUrl = canvas.toDataURL('image/png');
+
+      ['white', 'dark', 'gray', 'gradient'].forEach(bg => {
+        const el = document.getElementById(`${bg}Preview`);
+        el.style.backgroundImage = `url(${dataUrl})`;
+        el.style.backgroundSize = '60%';
+        el.style.backgroundRepeat = 'no-repeat';
+        el.style.backgroundPosition = 'center';
+      });
+    }
+
+    // Initialize
+    generatePreviews();
+  </script>
+</body>
+</html>
