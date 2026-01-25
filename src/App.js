@@ -9563,7 +9563,7 @@ bottom: 0
 function MetricsView({ theme, accentColor, user }) {
   const [metrics, setMetrics] = React.useState([]);
   const [timeRange, setTimeRange] = React.useState('month'); // week, month, year, all
-  const [selectedMetrics, setSelectedMetrics] = React.useState(['sleep', 'weight', 'workouts']);
+  const selectedMetrics = ['sleep', 'weight', 'workouts'];
   const [showAddMetric, setShowAddMetric] = React.useState(false);
   const [newMetric, setNewMetric] = React.useState({ date: new Date().toISOString().split('T')[0], sleep: '', weight: '', workouts: '' });
   const [loading, setLoading] = React.useState(true);
