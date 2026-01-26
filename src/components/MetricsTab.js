@@ -14,7 +14,7 @@ export const MetricsTab = ({ theme, config, accentColor, user }) => {
 
   // Load metrics on mount
   useEffect(() => {
-    if (!user?.id) {
+    if (!user?.uid) {
       setLoading(false);
       return;
     }
@@ -24,7 +24,7 @@ export const MetricsTab = ({ theme, config, accentColor, user }) => {
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 3); // Last 3 months
       const { data, error } = await loadMetrics(
-        user.id,
+        user.uid,
         startDate.toISOString(),
         new Date().toISOString()
       );
@@ -38,7 +38,7 @@ export const MetricsTab = ({ theme, config, accentColor, user }) => {
     };
 
     load();
-  }, [user?.id, refreshKey]);
+  }, [user?.uid, refreshKey]);
 
   if (!user) {
     return (
@@ -360,7 +360,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
 
     try {
       const entry = {
-        user_id: user.id,
+        user_id: user.uid,
         recorded_at: new Date(date).toISOString(),
         metric_type: 'manual',
         metric_name: metricName.trim(),
