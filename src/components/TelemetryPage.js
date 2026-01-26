@@ -1099,6 +1099,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                   year={currentYear}
                   month={currentMonth}
                   daysInMonth={daysInMonth}
+                  visibleHabits={visibleHabits}
                 />
               </div>
 
@@ -1175,7 +1176,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 };
 
 // Wavy Vertical Habit Chart - Premium flowing curves
-const SmoothHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth }) => {
+const SmoothHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth, visibleHabits }) => {
   const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
 
   // Calculate completion rate per day for each habit
@@ -1190,12 +1191,26 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
       };
     });
 
-    // Apply 7-day rolling average for super smooth waves
+    // Apply 5-day rolling average with Gaussian weighting for organic curves
     const smoothed = data.map((d, i) => {
-      const start = Math.max(0, i - 3);
-      const end = Math.min(data.length, i + 4);
+      const windowSize = 5;
+      const start = Math.max(0, i - 2);
+      const end = Math.min(data.length, i + 3);
       const window = data.slice(start, end);
-      const avg = window.reduce((sum, w) => sum + w.completed, 0) / window.length;
+
+      // Gaussian weights for smoother curves
+      const weights = [0.06, 0.24, 0.4, 0.24, 0.06];
+      const centerIdx = i - start;
+
+      let weightedSum = 0;
+      let weightTotal = 0;
+      window.forEach((w, idx) => {
+        const weight = weights[idx] || 0.1;
+        weightedSum += w.completed * weight;
+        weightTotal += weight;
+      });
+
+      const avg = weightedSum / weightTotal;
       return { day: d.day, value: avg };
     });
 
@@ -1212,7 +1227,7 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
   const yScale = (day) => padding.top + ((day - 1) / (daysInMonth - 1)) * chartHeight;
   const xScale = (value) => padding.left + (value / 100) * chartWidth;
 
-  // Helper to create flowing wavy path
+  // Helper to create flowing wavy path with dramatic curves
   const createWavyPath = (data) => {
     if (data.length === 0) return '';
 
@@ -1225,11 +1240,12 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
       const yDist = yScale(next.day) - yScale(current.day);
       const xDist = xScale(next.value) - xScale(current.value);
 
-      // Create more pronounced curves for wavy effect
-      const cp1x = xScale(current.value) + xDist * 0.3;
-      const cp1y = yScale(current.day) + yDist * 0.6;
-      const cp2x = xScale(next.value) - xDist * 0.3;
-      const cp2y = yScale(next.day) - yDist * 0.6;
+      // Create VERY pronounced curves for dramatic wavy effect
+      // Using asymmetric control points for more organic flow
+      const cp1x = xScale(current.value) + xDist * 0.5;
+      const cp1y = yScale(current.day) + yDist * 0.25;
+      const cp2x = xScale(next.value) - xDist * 0.5;
+      const cp2y = yScale(next.day) - yDist * 0.25;
 
       path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${xScale(next.value)} ${yScale(next.day)}`;
     }
@@ -1239,13 +1255,19 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
 
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-      {/* Background */}
+      {/* Background with gradient */}
+      <defs>
+        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" style={{ stopColor: config.darkMode ? '#0d1117' : '#fafbfc', stopOpacity: 1 }} />
+          <stop offset="100%" style={{ stopColor: config.darkMode ? '#010409' : '#f6f8fa', stopOpacity: 1 }} />
+        </linearGradient>
+      </defs>
       <rect
         x="0"
         y="0"
         width={width}
         height={height}
-        fill={config.darkMode ? '#0a0f1e' : '#fafbfc'}
+        fill="url(#bgGradient)"
         rx="8"
       />
 
@@ -1284,11 +1306,11 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         return (
           <text
             key={day}
-            x={padding.left - 15}
-            y={yScale(day) + 4}
+            x={padding.left - 12}
+            y={yScale(day) + 3}
             textAnchor="end"
-            fill={config.darkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-            fontSize={11}
+            fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
+            fontSize={10}
             fontWeight={600}
             fontFamily={theme.fontFamily}
           >
@@ -1302,10 +1324,10 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         <text
           key={pct}
           x={xScale(pct)}
-          y={height - padding.bottom + 20}
+          y={height - padding.bottom + 18}
           textAnchor="middle"
-          fill={config.darkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
-          fontSize={11}
+          fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
+          fontSize={10}
           fontWeight={600}
           fontFamily={theme.fontFamily}
         >
@@ -1313,8 +1335,21 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         </text>
       ))}
 
+      {/* Glow filters for lines */}
+      <defs>
+        {habitData.map(({ habit, color }, idx) => (
+          <filter key={`glow-${habit.id}`} id={`glow-${idx}`} x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        ))}
+      </defs>
+
       {/* Habit lines */}
-      {habitData.map(({ habit, data, color }) => {
+      {habitData.map(({ habit, data, color }, idx) => {
         const isVisible = visibleHabits[habit.id];
         if (!isVisible) return null;
 
@@ -1322,15 +1357,26 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
 
         return (
           <g key={habit.id}>
-            {/* Flowing wavy line */}
+            {/* Glow layer */}
             <path
               d={pathD}
               fill="none"
               stroke={color}
-              strokeWidth={3.5}
+              strokeWidth={6}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={0.9}
+              opacity={0.15}
+              filter={`url(#glow-${idx})`}
+            />
+            {/* Main flowing wavy line */}
+            <path
+              d={pathD}
+              fill="none"
+              stroke={color}
+              strokeWidth={3}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.95}
             />
           </g>
         );
@@ -1354,30 +1400,30 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         strokeWidth={2}
       />
 
-      {/* Axis labels */}
+      {/* Axis title labels */}
       <text
-        x={padding.left - 42}
-        y={height / 2}
+        x={-(height / 2)}
+        y={18}
         textAnchor="middle"
-        fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
-        fontSize={10}
+        fill={config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'}
+        fontSize={9}
         fontWeight={700}
         fontFamily={theme.fontFamily}
-        letterSpacing="0.15em"
-        transform={`rotate(-90, ${padding.left - 42}, ${height / 2})`}
+        letterSpacing="0.2em"
+        transform={`rotate(-90)`}
       >
         DAYS
       </text>
 
       <text
-        x={width / 2}
-        y={height - 10}
+        x={padding.left + chartWidth / 2}
+        y={height - 6}
         textAnchor="middle"
-        fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
-        fontSize={10}
+        fill={config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'}
+        fontSize={9}
         fontWeight={700}
         fontFamily={theme.fontFamily}
-        letterSpacing="0.15em"
+        letterSpacing="0.2em"
       >
         COMPLETION
       </text>
