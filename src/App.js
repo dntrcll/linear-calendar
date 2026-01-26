@@ -2310,7 +2310,7 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics'].map(mode => (
+            {['day', 'week', 'month', 'year', 'focus', 'life'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
