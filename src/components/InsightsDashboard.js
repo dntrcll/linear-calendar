@@ -221,7 +221,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
 
   const StatCard = ({ label, value, sublabel, color }) => (
     <div style={{
-      padding: '14px 16px',
+      padding: '12px 14px',
       borderRadius: 10,
       background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
       border: `1px solid ${theme.border}`,
@@ -237,7 +237,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
         {label}
       </div>
       <div style={{
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: 700,
         color: color || theme.text,
         fontFamily: theme.fontDisplay,
@@ -262,18 +262,19 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
       background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
       border: `1px solid ${theme.border}`,
       borderRadius: 12,
-      padding: 16,
-      height: height + 60
+      padding: 14,
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       <div style={{
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        marginBottom: 12
+        marginBottom: 10
       }}>
         {icon}
         <h3 style={{
-          fontSize: 13,
+          fontSize: 12,
           fontWeight: 600,
           color: theme.text,
           fontFamily: theme.fontFamily
@@ -281,7 +282,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
           {title}
         </h3>
       </div>
-      <div style={{ height }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
         {children}
       </div>
     </div>
@@ -299,13 +300,15 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
       display: "flex", alignItems: "center", justifyContent: "center",
       background: config.darkMode ? "rgba(0,0,0,0.7)" : "rgba(15,23,42,0.3)",
       backdropFilter: "blur(12px)",
-      WebkitBackdropFilter: "blur(12px)"
+      WebkitBackdropFilter: "blur(12px)",
+      padding: 20
     }} onClick={onClose}>
-      <div onClick={e => e.stopPropagation()} className="scroll-container" style={{
-        width: '90vw',
+      <div onClick={e => e.stopPropagation()} style={{
+        width: '100%',
+        height: '100%',
         maxWidth: 1400,
-        maxHeight: "92vh",
-        overflow: "auto",
+        display: 'flex',
+        flexDirection: 'column',
         background: theme.premiumGlass || theme.liquidGlass,
         backdropFilter: 'blur(32px)',
         WebkitBackdropFilter: 'blur(32px)',
@@ -313,15 +316,17 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
         border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
         boxShadow: theme.premiumShadow || (config.darkMode
           ? '0 24px 48px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.05)'
-          : '0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)')
+          : '0 25px 50px -12px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.9)'),
+        overflow: 'hidden'
       }}>
         {/* Header */}
         <div style={{
-          padding: '24px 28px',
+          padding: '20px 24px',
           borderBottom: `1px solid ${theme.border}`,
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center"
+          alignItems: "center",
+          flexShrink: 0
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
             <div style={{
@@ -358,13 +363,20 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
         </div>
 
         {/* Dashboard Content */}
-        <div style={{ padding: 28 }}>
+        <div style={{
+          padding: 24,
+          flex: 1,
+          overflow: 'auto',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 20
+        }}>
           {/* Today's Overview - Full Width */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-            gap: 12,
-            marginBottom: 24
+            gap: 10,
+            flexShrink: 0
           }}>
             <StatCard
               label="Hours Tracked"
@@ -406,18 +418,19 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 16
+            gap: 14,
+            flex: 1,
+            minHeight: 0
           }}>
             {/* Left Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
               {/* Weekly Time Chart */}
               <ChartCard
                 title="Weekly Time Trend"
                 icon={<ICONS.TrendingUp width={16} height={16} style={{ color: accentColor }} />}
-                height={180}
               >
                 <Suspense fallback={<div style={{
-                  height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
                   color: theme.textMuted, fontSize: 12
                 }}>Loading chart...</div>}>
                   <AreaChartWidget
@@ -425,7 +438,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                     dataKey="hours"
                     xDataKey="date"
                     theme={theme}
-                    height={180}
+                    height={150}
                   />
                 </Suspense>
               </ChartCard>
@@ -434,10 +447,9 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
               <ChartCard
                 title="Time by Category"
                 icon={<ICONS.Tag width={16} height={16} style={{ color: accentColor }} />}
-                height={200}
               >
                 <Suspense fallback={<div style={{
-                  height: 200, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
                   color: theme.textMuted, fontSize: 12
                 }}>Loading chart...</div>}>
                   <BarChartWidget
@@ -445,7 +457,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                     dataKey="hours"
                     xDataKey="name"
                     theme={theme}
-                    height={200}
+                    height={150}
                   />
                 </Suspense>
               </ChartCard>
@@ -455,7 +467,8 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                 background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                 border: `1px solid ${theme.border}`,
                 borderRadius: 12,
-                padding: 16
+                padding: 14,
+                flexShrink: 0
               }}>
                 <h3 style={{
                   fontSize: 13, fontWeight: 600, color: theme.text,
@@ -481,15 +494,14 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
             </div>
 
             {/* Right Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
               {/* Productivity Curve */}
               <ChartCard
                 title="Productivity Trend"
                 icon={<ICONS.Activity width={16} height={16} style={{ color: accentColor }} />}
-                height={180}
               >
                 <Suspense fallback={<div style={{
-                  height: 180, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
                   color: theme.textMuted, fontSize: 12
                 }}>Loading chart...</div>}>
                   <LineChartWidget
@@ -497,7 +509,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                     dataKey="events"
                     xDataKey="date"
                     theme={theme}
-                    height={180}
+                    height={150}
                   />
                 </Suspense>
               </ChartCard>
@@ -507,7 +519,8 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                 background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                 border: `1px solid ${theme.border}`,
                 borderRadius: 12,
-                padding: 16
+                padding: 14,
+                flexShrink: 0
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <ICONS.Briefcase width={16} height={16} style={{ color: accentColor }} />
@@ -552,8 +565,8 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
                 background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                 border: `1px solid ${theme.border}`,
                 borderRadius: 12,
-                padding: 16,
-                flex: 1
+                padding: 14,
+                flexShrink: 0
               }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
                   <ICONS.List width={16} height={16} style={{ color: accentColor }} />
