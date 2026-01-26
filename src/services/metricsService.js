@@ -32,16 +32,33 @@ export const loadMetrics = async (userId, startDate, endDate) => {
  */
 export const insertMetric = async (metric) => {
   try {
+    console.log('Attempting to insert metric:', metric);
+
     const { data, error } = await supabase
       .from('life_metrics')
       .insert(metric)
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase insert error:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code,
+        fullError: error
+      });
+      throw error;
+    }
+
+    console.log('Successfully inserted metric:', data);
     return { data, error: null };
   } catch (error) {
-    console.error('Error inserting metric:', error);
+    console.error('Error inserting metric:', {
+      message: error.message,
+      stack: error.stack,
+      fullError: error
+    });
     return { data: null, error };
   }
 };
