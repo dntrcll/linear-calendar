@@ -55,6 +55,7 @@ import {
 import './components/LinearCalendar.css';
 import './App.css';
 import { InsightsDashboard } from './components/InsightsDashboard';
+import { MetricsTab } from './components/MetricsTab';
 import ICONS from './constants/icons';
 
 class ErrorBoundary extends React.Component {
@@ -2310,7 +2311,7 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus', 'life'].map(mode => (
+            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics'].map(mode => (
               <button
                 key={mode}
                 onClick={() => setViewMode(mode)}
@@ -2496,8 +2497,9 @@ function TimelineOS() {
                 accentColor={accentColor}
               />
             ) : viewMode === 'metrics' ? (
-              <MetricsView
+              <MetricsTab
                 theme={theme}
+                config={config}
                 accentColor={accentColor}
                 user={user}
               />
