@@ -102,14 +102,16 @@ export const toggleHabitCompletion = async (userId, date, habitId, completed) =>
 };
 
 /**
- * Update mood score and note for a day
+ * Update mood score, note, emoji, and memorable moment for a day
  * @param {string} userId - User ID
  * @param {string} date - Date (YYYY-MM-DD)
  * @param {number|null} moodScore - Mood score (0-10) or null
  * @param {string} note - Daily note
+ * @param {string} moodEmoji - Mood emoji
+ * @param {string} memorableMoment - Memorable moment for the day
  * @returns {Promise<{data, error}>}
  */
-export const updateDayTelemetry = async (userId, date, moodScore, note) => {
+export const updateDayTelemetry = async (userId, date, moodScore, note, moodEmoji = '', memorableMoment = '') => {
   try {
     const { data, error } = await supabase
       .from('telemetry_days')
@@ -118,6 +120,8 @@ export const updateDayTelemetry = async (userId, date, moodScore, note) => {
         date,
         mood_score: moodScore,
         note,
+        mood_emoji: moodEmoji,
+        memorable_moment: memorableMoment,
         updated_at: new Date().toISOString()
       }, {
         onConflict: 'user_id,date'
@@ -169,16 +173,18 @@ export const updateMonthSummary = async (userId, year, month, memorableMoments) 
  * Create a new habit
  * @param {string} userId - User ID
  * @param {string} name - Habit name
+ * @param {string} habitType - 'build' or 'eliminate'
  * @param {number} displayOrder - Display order
  * @returns {Promise<{data, error}>}
  */
-export const createHabit = async (userId, name, displayOrder) => {
+export const createHabit = async (userId, name, habitType, displayOrder) => {
   try {
     const { data, error } = await supabase
       .from('telemetry_habits')
       .insert({
         user_id: userId,
         name,
+        habit_type: habitType,
         display_order: displayOrder
       })
       .select()
