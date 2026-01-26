@@ -212,20 +212,21 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     }
 
     // Save to life_metrics
-    await supabase.from('life_metrics').upsert({
+    const { error } = await supabase.from('life_metrics').upsert({
       user_id: user.uid,
       date: dateStr,
       metric_name: 'sleep_hours',
-      metric_value: sleepHours
+      metric_value: sleepHours,
+      created_at: new Date().toISOString()
     }, {
       onConflict: 'user_id,date,metric_name'
     });
 
-    // Reload data
-    const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
-    setDays(result.days);
+    if (error) {
+      console.error('Error saving sleep:', error);
+    }
 
-    // Reload metrics
+    // Reload metrics immediately
     const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
     const lastDay = new Date(currentYear, currentMonth, 0).getDate();
     const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
@@ -235,6 +236,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
       .eq('user_id', user.uid)
       .gte('date', startDate)
       .lte('date', endDate);
+
     setMetrics(metricsData || []);
 
     setEditingSleep(null);
@@ -574,30 +576,30 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
         {!loading && (
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
-            gap: 8,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+            gap: 10,
             flexShrink: 0
           }}>
             <div style={{
-              padding: '8px 10px',
+              padding: '10px 14px',
               background: config.darkMode ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.05)',
-              border: '1px solid #6366f1',
-              borderRadius: 6,
+              border: '1.5px solid #6366f1',
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <span style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 700,
                 color: '#6366f1',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.08em',
                 fontFamily: theme.fontFamily
               }}>
                 SLEEP
               </span>
               <span style={{
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
                 color: theme.text,
                 fontFamily: theme.fontFamily
@@ -607,25 +609,25 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             </div>
 
             <div style={{
-              padding: '8px 10px',
+              padding: '10px 14px',
               background: config.darkMode ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)',
-              border: '1px solid #f59e0b',
-              borderRadius: 6,
+              border: '1.5px solid #f59e0b',
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <span style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 700,
                 color: '#f59e0b',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.08em',
                 fontFamily: theme.fontFamily
               }}>
                 MOOD
               </span>
               <span style={{
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
                 color: theme.text,
                 fontFamily: theme.fontFamily
@@ -635,25 +637,25 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             </div>
 
             <div style={{
-              padding: '8px 10px',
+              padding: '10px 14px',
               background: config.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)',
-              border: '1px solid #10b981',
-              borderRadius: 6,
+              border: '1.5px solid #10b981',
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <span style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 700,
                 color: '#10b981',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.08em',
                 fontFamily: theme.fontFamily
               }}>
                 ENERGY
               </span>
               <span style={{
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
                 color: theme.text,
                 fontFamily: theme.fontFamily
@@ -663,25 +665,25 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             </div>
 
             <div style={{
-              padding: '8px 10px',
+              padding: '10px 14px',
               background: config.darkMode ? 'rgba(236, 72, 153, 0.08)' : 'rgba(236, 72, 153, 0.05)',
-              border: '1px solid #ec4899',
-              borderRadius: 6,
+              border: '1.5px solid #ec4899',
+              borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between'
             }}>
               <span style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 700,
                 color: '#ec4899',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.08em',
                 fontFamily: theme.fontFamily
               }}>
                 WORKOUTS
               </span>
               <span style={{
-                fontSize: 14,
+                fontSize: 18,
                 fontWeight: 700,
                 color: theme.text,
                 fontFamily: theme.fontFamily
