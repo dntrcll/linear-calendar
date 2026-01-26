@@ -2502,6 +2502,7 @@ function TimelineOS() {
                 config={config}
                 accentColor={accentColor}
                 user={user}
+                events={events}
               />
             ) : null}
           </div>
