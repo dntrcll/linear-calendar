@@ -10,26 +10,35 @@ export const MetricsTab = ({ theme, config, accentColor, user }) => {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [metrics, setMetrics] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Load metrics on mount
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) {
+      setLoading(false);
+      return;
+    }
 
     const load = async () => {
       setLoading(true);
       const startDate = new Date();
       startDate.setMonth(startDate.getMonth() - 3); // Last 3 months
-      const { data } = await loadMetrics(
+      const { data, error } = await loadMetrics(
         user.id,
         startDate.toISOString(),
         new Date().toISOString()
       );
-      setMetrics(data);
+
+      if (error) {
+        console.error('Failed to load metrics:', error);
+      }
+
+      setMetrics(data || []);
       setLoading(false);
     };
 
     load();
-  }, [user]);
+  }, [user?.id, refreshKey]);
 
   if (!user) {
     return (
@@ -173,11 +182,21 @@ export const MetricsTab = ({ theme, config, accentColor, user }) => {
             accentColor={accentColor}
             user={user}
             onSave={async (entry) => {
-              const { data } = await insertMetric(entry);
+              const { data, error } = await insertMetric(entry);
+
+              if (error) {
+                console.error('Failed to save metric:', error);
+                alert('Failed to save metric. Check console for details.');
+                return false;
+              }
+
               if (data) {
-                setMetrics(prev => [...prev, data].sort((a, b) =>
-                  new Date(b.recorded_at) - new Date(a.recorded_at)
-                ));
+                // Add to local state
+                setMetrics(prev => [data, ...prev]);
+                // Switch to log tab to show the entry
+                setActiveTab('log');
+                // Trigger refresh
+                setRefreshKey(prev => prev + 1);
                 return true;
               }
               return false;
@@ -281,14 +300,14 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
                 justifyContent: 'space-between'
               }}
             >
-              <div>
+              <div style={{ flex: 1 }}>
                 <div style={{
                   fontSize: 13,
                   fontWeight: 600,
                   color: theme.text,
                   marginBottom: 4
                 }}>
-                  {metric.metric_name}
+                  {metric.metric_name || 'Unnamed metric'}
                 </div>
                 <div style={{
                   fontSize: 11,
@@ -297,19 +316,23 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
                   {new Date(metric.recorded_at).toLocaleDateString()} •{' '}
                   <span style={{
                     color: metric.metric_type === 'auto' ? '#10b981' : '#6366f1',
-                    fontWeight: 600
+                    fontWeight: 600,
+                    textTransform: 'uppercase',
+                    fontSize: 10
                   }}>
                     {metric.metric_type}
                   </span>
                 </div>
               </div>
               <div style={{
-                fontSize: 20,
+                fontSize: 24,
                 fontWeight: 700,
                 color: accentColor,
                 fontFamily: theme.fontDisplay
               }}>
-                {metric.metric_value}
+                {metric.metric_value !== null && metric.metric_value !== undefined
+                  ? metric.metric_value
+                  : '—'}
               </div>
             </div>
           ))}
@@ -328,25 +351,40 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!metricName || !metricValue) return;
+    if (!metricName.trim() || !metricValue) {
+      alert('Please fill in both metric name and value');
+      return;
+    }
 
     setSaving(true);
-    const entry = {
-      user_id: user.id,
-      recorded_at: new Date(date).toISOString(),
-      metric_type: 'manual',
-      metric_name: metricName,
-      metric_value: parseFloat(metricValue),
-      metric_data: {}
-    };
 
-    const success = await onSave(entry);
-    if (success) {
-      setMetricName('');
-      setMetricValue('');
-      setDate(new Date().toISOString().split('T')[0]);
+    try {
+      const entry = {
+        user_id: user.id,
+        recorded_at: new Date(date).toISOString(),
+        metric_type: 'manual',
+        metric_name: metricName.trim(),
+        metric_value: parseFloat(metricValue),
+        metric_data: {}
+      };
+
+      console.log('Submitting metric:', entry);
+
+      const success = await onSave(entry);
+
+      if (success) {
+        // Reset form
+        setMetricName('');
+        setMetricValue('');
+        setDate(new Date().toISOString().split('T')[0]);
+        console.log('Metric saved successfully!');
+      }
+    } catch (error) {
+      console.error('Error in handleSubmit:', error);
+      alert('Failed to save metric');
+    } finally {
+      setSaving(false);
     }
-    setSaving(false);
   };
 
   return (
