@@ -39,6 +39,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   const [visibleHabits, setVisibleHabits] = useState({});
   const [hoveredHabit, setHoveredHabit] = useState(null);
+  const [hoverTimeout, setHoverTimeout] = useState(null);
 
   // Load data
   useEffect(() => {
@@ -177,6 +178,25 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setHabits(result.habits);
+  };
+
+  const handleHabitHover = (habitId) => {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
+    setHoveredHabit(habitId);
+  };
+
+  const handleHabitLeave = () => {
+    const timeout = setTimeout(() => {
+      setHoveredHabit(null);
+    }, 500); // 500ms delay before hiding
+    setHoverTimeout(timeout);
+  };
+
+  const toggleHabitVisibility = (habitId) => {
+    setVisibleHabits(prev => ({
+      ...prev,
+      [habitId]: !prev[habitId]
+    }));
   };
 
   // Calculate stats
@@ -678,8 +698,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
-              overflow: 'auto',
-              padding: 12
+              overflow: 'auto'
             }}>
               {habits.length === 0 ? (
                 <div style={{
@@ -696,7 +715,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               ) : (
                 <table style={{
                   width: '100%',
-                  borderCollapse: 'collapse',
+                  borderCollapse: 'separate',
+                  borderSpacing: 0,
                   fontSize: 12,
                   fontFamily: theme.fontFamily
                 }}>
@@ -706,16 +726,17 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
-                        boxShadow: `0 1px 0 ${theme.border}`,
-                        padding: '12px 12px',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'left',
-                        zIndex: 2,
+                        zIndex: 10,
                         fontFamily: theme.fontFamily,
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase'
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '80px'
                       }}>
                         Day
                       </th>
@@ -723,16 +744,17 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
-                        boxShadow: `0 1px 0 ${theme.border}`,
-                        padding: '12px 12px',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'center',
-                        zIndex: 2,
+                        zIndex: 10,
                         fontFamily: theme.fontFamily,
-                        letterSpacing: '0.05em',
-                        textTransform: 'uppercase'
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '80px'
                       }}>
                         Mood
                       </th>
@@ -740,16 +762,16 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
-                        boxShadow: `0 1px 0 ${theme.border}`,
-                        padding: '12px 12px',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'left',
-                        minWidth: 180,
-                        zIndex: 2,
+                        minWidth: 200,
+                        zIndex: 10,
                         fontFamily: theme.fontFamily,
-                        letterSpacing: '0.05em',
+                        letterSpacing: '0.08em',
                         textTransform: 'uppercase'
                       }}>
                         Memorable Moment
@@ -757,24 +779,24 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       {habits.map((habit, index) => (
                         <th
                           key={habit.id}
-                          onMouseEnter={() => setHoveredHabit(habit.id)}
-                          onMouseLeave={() => setHoveredHabit(null)}
+                          onMouseEnter={() => handleHabitHover(habit.id)}
+                          onMouseLeave={handleHabitLeave}
                           style={{
                             position: 'sticky',
                             top: 0,
                             background: config.darkMode ? '#0f172a' : '#ffffff',
-                            boxShadow: `0 1px 0 ${theme.border}`,
-                            padding: '12px 10px',
+                            borderBottom: `2px solid ${theme.border}`,
+                            padding: '16px 14px',
                             fontSize: 10,
                             fontWeight: 700,
                             color: habit.habit_type === 'build' ? '#10b981' : '#ef4444',
                             textAlign: 'center',
-                            minWidth: 85,
-                            maxWidth: 100,
-                            zIndex: 2,
+                            minWidth: 95,
+                            maxWidth: 110,
+                            zIndex: 10,
                             fontFamily: theme.fontFamily,
                             position: 'relative',
-                            letterSpacing: '0.02em',
+                            letterSpacing: '0.04em',
                             textTransform: 'uppercase',
                             cursor: 'default'
                           }}
@@ -790,23 +812,27 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
                           {/* Hover Controls - Premium Style */}
                           {hoveredHabit === habit.id && (
-                            <div style={{
-                              position: 'absolute',
-                              top: '100%',
-                              left: '50%',
-                              transform: 'translateX(-50%)',
-                              marginTop: 6,
-                              background: config.darkMode ? '#1e293b' : '#fff',
-                              border: `1px solid ${theme.border}`,
-                              borderRadius: 10,
-                              padding: 8,
-                              display: 'flex',
-                              gap: 6,
-                              boxShadow: config.darkMode
-                                ? '0 8px 24px rgba(0,0,0,0.4)'
-                                : '0 8px 24px rgba(0,0,0,0.12)',
-                              zIndex: 100
-                            }}>
+                            <div
+                              onMouseEnter={() => handleHabitHover(habit.id)}
+                              onMouseLeave={handleHabitLeave}
+                              style={{
+                                position: 'absolute',
+                                top: '100%',
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                marginTop: 8,
+                                background: config.darkMode ? '#1e293b' : '#fff',
+                                border: `1.5px solid ${theme.border}`,
+                                borderRadius: 12,
+                                padding: 10,
+                                display: 'flex',
+                                gap: 8,
+                                boxShadow: config.darkMode
+                                  ? '0 12px 32px rgba(0,0,0,0.5)'
+                                  : '0 12px 32px rgba(0,0,0,0.15)',
+                                zIndex: 100
+                              }}
+                            >
                               <button
                                 onClick={() => handleMoveHabit(habit.id, 'up')}
                                 disabled={index === 0}
@@ -882,20 +908,30 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       return (
                         <tr key={dayNum}>
                           <td style={{
-                            padding: '6px 10px',
-                            borderBottom: `1px solid ${theme.border}20`,
-                            fontSize: 12,
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
+                            fontSize: 13,
                             fontWeight: 600,
                             color: theme.textSec,
-                            fontFamily: theme.fontFamily
+                            fontFamily: theme.fontFamily,
+                            width: '80px'
                           }}>
-                            {dayNum} <span style={{ color: theme.textMuted, fontSize: 10, fontWeight: 500 }}>{weekday}</span>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <span style={{ fontWeight: 700 }}>{dayNum}</span>
+                              <span style={{
+                                color: theme.textMuted,
+                                fontSize: 10,
+                                fontWeight: 600,
+                                letterSpacing: '0.02em'
+                              }}>{weekday}</span>
+                            </div>
                           </td>
                           <td style={{
-                            padding: '6px 10px',
-                            borderBottom: `1px solid ${theme.border}20`,
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
                             textAlign: 'center',
-                            position: 'relative'
+                            position: 'relative',
+                            width: '80px'
                           }}>
                             {editingMood === dayNum ? (
                               <div style={{
@@ -943,8 +979,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             </span>
                           </td>
                           <td style={{
-                            padding: '6px 10px',
-                            borderBottom: `1px solid ${theme.border}20`
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`
                           }}>
                             {editingMemorable === dayNum ? (
                               <input
@@ -992,20 +1028,21 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                               key={habit.id}
                               onClick={() => handleToggle(dayNum, habit.id)}
                               style={{
-                                padding: '6px',
-                                borderBottom: `1px solid ${theme.border}20`,
+                                padding: '14px',
+                                borderBottom: `1px solid ${theme.border}`,
                                 textAlign: 'center',
                                 cursor: 'pointer',
-                                fontSize: 16,
+                                fontSize: 18,
                                 fontWeight: 700,
                                 color: isCompleted(dayNum, habit.id)
                                   ? (habit.habit_type === 'build' ? '#10b981' : '#ef4444')
                                   : theme.border,
                                 userSelect: 'none',
-                                fontFamily: theme.fontFamily
+                                fontFamily: theme.fontFamily,
+                                transition: 'all 0.15s'
                               }}
                             >
-                              {isCompleted(dayNum, habit.id) ? '×' : '·'}
+                              {isCompleted(dayNum, habit.id) ? '✓' : '·'}
                             </td>
                           ))}
                         </tr>
@@ -1065,32 +1102,41 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                 />
               </div>
 
-              {/* Legend */}
+              {/* Legend with Toggle Controls */}
               <div style={{
-                padding: '12px 16px',
+                padding: '14px 18px',
                 borderTop: `1px solid ${theme.border}`,
                 background: config.darkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'
               }}>
                 <div style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))',
-                  gap: 8
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                  gap: 10
                 }}>
                   {habits.map((habit, index) => {
                     const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
                     const color = colors[index % colors.length];
+                    const isVisible = visibleHabits[habit.id];
 
                     return (
-                      <div
+                      <button
                         key={habit.id}
+                        onClick={() => toggleHabitVisibility(habit.id)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 6,
-                          fontSize: 9,
+                          gap: 8,
+                          fontSize: 10,
                           fontWeight: 600,
-                          color: theme.textSec,
-                          fontFamily: theme.fontFamily
+                          color: isVisible ? theme.text : theme.textMuted,
+                          fontFamily: theme.fontFamily,
+                          background: isVisible ? `${color}10` : 'transparent',
+                          border: `1.5px solid ${isVisible ? color : theme.border}`,
+                          borderRadius: 8,
+                          padding: '8px 10px',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s',
+                          textAlign: 'left'
                         }}
                       >
                         <div style={{
@@ -1098,16 +1144,24 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           height: 12,
                           borderRadius: '50%',
                           background: color,
-                          flexShrink: 0
+                          flexShrink: 0,
+                          opacity: isVisible ? 1 : 0.3
                         }} />
                         <span style={{
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
-                          textOverflow: 'ellipsis'
+                          textOverflow: 'ellipsis',
+                          flex: 1
                         }}>
                           {habit.name}
                         </span>
-                      </div>
+                        <span style={{
+                          fontSize: 8,
+                          opacity: 0.5
+                        }}>
+                          {isVisible ? '✓' : ''}
+                        </span>
+                      </button>
                     );
                   })}
                 </div>
@@ -1120,7 +1174,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   );
 };
 
-// Vertical Smooth Habit Chart - Days go down with smooth bezier curves
+// Wavy Vertical Habit Chart - Premium flowing curves
 const SmoothHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth }) => {
   const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
 
@@ -1136,10 +1190,10 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
       };
     });
 
-    // Apply 5-day rolling average for extra smoothing
+    // Apply 7-day rolling average for super smooth waves
     const smoothed = data.map((d, i) => {
-      const start = Math.max(0, i - 2);
-      const end = Math.min(data.length, i + 3);
+      const start = Math.max(0, i - 3);
+      const end = Math.min(data.length, i + 4);
       const window = data.slice(start, end);
       const avg = window.reduce((sum, w) => sum + w.completed, 0) / window.length;
       return { day: d.day, value: avg };
@@ -1148,9 +1202,9 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
     return { habit, data: smoothed, color: colors[index % colors.length] };
   });
 
-  const width = 350;
+  const width = 360;
   const height = 750;
-  const padding = { top: 20, right: 50, bottom: 20, left: 45 };
+  const padding = { top: 30, right: 60, bottom: 50, left: 55 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
@@ -1158,8 +1212,8 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
   const yScale = (day) => padding.top + ((day - 1) / (daysInMonth - 1)) * chartHeight;
   const xScale = (value) => padding.left + (value / 100) * chartWidth;
 
-  // Helper to create smooth vertical bezier curve
-  const createSmoothPath = (data) => {
+  // Helper to create flowing wavy path
+  const createWavyPath = (data) => {
     if (data.length === 0) return '';
 
     let path = `M ${xScale(data[0].value)} ${yScale(data[0].day)}`;
@@ -1168,11 +1222,14 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
       const current = data[i];
       const next = data[i + 1];
 
-      const yMid = (yScale(current.day) + yScale(next.day)) / 2;
-      const cp1x = xScale(current.value);
-      const cp1y = yMid;
-      const cp2x = xScale(next.value);
-      const cp2y = yMid;
+      const yDist = yScale(next.day) - yScale(current.day);
+      const xDist = xScale(next.value) - xScale(current.value);
+
+      // Create more pronounced curves for wavy effect
+      const cp1x = xScale(current.value) + xDist * 0.3;
+      const cp1y = yScale(current.day) + yDist * 0.6;
+      const cp2x = xScale(next.value) - xDist * 0.3;
+      const cp2y = yScale(next.day) - yDist * 0.6;
 
       path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${xScale(next.value)} ${yScale(next.day)}`;
     }
@@ -1182,8 +1239,18 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
 
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
+      {/* Background */}
+      <rect
+        x="0"
+        y="0"
+        width={width}
+        height={height}
+        fill={config.darkMode ? '#0a0f1e' : '#fafbfc'}
+        rx="8"
+      />
+
       {/* Grid lines - horizontal (for days) */}
-      {Array.from({ length: Math.floor(daysInMonth / 5) + 1 }, (_, i) => i * 5).map(day => {
+      {Array.from({ length: 7 }, (_, i) => Math.floor(i * daysInMonth / 6)).map(day => {
         if (day === 0 || day > daysInMonth) return null;
         return (
           <line
@@ -1192,22 +1259,22 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
             y1={yScale(day)}
             x2={width - padding.right}
             y2={yScale(day)}
-            stroke={config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
-            strokeWidth={0.5}
+            stroke={config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}
+            strokeWidth={1}
           />
         );
       })}
 
       {/* Grid lines - vertical (for completion %) */}
-      {[0, 25, 50, 75, 100].map(pct => (
+      {[0, 50, 100].map(pct => (
         <line
           key={pct}
           x1={xScale(pct)}
           y1={padding.top}
           x2={xScale(pct)}
           y2={height - padding.bottom}
-          stroke={config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
-          strokeWidth={0.5}
+          stroke={config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}
+          strokeWidth={1}
         />
       ))}
 
@@ -1217,11 +1284,11 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         return (
           <text
             key={day}
-            x={padding.left - 10}
+            x={padding.left - 15}
             y={yScale(day) + 4}
             textAnchor="end"
-            fill={theme.textMuted}
-            fontSize={10}
+            fill={config.darkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+            fontSize={11}
             fontWeight={600}
             fontFamily={theme.fontFamily}
           >
@@ -1235,10 +1302,10 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         <text
           key={pct}
           x={xScale(pct)}
-          y={height - padding.bottom + 15}
+          y={height - padding.bottom + 20}
           textAnchor="middle"
-          fill={theme.textMuted}
-          fontSize={10}
+          fill={config.darkMode ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
+          fontSize={11}
           fontWeight={600}
           fontFamily={theme.fontFamily}
         >
@@ -1248,32 +1315,23 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
 
       {/* Habit lines */}
       {habitData.map(({ habit, data, color }) => {
-        const pathD = createSmoothPath(data);
+        const isVisible = visibleHabits[habit.id];
+        if (!isVisible) return null;
+
+        const pathD = createWavyPath(data);
 
         return (
           <g key={habit.id}>
-            {/* Smooth line */}
+            {/* Flowing wavy line */}
             <path
               d={pathD}
               fill="none"
               stroke={color}
-              strokeWidth={3}
+              strokeWidth={3.5}
               strokeLinecap="round"
               strokeLinejoin="round"
-              opacity={0.85}
+              opacity={0.9}
             />
-
-            {/* Data points */}
-            {data.filter((_, i) => i % 3 === 0).map((point, i) => (
-              <circle
-                key={i}
-                cx={xScale(point.value)}
-                cy={yScale(point.day)}
-                r={2.5}
-                fill={color}
-                opacity={0.7}
-              />
-            ))}
           </g>
         );
       })}
@@ -1284,7 +1342,7 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         y1={padding.top}
         x2={padding.left}
         y2={height - padding.bottom}
-        stroke={theme.border}
+        stroke={config.darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}
         strokeWidth={2}
       />
       <line
@@ -1292,32 +1350,34 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
         y1={height - padding.bottom}
         x2={width - padding.right}
         y2={height - padding.bottom}
-        stroke={theme.border}
+        stroke={config.darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}
         strokeWidth={2}
       />
 
       {/* Axis labels */}
       <text
-        x={padding.left - 35}
+        x={padding.left - 42}
         y={height / 2}
         textAnchor="middle"
-        fill={theme.textSec}
-        fontSize={11}
+        fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
+        fontSize={10}
         fontWeight={700}
         fontFamily={theme.fontFamily}
-        transform={`rotate(-90, ${padding.left - 35}, ${height / 2})`}
+        letterSpacing="0.15em"
+        transform={`rotate(-90, ${padding.left - 42}, ${height / 2})`}
       >
         DAYS
       </text>
 
       <text
         x={width / 2}
-        y={height - 2}
+        y={height - 10}
         textAnchor="middle"
-        fill={theme.textSec}
-        fontSize={11}
+        fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
+        fontSize={10}
         fontWeight={700}
         fontFamily={theme.fontFamily}
+        letterSpacing="0.15em"
       >
         COMPLETION
       </text>
