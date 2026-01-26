@@ -36,6 +36,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [editingMood, setEditingMood] = useState(null);
   const [editingMemorable, setEditingMemorable] = useState(null);
   const [editingMemoText, setEditingMemoText] = useState('');
+  const [editingSleep, setEditingSleep] = useState(null);
+  const [editingSleepValue, setEditingSleepValue] = useState('');
 
   const [visibleHabits, setVisibleHabits] = useState({});
   const [hoveredHabit, setHoveredHabit] = useState(null);
@@ -197,6 +199,52 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
       ...prev,
       [habitId]: !prev[habitId]
     }));
+  };
+
+  const handleSleepSave = async (dayNum) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const sleepHours = parseFloat(editingSleepValue);
+
+    if (isNaN(sleepHours) || sleepHours < 0 || sleepHours > 24) {
+      setEditingSleep(null);
+      setEditingSleepValue('');
+      return;
+    }
+
+    // Save to life_metrics
+    await supabase.from('life_metrics').upsert({
+      user_id: user.uid,
+      date: dateStr,
+      metric_name: 'sleep_hours',
+      metric_value: sleepHours
+    }, {
+      onConflict: 'user_id,date,metric_name'
+    });
+
+    // Reload data
+    const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
+    setDays(result.days);
+
+    // Reload metrics
+    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+    const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
+    const { data: metricsData } = await supabase
+      .from('life_metrics')
+      .select('*')
+      .eq('user_id', user.uid)
+      .gte('date', startDate)
+      .lte('date', endDate);
+    setMetrics(metricsData || []);
+
+    setEditingSleep(null);
+    setEditingSleepValue('');
+  };
+
+  const getSleepHours = (dayNum) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const sleepMetric = metrics.find(m => m.date === dateStr && m.metric_name === 'sleep_hours');
+    return sleepMetric ? sleepMetric.metric_value : null;
   };
 
   // Calculate stats
@@ -643,28 +691,31 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             </div>
 
             <div style={{
-              padding: '8px 10px',
-              background: config.darkMode ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
-              border: '1px solid #8b5cf6',
-              borderRadius: 6,
+              flex: 1,
+              padding: '12px 16px',
+              background: config.darkMode ? 'rgba(139, 92, 246, 0.15)' : 'rgba(139, 92, 246, 0.1)',
+              border: '2px solid #8b5cf6',
+              borderRadius: 10,
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'space-between'
+              justifyContent: 'space-between',
+              boxShadow: config.darkMode ? '0 2px 8px rgba(139, 92, 246, 0.2)' : '0 2px 8px rgba(139, 92, 246, 0.12)'
             }}>
               <span style={{
-                fontSize: 9,
+                fontSize: 10,
                 fontWeight: 700,
                 color: '#8b5cf6',
-                letterSpacing: '0.05em',
+                letterSpacing: '0.1em',
                 fontFamily: theme.fontFamily
               }}>
                 COMPLETION
               </span>
               <span style={{
-                fontSize: 14,
-                fontWeight: 700,
+                fontSize: 24,
+                fontWeight: 800,
                 color: theme.text,
-                fontFamily: theme.fontFamily
+                fontFamily: theme.fontFamily,
+                letterSpacing: '-0.02em'
               }}>
                 {overallCompletion}%
               </span>
@@ -732,7 +783,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'left',
-                        zIndex: 10,
+                        zIndex: 100,
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
@@ -750,7 +801,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'center',
-                        zIndex: 10,
+                        zIndex: 100,
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
@@ -767,9 +818,27 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
+                        textAlign: 'center',
+                        zIndex: 100,
+                        fontFamily: theme.fontFamily,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '90px'
+                      }}>
+                        Sleep
+                      </th>
+                      <th style={{
+                        position: 'sticky',
+                        top: 0,
+                        background: config.darkMode ? '#0f172a' : '#ffffff',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: theme.textMuted,
                         textAlign: 'left',
                         minWidth: 200,
-                        zIndex: 10,
+                        zIndex: 100,
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase'
@@ -793,7 +862,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             textAlign: 'center',
                             minWidth: 95,
                             maxWidth: 110,
-                            zIndex: 10,
+                            zIndex: 100,
                             fontFamily: theme.fontFamily,
                             position: 'relative',
                             letterSpacing: '0.04em',
@@ -977,6 +1046,54 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             >
                               {dayData.mood_emoji || '😐'}
                             </span>
+                          </td>
+                          <td style={{
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
+                            textAlign: 'center',
+                            width: '90px'
+                          }}>
+                            {editingSleep === dayNum ? (
+                              <input
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                max="24"
+                                value={editingSleepValue}
+                                onChange={(e) => setEditingSleepValue(e.target.value)}
+                                onBlur={() => handleSleepSave(dayNum)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleSleepSave(dayNum)}
+                                autoFocus
+                                style={{
+                                  width: '60px',
+                                  padding: '4px 6px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                                  border: `1px solid ${accentColor}`,
+                                  borderRadius: 4,
+                                  color: theme.text,
+                                  fontSize: 11,
+                                  fontFamily: theme.fontFamily,
+                                  textAlign: 'center'
+                                }}
+                              />
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  setEditingSleep(dayNum);
+                                  setEditingSleepValue(getSleepHours(dayNum) || '');
+                                }}
+                                style={{
+                                  cursor: 'pointer',
+                                  color: getSleepHours(dayNum) ? theme.text : theme.textMuted,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  fontStyle: getSleepHours(dayNum) ? 'normal' : 'italic',
+                                  fontFamily: theme.fontFamily
+                                }}
+                              >
+                                {getSleepHours(dayNum) ? `${getSleepHours(dayNum)}h` : '—'}
+                              </span>
+                            )}
                           </td>
                           <td style={{
                             padding: '14px 20px',
@@ -1185,9 +1302,18 @@ const SmoothHabitChart = ({ theme, config, habits, completions, year, month, day
       const dayNum = i + 1;
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
       const completion = completions.find(c => c.date === dateStr && c.habit_id === habit.id);
+
+      // Add subtle variation to 100% lines for visual interest
+      let value = completion?.completed ? 100 : 0;
+      if (value === 100) {
+        // Add small organic variation (±3%) based on day for consistent wave
+        const variation = Math.sin(dayNum / 5) * 3;
+        value = 100 + variation;
+      }
+
       return {
         day: dayNum,
-        completed: completion?.completed ? 100 : 0
+        completed: value
       };
     });
 
