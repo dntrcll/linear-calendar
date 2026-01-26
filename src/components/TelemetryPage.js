@@ -3,7 +3,9 @@ import {
   loadMonthTelemetry,
   toggleHabitCompletion,
   updateDayTelemetry,
-  createHabit
+  createHabit,
+  archiveHabit,
+  updateHabit
 } from '../services/telemetryService';
 import { supabase } from '../supabaseClient';
 import ICONS from '../constants/icons';
@@ -36,6 +38,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [editingMemoText, setEditingMemoText] = useState('');
 
   const [visibleHabits, setVisibleHabits] = useState({});
+  const [editingHabit, setEditingHabit] = useState(null);
 
   // Load data
   useEffect(() => {
@@ -151,6 +154,31 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     setShowAddHabit(false);
   };
 
+  const handleDeleteHabit = async (habitId) => {
+    if (!window.confirm('Delete this habit? Completion data will be preserved.')) return;
+    await archiveHabit(habitId);
+    const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
+    setHabits(result.habits);
+  };
+
+  const handleMoveHabit = async (habitId, direction) => {
+    const habitIndex = habits.findIndex(h => h.id === habitId);
+    if (habitIndex === -1) return;
+
+    const newIndex = direction === 'up' ? habitIndex - 1 : habitIndex + 1;
+    if (newIndex < 0 || newIndex >= habits.length) return;
+
+    const newHabits = [...habits];
+    [newHabits[habitIndex], newHabits[newIndex]] = [newHabits[newIndex], newHabits[habitIndex]];
+
+    // Update display_order for both habits
+    await updateHabit(newHabits[habitIndex].id, { display_order: habitIndex });
+    await updateHabit(newHabits[newIndex].id, { display_order: newIndex });
+
+    const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
+    setHabits(result.habits);
+  };
+
   // Calculate stats
   const buildHabits = habits.filter(h => h.habit_type === 'build');
   const eliminateHabits = habits.filter(h => h.habit_type === 'eliminate');
@@ -175,15 +203,21 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     ? (sleepMetrics.reduce((sum, m) => sum + m.metric_value, 0) / sleepMetrics.length).toFixed(1)
     : 0;
 
+  const moodMetrics = metrics.filter(m => m.metric_name === 'mood');
+  const avgMood = moodMetrics.length > 0
+    ? (moodMetrics.reduce((sum, m) => sum + m.metric_value, 0) / moodMetrics.length).toFixed(1)
+    : 0;
+
+  const energyMetrics = metrics.filter(m => m.metric_name === 'energy');
+  const avgEnergy = energyMetrics.length > 0
+    ? (energyMetrics.reduce((sum, m) => sum + m.metric_value, 0) / energyMetrics.length).toFixed(1)
+    : 0;
+
   const workoutCount = metrics.filter(m => m.metric_name === 'workout_type' && m.metric_value).length;
-  const meditationCount = completions.filter(c => {
-    const habit = habits.find(h => h.id === c.habit_id);
-    return habit && habit.name.toLowerCase().includes('meditat') && c.completed;
-  }).length;
-  const readingCount = completions.filter(c => {
-    const habit = habits.find(h => h.id === c.habit_id);
-    return habit && habit.name.toLowerCase().includes('read') && c.completed;
-  }).length;
+
+  const totalHabitCompletions = completions.filter(c => c.completed).length;
+  const totalHabitDays = daysInMonth * habits.length;
+  const overallCompletion = totalHabitDays > 0 ? Math.round((totalHabitCompletions / totalHabitDays) * 100) : 0;
 
   if (!user) {
     return (
@@ -468,125 +502,153 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
           </div>
         )}
 
-        {/* Monthly Summary */}
-        {!loading && (avgSleep > 0 || workoutCount > 0 || meditationCount > 0 || readingCount > 0) && (
+        {/* Monthly Summary - Compact */}
+        {!loading && (
           <div style={{
-            display: 'flex',
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(100px, 1fr))',
             gap: 8,
             flexShrink: 0
           }}>
-            {avgSleep > 0 && (
-              <div style={{
-                flex: 1,
-                padding: '10px 12px',
-                background: config.darkMode ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.05)',
-                border: '1px solid #6366f1',
-                borderRadius: 8
+            <div style={{
+              padding: '8px 10px',
+              background: config.darkMode ? 'rgba(99, 102, 241, 0.08)' : 'rgba(99, 102, 241, 0.05)',
+              border: '1px solid #6366f1',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#6366f1',
+                letterSpacing: '0.05em',
+                fontFamily: theme.fontFamily
               }}>
-                <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#6366f1',
-                  marginBottom: 4,
-                  letterSpacing: '0.05em',
-                  fontFamily: theme.fontFamily
-                }}>
-                  AVG SLEEP
-                </div>
-                <div style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: theme.text,
-                  fontFamily: theme.fontFamily
-                }}>
-                  {avgSleep}h
-                </div>
-              </div>
-            )}
-            {workoutCount > 0 && (
-              <div style={{
-                flex: 1,
-                padding: '10px 12px',
-                background: config.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)',
-                border: '1px solid #10b981',
-                borderRadius: 8
+                SLEEP
+              </span>
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: theme.fontFamily
               }}>
-                <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#10b981',
-                  marginBottom: 4,
-                  letterSpacing: '0.05em',
-                  fontFamily: theme.fontFamily
-                }}>
-                  WORKOUTS
-                </div>
-                <div style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: theme.text,
-                  fontFamily: theme.fontFamily
-                }}>
-                  {workoutCount}
-                </div>
-              </div>
-            )}
-            {meditationCount > 0 && (
-              <div style={{
-                flex: 1,
-                padding: '10px 12px',
-                background: config.darkMode ? 'rgba(168, 85, 247, 0.08)' : 'rgba(168, 85, 247, 0.05)',
-                border: '1px solid #a855f7',
-                borderRadius: 8
+                {avgSleep || '–'}h
+              </span>
+            </div>
+
+            <div style={{
+              padding: '8px 10px',
+              background: config.darkMode ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)',
+              border: '1px solid #f59e0b',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#f59e0b',
+                letterSpacing: '0.05em',
+                fontFamily: theme.fontFamily
               }}>
-                <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#a855f7',
-                  marginBottom: 4,
-                  letterSpacing: '0.05em',
-                  fontFamily: theme.fontFamily
-                }}>
-                  MEDITATION
-                </div>
-                <div style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: theme.text,
-                  fontFamily: theme.fontFamily
-                }}>
-                  {meditationCount}
-                </div>
-              </div>
-            )}
-            {readingCount > 0 && (
-              <div style={{
-                flex: 1,
-                padding: '10px 12px',
-                background: config.darkMode ? 'rgba(245, 158, 11, 0.08)' : 'rgba(245, 158, 11, 0.05)',
-                border: '1px solid #f59e0b',
-                borderRadius: 8
+                MOOD
+              </span>
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: theme.fontFamily
               }}>
-                <div style={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  color: '#f59e0b',
-                  marginBottom: 4,
-                  letterSpacing: '0.05em',
-                  fontFamily: theme.fontFamily
-                }}>
-                  READING
-                </div>
-                <div style={{
-                  fontSize: 20,
-                  fontWeight: 700,
-                  color: theme.text,
-                  fontFamily: theme.fontFamily
-                }}>
-                  {readingCount}
-                </div>
-              </div>
-            )}
+                {avgMood || '–'}/10
+              </span>
+            </div>
+
+            <div style={{
+              padding: '8px 10px',
+              background: config.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)',
+              border: '1px solid #10b981',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#10b981',
+                letterSpacing: '0.05em',
+                fontFamily: theme.fontFamily
+              }}>
+                ENERGY
+              </span>
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: theme.fontFamily
+              }}>
+                {avgEnergy || '–'}/10
+              </span>
+            </div>
+
+            <div style={{
+              padding: '8px 10px',
+              background: config.darkMode ? 'rgba(236, 72, 153, 0.08)' : 'rgba(236, 72, 153, 0.05)',
+              border: '1px solid #ec4899',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#ec4899',
+                letterSpacing: '0.05em',
+                fontFamily: theme.fontFamily
+              }}>
+                WORKOUTS
+              </span>
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: theme.fontFamily
+              }}>
+                {workoutCount || 0}
+              </span>
+            </div>
+
+            <div style={{
+              padding: '8px 10px',
+              background: config.darkMode ? 'rgba(139, 92, 246, 0.08)' : 'rgba(139, 92, 246, 0.05)',
+              border: '1px solid #8b5cf6',
+              borderRadius: 6,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{
+                fontSize: 9,
+                fontWeight: 700,
+                color: '#8b5cf6',
+                letterSpacing: '0.05em',
+                fontFamily: theme.fontFamily
+              }}>
+                COMPLETION
+              </span>
+              <span style={{
+                fontSize: 14,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: theme.fontFamily
+              }}>
+                {overallCompletion}%
+              </span>
+            </div>
           </div>
         )}
 
@@ -689,7 +751,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       }}>
                         Memorable Moment
                       </th>
-                      {habits.map(habit => (
+                      {habits.map((habit, index) => (
                         <th key={habit.id} style={{
                           position: 'sticky',
                           top: 0,
@@ -701,15 +763,71 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           fontWeight: 700,
                           color: habit.habit_type === 'build' ? '#10b981' : '#ef4444',
                           textAlign: 'center',
-                          minWidth: 70,
-                          maxWidth: 90,
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          minWidth: 90,
+                          maxWidth: 110,
                           zIndex: 2,
                           fontFamily: theme.fontFamily
                         }}>
-                          {habit.name}
+                          <div style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 4,
+                            alignItems: 'center'
+                          }}>
+                            <div style={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              width: '100%'
+                            }}>
+                              {habit.name}
+                            </div>
+                            <div style={{ display: 'flex', gap: 2, opacity: 0.5 }}>
+                              <button
+                                onClick={() => handleMoveHabit(habit.id, 'up')}
+                                disabled={index === 0}
+                                style={{
+                                  padding: 2,
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: habit.habit_type === 'build' ? '#10b981' : '#ef4444',
+                                  cursor: index === 0 ? 'not-allowed' : 'pointer',
+                                  opacity: index === 0 ? 0.2 : 1,
+                                  fontSize: 10
+                                }}
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => handleMoveHabit(habit.id, 'down')}
+                                disabled={index === habits.length - 1}
+                                style={{
+                                  padding: 2,
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: habit.habit_type === 'build' ? '#10b981' : '#ef4444',
+                                  cursor: index === habits.length - 1 ? 'not-allowed' : 'pointer',
+                                  opacity: index === habits.length - 1 ? 0.2 : 1,
+                                  fontSize: 10
+                                }}
+                              >
+                                ↓
+                              </button>
+                              <button
+                                onClick={() => handleDeleteHabit(habit.id)}
+                                style={{
+                                  padding: 2,
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: '#ef4444',
+                                  cursor: 'pointer',
+                                  fontSize: 10
+                                }}
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
                         </th>
                       ))}
                     </tr>
@@ -857,7 +975,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               )}
             </div>
 
-            {/* Habit Trends Chart - Portrait */}
+            {/* Habit Trends Chart - Smooth Lines */}
             <div style={{
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
@@ -872,19 +990,44 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                 fontWeight: 700,
                 color: theme.text,
                 margin: 0,
-                marginBottom: 12,
+                marginBottom: 8,
                 fontFamily: theme.fontFamily
               }}>
                 Habit Trends
               </h3>
 
+              <p style={{
+                fontSize: 10,
+                color: theme.textMuted,
+                margin: 0,
+                marginBottom: 12,
+                fontFamily: theme.fontFamily
+              }}>
+                Daily completion rate over time
+              </p>
+
+              {/* Chart */}
+              <div style={{ flex: 1, minHeight: 0 }}>
+                <SmoothHabitChart
+                  theme={theme}
+                  config={config}
+                  habits={habits}
+                  completions={completions}
+                  year={currentYear}
+                  month={currentMonth}
+                  daysInMonth={daysInMonth}
+                />
+              </div>
+
               {/* Legend */}
               <div style={{
                 display: 'flex',
-                flexDirection: 'column',
-                gap: 4,
-                marginBottom: 12,
-                maxHeight: 100,
+                flexWrap: 'wrap',
+                gap: 8,
+                marginTop: 12,
+                paddingTop: 12,
+                borderTop: `1px solid ${theme.border}`,
+                maxHeight: 60,
                 overflow: 'auto'
               }}>
                 {habits.map((habit, index) => {
@@ -897,36 +1040,23 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        gap: 6,
-                        fontSize: 10,
+                        gap: 4,
+                        fontSize: 9,
                         fontWeight: 600,
-                        color: theme.text,
+                        color: theme.textSec,
                         fontFamily: theme.fontFamily
                       }}
                     >
                       <div style={{
-                        width: 12,
-                        height: 2,
+                        width: 10,
+                        height: 3,
                         background: color,
-                        borderRadius: 1
+                        borderRadius: 2
                       }} />
                       {habit.name}
                     </div>
                   );
                 })}
-              </div>
-
-              {/* Chart */}
-              <div style={{ flex: 1, minHeight: 0 }}>
-                <PortraitHabitChart
-                  theme={theme}
-                  config={config}
-                  habits={habits}
-                  completions={completions}
-                  year={currentYear}
-                  month={currentMonth}
-                  daysInMonth={daysInMonth}
-                />
               </div>
             </div>
           </div>
@@ -936,10 +1066,11 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   );
 };
 
-// Portrait Habit Chart - Vertical orientation with days going down
-const PortraitHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth }) => {
+// Smooth Habit Chart - Clean horizontal chart with bezier curves
+const SmoothHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth }) => {
   const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
 
+  // Calculate completion rate per day for each habit
   const habitData = habits.map((habit, index) => {
     const data = Array.from({ length: daysInMonth }, (_, i) => {
       const dayNum = i + 1;
@@ -947,126 +1078,123 @@ const PortraitHabitChart = ({ theme, config, habits, completions, year, month, d
       const completion = completions.find(c => c.date === dateStr && c.habit_id === habit.id);
       return {
         day: dayNum,
-        completed: completion?.completed ? 1 : 0
+        completed: completion?.completed ? 100 : 0
       };
     });
 
-    return { habit, data, index, color: colors[index % colors.length] };
+    // Apply 3-day rolling average for smoothing
+    const smoothed = data.map((d, i) => {
+      const start = Math.max(0, i - 1);
+      const end = Math.min(data.length, i + 2);
+      const window = data.slice(start, end);
+      const avg = window.reduce((sum, w) => sum + w.completed, 0) / window.length;
+      return { day: d.day, value: avg };
+    });
+
+    return { habit, data: smoothed, color: colors[index % colors.length] };
   });
 
-  const width = 300;
-  const height = 800;
-  const padding = { top: 20, right: 30, bottom: 20, left: 40 };
+  const width = 380;
+  const height = 220;
+  const padding = { top: 15, right: 15, bottom: 30, left: 40 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
 
-  // Portrait: days on Y-axis (0 at top, 30 at bottom), completion on X-axis (0-100%)
-  const yScale = (day) => padding.top + ((day - 1) / (daysInMonth - 1)) * chartHeight;
-  const xScale = (completed) => padding.left + completed * chartWidth;
+  const xScale = (day) => padding.left + ((day - 1) / (daysInMonth - 1)) * chartWidth;
+  const yScale = (value) => padding.top + chartHeight - (value / 100) * chartHeight;
+
+  // Helper to create smooth bezier curve
+  const createSmoothPath = (data) => {
+    if (data.length === 0) return '';
+
+    let path = `M ${xScale(data[0].day)} ${yScale(data[0].value)}`;
+
+    for (let i = 0; i < data.length - 1; i++) {
+      const current = data[i];
+      const next = data[i + 1];
+
+      const xMid = (xScale(current.day) + xScale(next.day)) / 2;
+      const cp1x = xMid;
+      const cp1y = yScale(current.value);
+      const cp2x = xMid;
+      const cp2y = yScale(next.value);
+
+      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${xScale(next.day)} ${yScale(next.value)}`;
+    }
+
+    return path;
+  };
 
   return (
     <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-      {/* Dark background */}
-      <rect x="0" y="0" width={width} height={height} fill={config.darkMode ? '#1e293b' : '#f8fafc'} rx="8" />
-
-      {/* Grid lines - horizontal for days */}
-      {Array.from({ length: Math.floor(daysInMonth / 5) + 1 }, (_, i) => i * 5).map(day => {
-        if (day === 0 || day > daysInMonth) return null;
-        return (
+      {/* Grid lines - horizontal */}
+      {[0, 25, 50, 75, 100].map(pct => (
+        <g key={pct}>
           <line
-            key={day}
             x1={padding.left}
-            y1={yScale(day)}
+            y1={yScale(pct)}
             x2={width - padding.right}
-            y2={yScale(day)}
-            stroke={config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
+            y2={yScale(pct)}
+            stroke={theme.border}
             strokeWidth={0.5}
+            opacity={0.2}
           />
-        );
-      })}
-
-      {/* Grid lines - vertical for completion */}
-      {[0, 0.5, 1].map(pct => (
-        <line
-          key={pct}
-          x1={xScale(pct)}
-          y1={padding.top}
-          x2={xScale(pct)}
-          y2={height - padding.bottom}
-          stroke={config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)'}
-          strokeWidth={0.5}
-        />
-      ))}
-
-      {/* Y-axis labels (days) */}
-      {[0, Math.floor(daysInMonth / 2), daysInMonth].map(day => {
-        if (day === 0) return null;
-        return (
           <text
-            key={day}
-            x={padding.left - 8}
-            y={yScale(day) + 3}
+            x={padding.left - 6}
+            y={yScale(pct) + 3}
             textAnchor="end"
             fill={theme.textMuted}
-            fontSize={10}
+            fontSize={9}
             fontFamily={theme.fontFamily}
           >
-            {day}
+            {pct}%
           </text>
-        );
-      })}
-
-      {/* X-axis labels (completion %) */}
-      {[0, 50, 100].map(pct => (
-        <text
-          key={pct}
-          x={xScale(pct / 100)}
-          y={height - padding.bottom + 15}
-          textAnchor="middle"
-          fill={theme.textMuted}
-          fontSize={10}
-          fontFamily={theme.fontFamily}
-        >
-          {pct}
-        </text>
+        </g>
       ))}
 
-      {/* Habit lines with dotted style and square markers */}
+      {/* Habit lines */}
       {habitData.map(({ habit, data, color }) => {
-        // Create path for dotted line
-        const pathD = data.map((point, i) =>
-          `${i === 0 ? 'M' : 'L'} ${xScale(point.completed)} ${yScale(point.day)}`
-        ).join(' ');
+        const pathD = createSmoothPath(data);
 
         return (
           <g key={habit.id}>
-            {/* Dotted line */}
+            {/* Area fill under line */}
+            <path
+              d={`${pathD} L ${xScale(data[data.length - 1].day)} ${yScale(0)} L ${xScale(data[0].day)} ${yScale(0)} Z`}
+              fill={color}
+              opacity={0.08}
+            />
+
+            {/* Line */}
             <path
               d={pathD}
               fill="none"
               stroke={color}
-              strokeWidth={2}
-              strokeDasharray="4,4"
-              opacity={0.8}
+              strokeWidth={2.5}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              opacity={0.9}
             />
-
-            {/* Square markers at each data point */}
-            {data.map((point, i) => (
-              <rect
-                key={i}
-                x={xScale(point.completed) - 3}
-                y={yScale(point.day) - 3}
-                width={6}
-                height={6}
-                fill={color}
-                opacity={0.9}
-              />
-            ))}
           </g>
         );
       })}
 
-      {/* Axis lines */}
+      {/* X-axis labels */}
+      {[1, Math.floor(daysInMonth / 2), daysInMonth].map(day => (
+        <text
+          key={day}
+          x={xScale(day)}
+          y={height - padding.bottom + 15}
+          textAnchor="middle"
+          fill={theme.textMuted}
+          fontSize={9}
+          fontFamily={theme.fontFamily}
+        >
+          Day {day}
+        </text>
+      ))}
+
+      {/* Axes */}
       <line
         x1={padding.left}
         y1={padding.top}
