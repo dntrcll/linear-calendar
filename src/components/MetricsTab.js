@@ -302,6 +302,15 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
       value: m.metric_value
     }));
 
+  const moodData = metrics
+    .filter(m => m.metric_name === 'mood')
+    .sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at))
+    .slice(-30)
+    .map(m => ({
+      date: new Date(m.recorded_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      value: m.metric_value
+    }));
+
   const weightData = metrics
     .filter(m => m.metric_name === 'weight')
     .sort((a, b) => new Date(a.recorded_at) - new Date(b.recorded_at))
@@ -608,19 +617,61 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             </Suspense>
           </div>
         )}
+
+        {/* Mood Trend */}
+        {moodData.length > 0 && (
+          <div style={{
+            padding: 16,
+            background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+            border: `1px solid ${theme.border}`,
+            borderRadius: 12
+          }}>
+            <h3 style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 12
+            }}>
+              Mood Trend (Last 30 Days)
+            </h3>
+            <Suspense fallback={<div style={{ height: 200 }} />}>
+              <LineChartWidget
+                data={moodData}
+                dataKey="value"
+                xDataKey="date"
+                theme={theme}
+                height={200}
+              />
+            </Suspense>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-// Log Tab - Lists all metrics entries
+// Log Tab - Lists all metrics entries grouped by category
 const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => {
   const [filterType, setFilterType] = useState('all');
-  const [editingId, setEditingId] = useState(null);
 
-  const filteredMetrics = useMemo(() => {
-    if (filterType === 'all') return metrics;
-    return metrics.filter(m => m.metric_type === filterType);
+  const groupedMetrics = useMemo(() => {
+    const filtered = filterType === 'all' ? metrics : metrics.filter(m => m.metric_type === filterType);
+
+    const groups = {
+      sleep: filtered.filter(m => m.metric_name === 'sleep_hours'),
+      mood: filtered.filter(m => m.metric_name === 'mood'),
+      energy: filtered.filter(m => m.metric_name === 'energy'),
+      weight: filtered.filter(m => m.metric_name === 'weight'),
+      workout: filtered.filter(m => m.metric_name === 'workout'),
+      eating: filtered.filter(m => m.metric_name === 'healthy_eating')
+    };
+
+    // Sort each group by date desc
+    Object.keys(groups).forEach(key => {
+      groups[key] = groups[key].sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+    });
+
+    return groups;
   }, [metrics, filterType]);
 
   if (metrics.length === 0) {
@@ -668,81 +719,93 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
         ))}
       </div>
 
-      {/* Metrics List */}
+      {/* Grouped Metrics List */}
       <div style={{ flex: 1, overflow: 'auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {filteredMetrics.map(metric => {
-            const metricLabel = {
-              'sleep_hours': 'Sleep',
-              'weight': 'Weight',
-              'workout': 'Workout',
-              'healthy_eating': 'Healthy Eating',
-              'mood': 'Mood',
-              'energy': 'Energy'
-            }[metric.metric_name] || metric.metric_name;
-
-            const metricDisplay = (() => {
-              if (metric.metric_name === 'sleep_hours') {
-                return `${metric.metric_value} hrs`;
-              } else if (metric.metric_name === 'weight') {
-                return `${metric.metric_value} lbs`;
-              } else if (metric.metric_name === 'workout') {
-                const type = metric.metric_data?.type || 'workout';
-                const duration = metric.metric_data?.duration_minutes || metric.metric_value;
-                return `${type} (${duration} min)`;
-              } else if (metric.metric_name === 'healthy_eating') {
-                return '✓';
-              } else if (metric.metric_name === 'mood' || metric.metric_name === 'energy') {
-                return `${metric.metric_value}/5`;
-              }
-              return metric.metric_value;
-            })();
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+          {/* Helper function for metric display */}
+          {Object.entries({
+            sleep: { label: 'Sleep', color: '#6366f1', format: (m) => `${m.metric_value} hrs` },
+            mood: { label: 'Mood', color: '#f59e0b', format: (m) => `${m.metric_value}/5` },
+            energy: { label: 'Energy', color: '#10b981', format: (m) => `${m.metric_value}/5` },
+            weight: { label: 'Weight', color: '#ec4899', format: (m) => `${m.metric_value} lbs` },
+            workout: { label: 'Workout', color: '#8b5cf6', format: (m) => {
+              const type = m.metric_data?.type || 'workout';
+              const duration = m.metric_data?.duration_minutes || m.metric_value;
+              return `${type} (${duration} min)`;
+            }},
+            eating: { label: 'Healthy Eating', color: '#14b8a6', format: () => '✓' }
+          }).map(([key, config]) => {
+            const categoryMetrics = groupedMetrics[key];
+            if (categoryMetrics.length === 0) return null;
 
             return (
-              <div
-                key={metric.id}
-                style={{
-                  padding: 16,
-                  background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                  border: `1px solid ${theme.border}`,
-                  borderRadius: 12,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between'
-                }}
-              >
-                <div style={{ flex: 1 }}>
-                  <div style={{
-                    fontSize: 13,
-                    fontWeight: 600,
-                    color: theme.text,
-                    marginBottom: 4,
-                    textTransform: 'capitalize'
-                  }}>
-                    {metricLabel}
-                  </div>
-                  <div style={{
-                    fontSize: 11,
-                    color: theme.textMuted
-                  }}>
-                    {new Date(metric.recorded_at).toLocaleDateString()} •{' '}
-                    <span style={{
-                      color: metric.metric_type === 'auto' ? '#10b981' : '#6366f1',
-                      fontWeight: 600,
-                      textTransform: 'uppercase',
-                      fontSize: 10
-                    }}>
-                      {metric.metric_type}
-                    </span>
-                  </div>
-                </div>
+              <div key={key} style={{
+                background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                border: `1px solid ${theme.border}`,
+                borderRadius: 12,
+                overflow: 'hidden'
+              }}>
+                {/* Category Header */}
                 <div style={{
-                  fontSize: 24,
-                  fontWeight: 700,
-                  color: accentColor,
-                  fontFamily: theme.fontDisplay
+                  padding: '12px 16px',
+                  background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                  borderBottom: `1px solid ${theme.border}`
                 }}>
-                  {metricDisplay}
+                  <h3 style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: config.color,
+                    margin: 0,
+                    letterSpacing: '0.05em',
+                    textTransform: 'uppercase'
+                  }}>
+                    {config.label}
+                  </h3>
+                </div>
+
+                {/* Entries Table */}
+                <div style={{ padding: '8px 0' }}>
+                  {categoryMetrics.map(metric => (
+                    <div
+                      key={metric.id}
+                      style={{
+                        padding: '12px 16px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        borderBottom: `1px solid ${theme.border}15`
+                      }}
+                    >
+                      <div style={{ flex: 1 }}>
+                        <div style={{
+                          fontSize: 11,
+                          color: theme.textMuted,
+                          marginBottom: 2
+                        }}>
+                          {new Date(metric.recorded_at).toLocaleDateString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            year: 'numeric'
+                          })} • <span style={{
+                            color: metric.metric_type === 'auto' ? '#10b981' : '#6366f1',
+                            fontWeight: 700,
+                            textTransform: 'uppercase',
+                            fontSize: 10,
+                            letterSpacing: '0.05em'
+                          }}>
+                            {metric.metric_type}
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{
+                        fontSize: 18,
+                        fontWeight: 700,
+                        color: config.color
+                      }}>
+                        {config.format(metric)}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             );
