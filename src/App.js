@@ -7270,7 +7270,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
           <input
             type="text"
             value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
+            onChange={(e) => setForm(prev => ({ ...prev, title: e.target.value }))}
             placeholder="Event title"
             style={{
               ...inputStyle,
@@ -7293,8 +7293,10 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
                 onChange={(e) => {
                   const newStart = new Date(e.target.value);
                   if (!isNaN(newStart.getTime())) {
-                    const duration = form.end - form.start;
-                    setForm({ ...form, start: newStart, end: new Date(newStart.getTime() + duration) });
+                    setForm(prev => {
+                      const duration = prev.end - prev.start;
+                      return { ...prev, start: newStart, end: new Date(newStart.getTime() + duration) };
+                    });
                   }
                 }}
                 style={{ ...inputStyle, fontSize: 13 }}
@@ -7307,7 +7309,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
                 value={toLocalDateTimeString(form.end)}
                 onChange={(e) => {
                   const newEnd = new Date(e.target.value);
-                  if (!isNaN(newEnd.getTime())) setForm({ ...form, end: newEnd });
+                  if (!isNaN(newEnd.getTime())) setForm(prev => ({ ...prev, end: newEnd }));
                 }}
                 style={{ ...inputStyle, fontSize: 13, border: `1px solid ${errors.end ? theme.indicator : isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB'}` }}
               />
@@ -7330,7 +7332,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
                 <button
                   key={option.value}
                   type="button"
-                  onClick={() => setForm({ ...form, recurrencePattern: option.value })}
+                  onClick={() => setForm(prev => ({ ...prev, recurrencePattern: option.value }))}
                   style={{
                     flex: 1,
                     padding: '5px 0',
@@ -7356,7 +7358,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
                 <input
                   type="date"
                   value={form.recurrenceEndDate || ''}
-                  onChange={(e) => setForm({ ...form, recurrenceEndDate: e.target.value || null })}
+                  onChange={(e) => setForm(prev => ({ ...prev, recurrenceEndDate: e.target.value || null }))}
                   style={{ ...inputStyle, fontSize: 13 }}
                 />
               </div>
@@ -7448,7 +7450,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
                   <button
                     key={tag.id}
                     type="button"
-                    onClick={() => setForm({ ...form, category: tag.tagId })}
+                    onClick={() => setForm(prev => ({ ...prev, category: tag.tagId }))}
                     style={{
                       padding: '6px 10px',
                       background: isSelected ? `${tag.color}15` : 'transparent',
@@ -7504,13 +7506,13 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
               <input
                 type="text"
                 value={form.location}
-                onChange={(e) => setForm({ ...form, location: e.target.value })}
+                onChange={(e) => setForm(prev => ({ ...prev, location: e.target.value }))}
                 placeholder="Location (optional)"
                 style={{ ...inputStyle, marginBottom: 10 }}
               />
               <textarea
                 value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                onChange={(e) => setForm(prev => ({ ...prev, description: e.target.value }))}
                 placeholder="Notes (optional)"
                 rows={2}
                 style={{ ...inputStyle, resize: 'none', marginBottom: 12 }}
