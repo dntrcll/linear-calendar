@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   loadMonthTelemetry,
   toggleHabitCompletion,
@@ -9,6 +9,7 @@ import {
 } from '../services/telemetryService';
 import { supabase } from '../supabaseClient';
 import ICONS from '../constants/icons';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 
 const MOOD_EMOJIS = ['😊', '🙂', '😐', '😔', '😞'];
 
@@ -42,6 +43,22 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [visibleHabits, setVisibleHabits] = useState({});
   const [hoveredHabit, setHoveredHabit] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+
+  const [editingHabit, setEditingHabit] = useState(null);
+  const [editingHabitName, setEditingHabitName] = useState('');
+
+  // Responsive layout tracking
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Determine responsive breakpoints
+  const isMobile = windowWidth < 768;
+  const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
   // Load data
   useEffect(() => {
@@ -180,6 +197,26 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setHabits(result.habits);
+  };
+
+  const handleEditHabit = (habit) => {
+    setEditingHabit(habit.id);
+    setEditingHabitName(habit.name);
+    setHoveredHabit(null); // Close hover menu
+  };
+
+  const handleSaveHabitName = async () => {
+    if (!editingHabitName.trim() || !editingHabit) return;
+    await updateHabit(editingHabit, { name: editingHabitName.trim() });
+    const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
+    setHabits(result.habits);
+    setEditingHabit(null);
+    setEditingHabitName('');
+  };
+
+  const handleCancelEditHabit = () => {
+    setEditingHabit(null);
+    setEditingHabitName('');
   };
 
   const handleHabitHover = (habitId) => {
@@ -408,92 +445,47 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
           {/* Compact Stats */}
           <div style={{ display: 'flex', gap: 8, flex: 1 }}>
-            <div style={{
-              flex: 1,
-              padding: '8px 12px',
-              background: config.darkMode ? 'rgba(16, 185, 129, 0.08)' : 'rgba(16, 185, 129, 0.05)',
-              border: '1px solid #10b981',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: '#10b981',
-                letterSpacing: '0.05em',
-                fontFamily: theme.fontFamily
+            {[
+              { label: 'BUILD', value: `${buildPct}%`, color: '#10b981' },
+              { label: 'ELIMINATE', value: `${eliminatePct}%`, color: '#ef4444' },
+              { label: 'LOGGED', value: `${daysLogged}/${daysInMonth}`, color: null }
+            ].map(pill => (
+              <div key={pill.label} style={{
+                flex: 1,
+                padding: '8px 12px',
+                background: pill.color
+                  ? (config.darkMode ? `${pill.color}14` : `${pill.color}0d`)
+                  : (config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)'),
+                border: `1px solid ${pill.color || theme.border}`,
+                borderRadius: 8,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                minWidth: 0,
+                height: 40
               }}>
-                BUILD
-              </span>
-              <span style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: '#10b981',
-                fontFamily: theme.fontFamily
-              }}>
-                {buildPct}%
-              </span>
-            </div>
-
-            <div style={{
-              flex: 1,
-              padding: '8px 12px',
-              background: config.darkMode ? 'rgba(239, 68, 68, 0.08)' : 'rgba(239, 68, 68, 0.05)',
-              border: '1px solid #ef4444',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: '#ef4444',
-                letterSpacing: '0.05em',
-                fontFamily: theme.fontFamily
-              }}>
-                ELIMINATE
-              </span>
-              <span style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: '#ef4444',
-                fontFamily: theme.fontFamily
-              }}>
-                {eliminatePct}%
-              </span>
-            </div>
-
-            <div style={{
-              flex: 1,
-              padding: '8px 12px',
-              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${theme.border}`,
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span style={{
-                fontSize: 10,
-                fontWeight: 700,
-                color: theme.textMuted,
-                letterSpacing: '0.05em',
-                fontFamily: theme.fontFamily
-              }}>
-                LOGGED
-              </span>
-              <span style={{
-                fontSize: 18,
-                fontWeight: 700,
-                color: theme.text,
-                fontFamily: theme.fontFamily
-              }}>
-                {daysLogged}/{daysInMonth}
-              </span>
-            </div>
+                <span style={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  color: pill.color || theme.textMuted,
+                  letterSpacing: '0.05em',
+                  fontFamily: theme.fontFamily,
+                  flexShrink: 0
+                }}>
+                  {pill.label}
+                </span>
+                <span style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: pill.color || theme.text,
+                  fontFamily: theme.fontFamily,
+                  flexShrink: 0,
+                  marginLeft: 8
+                }}>
+                  {pill.value}
+                </span>
+              </div>
+            ))}
           </div>
 
           {/* Add Habit Button */}
@@ -768,8 +760,9 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
         ) : (
           <div style={{
             flex: 1,
-            display: 'grid',
-            gridTemplateColumns: '1fr 400px',
+            display: isMobile ? 'flex' : 'grid',
+            flexDirection: isMobile ? 'column' : undefined,
+            gridTemplateColumns: isMobile ? undefined : (isTablet ? '1fr 350px' : '1fr 400px'),
             gap: 12,
             overflow: 'hidden'
           }}>
@@ -778,7 +771,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
-              overflow: 'auto'
+              overflow: 'auto',
+              maxHeight: isMobile ? '60vh' : undefined
             }}>
               {habits.length === 0 ? (
                 <div style={{
@@ -805,6 +799,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       <th style={{
                         position: 'sticky',
                         top: 0,
+                        left: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
                         padding: '16px 20px',
@@ -812,7 +807,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'left',
-                        zIndex: 100,
+                        zIndex: 110,
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
@@ -899,17 +894,84 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             cursor: 'default'
                           }}
                         >
-                          <div style={{
-                            whiteSpace: 'nowrap',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            width: '100%'
-                          }}>
-                            {habit.name}
-                          </div>
+                          {editingHabit === habit.id ? (
+                            <div style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: 6,
+                              width: '100%'
+                            }}>
+                              <input
+                                type="text"
+                                value={editingHabitName}
+                                onChange={(e) => setEditingHabitName(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSaveHabitName();
+                                  if (e.key === 'Escape') handleCancelEditHabit();
+                                }}
+                                autoFocus
+                                style={{
+                                  padding: '4px 8px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                                  border: `1px solid ${accentColor}`,
+                                  borderRadius: 4,
+                                  color: theme.text,
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  fontFamily: theme.fontFamily,
+                                  textAlign: 'center',
+                                  outline: 'none',
+                                  width: '100%'
+                                }}
+                              />
+                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                                <button
+                                  onClick={handleSaveHabitName}
+                                  style={{
+                                    padding: '3px 8px',
+                                    background: config.darkMode ? `${accentColor}20` : `${accentColor}15`,
+                                    border: `1px solid ${accentColor}`,
+                                    borderRadius: 4,
+                                    color: accentColor,
+                                    fontSize: 9,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    fontFamily: theme.fontFamily
+                                  }}
+                                >
+                                  ✓
+                                </button>
+                                <button
+                                  onClick={handleCancelEditHabit}
+                                  style={{
+                                    padding: '3px 8px',
+                                    background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                                    border: `1px solid ${theme.border}`,
+                                    borderRadius: 4,
+                                    color: theme.textSec,
+                                    fontSize: 9,
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    fontFamily: theme.fontFamily
+                                  }}
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              width: '100%'
+                            }}>
+                              {habit.name}
+                            </div>
+                          )}
 
                           {/* Hover Controls - Premium Style */}
-                          {hoveredHabit === habit.id && (
+                          {hoveredHabit === habit.id && !editingHabit && (
                             <div
                               onMouseEnter={() => handleHabitHover(habit.id)}
                               onMouseLeave={handleHabitLeave}
@@ -974,6 +1036,24 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 ↓
                               </button>
                               <button
+                                onClick={() => handleEditHabit(habit)}
+                                style={{
+                                  padding: '6px 10px',
+                                  background: config.darkMode ? `${accentColor}15` : `${accentColor}10`,
+                                  border: `1.5px solid ${accentColor}`,
+                                  borderRadius: 6,
+                                  color: accentColor,
+                                  cursor: 'pointer',
+                                  fontSize: 13,
+                                  fontWeight: 700,
+                                  fontFamily: theme.fontFamily,
+                                  transition: 'all 0.15s'
+                                }}
+                                title="Edit name"
+                              >
+                                ✎
+                              </button>
+                              <button
                                 onClick={() => handleDeleteHabit(habit.id)}
                                 style={{
                                   padding: '6px 10px',
@@ -1006,6 +1086,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       return (
                         <tr key={dayNum}>
                           <td style={{
+                            position: 'sticky',
+                            left: 0,
+                            zIndex: 5,
+                            background: config.darkMode ? '#0f172a' : '#ffffff',
                             padding: '14px 20px',
                             borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
@@ -1257,7 +1341,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               </div>
 
               {/* Chart */}
-              <div style={{ flex: 1, minHeight: 0, padding: 12 }}>
+              <div style={{ flex: 1, minHeight: 200, padding: 12 }}>
                 <SmoothHabitChart
                   theme={theme}
                   config={config}
@@ -1272,14 +1356,14 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
               {/* Legend with Toggle Controls */}
               <div style={{
-                padding: '14px 18px',
+                padding: '10px 14px',
                 borderTop: `1px solid ${theme.border}`,
                 background: config.darkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'
               }}>
                 <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
-                  gap: 10
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 6
                 }}>
                   {habits.map((habit, index) => {
                     const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
@@ -1293,23 +1377,23 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         style={{
                           display: 'flex',
                           alignItems: 'center',
-                          gap: 8,
+                          gap: 5,
                           fontSize: 10,
                           fontWeight: 600,
                           color: isVisible ? theme.text : theme.textMuted,
                           fontFamily: theme.fontFamily,
                           background: isVisible ? `${color}10` : 'transparent',
-                          border: `1.5px solid ${isVisible ? color : theme.border}`,
-                          borderRadius: 8,
-                          padding: '8px 10px',
+                          border: `1px solid ${isVisible ? color : theme.border}`,
+                          borderRadius: 6,
+                          padding: '4px 8px',
                           cursor: 'pointer',
                           transition: 'all 0.2s',
-                          textAlign: 'left'
+                          lineHeight: 1.2
                         }}
                       >
                         <div style={{
-                          width: 12,
-                          height: 12,
+                          width: 8,
+                          height: 8,
                           borderRadius: '50%',
                           background: color,
                           flexShrink: 0,
@@ -1319,15 +1403,9 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          flex: 1
+                          maxWidth: 80
                         }}>
                           {habit.name}
-                        </span>
-                        <span style={{
-                          fontSize: 8,
-                          opacity: 0.5
-                        }}>
-                          {isVisible ? '✓' : ''}
                         </span>
                       </button>
                     );
@@ -1342,267 +1420,116 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   );
 };
 
-// Wavy Vertical Habit Chart - Premium flowing curves
+// Interactive Habit Trend Chart - Recharts-based (matches Metrics dashboard style)
 const SmoothHabitChart = ({ theme, config, habits, completions, year, month, daysInMonth, visibleHabits }) => {
   const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
 
-  // Calculate completion rate per day for each habit
-  const habitData = habits.map((habit, index) => {
-    const data = Array.from({ length: daysInMonth }, (_, i) => {
+  // Build chart data: per-day rolling 7-day completion rate for each habit
+  const chartData = useMemo(() => {
+    return Array.from({ length: daysInMonth }, (_, i) => {
       const dayNum = i + 1;
-      const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-      const completion = completions.find(c => c.date === dateStr && c.habit_id === habit.id);
+      const point = { day: dayNum };
 
-      // Add subtle variation to 100% lines for visual interest
-      let value = completion?.completed ? 100 : 0;
-      if (value === 100) {
-        // Add small organic variation (±3%) based on day for consistent wave
-        const variation = Math.sin(dayNum / 5) * 3;
-        value = 100 + variation;
-      }
-
-      return {
-        day: dayNum,
-        completed: value
-      };
-    });
-
-    // Apply 5-day rolling average with Gaussian weighting for organic curves
-    const smoothed = data.map((d, i) => {
-      const windowSize = 5;
-      const start = Math.max(0, i - 2);
-      const end = Math.min(data.length, i + 3);
-      const window = data.slice(start, end);
-
-      // Gaussian weights for smoother curves
-      const weights = [0.06, 0.24, 0.4, 0.24, 0.06];
-      const centerIdx = i - start;
-
-      let weightedSum = 0;
-      let weightTotal = 0;
-      window.forEach((w, idx) => {
-        const weight = weights[idx] || 0.1;
-        weightedSum += w.completed * weight;
-        weightTotal += weight;
+      habits.forEach((habit, index) => {
+        // 7-day rolling window completion rate
+        const windowStart = Math.max(1, dayNum - 6);
+        let completed = 0;
+        let total = 0;
+        for (let d = windowStart; d <= dayNum; d++) {
+          const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+          const comp = completions.find(c => c.date === dateStr && c.habit_id === habit.id);
+          if (comp?.completed) completed++;
+          total++;
+        }
+        point[`habit_${index}`] = total > 0 ? Math.round((completed / total) * 100) : 0;
       });
 
-      const avg = weightedSum / weightTotal;
-      return { day: d.day, value: avg };
+      return point;
     });
+  }, [habits, completions, year, month, daysInMonth]);
 
-    return { habit, data: smoothed, color: colors[index % colors.length] };
-  });
-
-  const width = 360;
-  const height = 750;
-  const padding = { top: 30, right: 60, bottom: 50, left: 55 };
-  const chartWidth = width - padding.left - padding.right;
-  const chartHeight = height - padding.top - padding.bottom;
-
-  // Vertical: days on Y-axis (going down), completion on X-axis
-  const yScale = (day) => padding.top + ((day - 1) / (daysInMonth - 1)) * chartHeight;
-  const xScale = (value) => padding.left + (value / 100) * chartWidth;
-
-  // Helper to create flowing wavy path with dramatic curves
-  const createWavyPath = (data) => {
-    if (data.length === 0) return '';
-
-    let path = `M ${xScale(data[0].value)} ${yScale(data[0].day)}`;
-
-    for (let i = 0; i < data.length - 1; i++) {
-      const current = data[i];
-      const next = data[i + 1];
-
-      const yDist = yScale(next.day) - yScale(current.day);
-      const xDist = xScale(next.value) - xScale(current.value);
-
-      // Create VERY pronounced curves for dramatic wavy effect
-      // Using asymmetric control points for more organic flow
-      const cp1x = xScale(current.value) + xDist * 0.5;
-      const cp1y = yScale(current.day) + yDist * 0.25;
-      const cp2x = xScale(next.value) - xDist * 0.5;
-      const cp2y = yScale(next.day) - yDist * 0.25;
-
-      path += ` C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${xScale(next.value)} ${yScale(next.day)}`;
-    }
-
-    return path;
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (!active || !payload || payload.length === 0) return null;
+    return (
+      <div style={{
+        background: config.darkMode ? '#1a1a2e' : '#fff',
+        border: `1px solid ${theme.border}`,
+        borderRadius: 8,
+        padding: '10px 14px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+      }}>
+        <div style={{
+          fontSize: 11,
+          fontWeight: 700,
+          color: theme.text,
+          marginBottom: 6,
+          fontFamily: theme.fontFamily
+        }}>
+          Day {label}
+        </div>
+        {payload.map((entry, idx) => (
+          <div key={idx} style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            fontSize: 11,
+            color: theme.textSec,
+            fontFamily: theme.fontFamily,
+            marginBottom: 2
+          }}>
+            <div style={{
+              width: 8,
+              height: 8,
+              borderRadius: '50%',
+              background: entry.color,
+              flexShrink: 0
+            }} />
+            <span style={{ flex: 1 }}>{entry.name}</span>
+            <span style={{ fontWeight: 700, color: theme.text }}>{entry.value}%</span>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
-    <svg width="100%" height="100%" viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="xMidYMid meet">
-      {/* Background with gradient */}
-      <defs>
-        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" style={{ stopColor: config.darkMode ? '#0d1117' : '#fafbfc', stopOpacity: 1 }} />
-          <stop offset="100%" style={{ stopColor: config.darkMode ? '#010409' : '#f6f8fa', stopOpacity: 1 }} />
-        </linearGradient>
-      </defs>
-      <rect
-        x="0"
-        y="0"
-        width={width}
-        height={height}
-        fill="url(#bgGradient)"
-        rx="8"
-      />
-
-      {/* Grid lines - horizontal (for days) */}
-      {Array.from({ length: 7 }, (_, i) => Math.floor(i * daysInMonth / 6)).map(day => {
-        if (day === 0 || day > daysInMonth) return null;
-        return (
-          <line
-            key={day}
-            x1={padding.left}
-            y1={yScale(day)}
-            x2={width - padding.right}
-            y2={yScale(day)}
-            stroke={config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}
-            strokeWidth={1}
-          />
-        );
-      })}
-
-      {/* Grid lines - vertical (for completion %) */}
-      {[0, 50, 100].map(pct => (
-        <line
-          key={pct}
-          x1={xScale(pct)}
-          y1={padding.top}
-          x2={xScale(pct)}
-          y2={height - padding.bottom}
-          stroke={config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.04)'}
-          strokeWidth={1}
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart data={chartData} margin={{ top: 10, right: 12, bottom: 4, left: 0 }}>
+        <XAxis
+          dataKey="day"
+          stroke={theme.textMuted}
+          tick={{ fill: theme.textSec, fontSize: 10, fontFamily: theme.fontFamily }}
+          tickLine={false}
+          axisLine={{ stroke: theme.border }}
+          interval={Math.floor(daysInMonth / 7)}
         />
-      ))}
-
-      {/* Y-axis labels (days) */}
-      {[1, 5, 10, 15, 20, 25, daysInMonth].map(day => {
-        if (day > daysInMonth) return null;
-        return (
-          <text
-            key={day}
-            x={padding.left - 12}
-            y={yScale(day) + 3}
-            textAnchor="end"
-            fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
-            fontSize={10}
-            fontWeight={600}
-            fontFamily={theme.fontFamily}
-          >
-            {day}
-          </text>
-        );
-      })}
-
-      {/* X-axis labels (completion %) */}
-      {[0, 50, 100].map(pct => (
-        <text
-          key={pct}
-          x={xScale(pct)}
-          y={height - padding.bottom + 18}
-          textAnchor="middle"
-          fill={config.darkMode ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.5)'}
-          fontSize={10}
-          fontWeight={600}
-          fontFamily={theme.fontFamily}
-        >
-          {pct}%
-        </text>
-      ))}
-
-      {/* Glow filters for lines */}
-      <defs>
-        {habitData.map(({ habit, color }, idx) => (
-          <filter key={`glow-${habit.id}`} id={`glow-${idx}`} x="-50%" y="-50%" width="200%" height="200%">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        ))}
-      </defs>
-
-      {/* Habit lines */}
-      {habitData.map(({ habit, data, color }, idx) => {
-        const isVisible = visibleHabits[habit.id];
-        if (!isVisible) return null;
-
-        const pathD = createWavyPath(data);
-
-        return (
-          <g key={habit.id}>
-            {/* Glow layer */}
-            <path
-              d={pathD}
-              fill="none"
-              stroke={color}
-              strokeWidth={6}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.15}
-              filter={`url(#glow-${idx})`}
+        <YAxis
+          domain={[0, 100]}
+          stroke={theme.textMuted}
+          tick={{ fill: theme.textSec, fontSize: 10, fontFamily: theme.fontFamily }}
+          tickLine={false}
+          axisLine={{ stroke: theme.border }}
+          tickFormatter={v => `${v}%`}
+          ticks={[0, 25, 50, 75, 100]}
+          width={48}
+        />
+        <Tooltip content={<CustomTooltip />} />
+        {habits.map((habit, index) => {
+          if (!visibleHabits[habit.id]) return null;
+          return (
+            <Line
+              key={habit.id}
+              type="monotone"
+              dataKey={`habit_${index}`}
+              name={habit.name}
+              stroke={colors[index % colors.length]}
+              strokeWidth={2}
+              dot={false}
+              activeDot={{ r: 5, fill: colors[index % colors.length], stroke: '#fff', strokeWidth: 2 }}
             />
-            {/* Main flowing wavy line */}
-            <path
-              d={pathD}
-              fill="none"
-              stroke={color}
-              strokeWidth={3}
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={0.95}
-            />
-          </g>
-        );
-      })}
-
-      {/* Axes */}
-      <line
-        x1={padding.left}
-        y1={padding.top}
-        x2={padding.left}
-        y2={height - padding.bottom}
-        stroke={config.darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}
-        strokeWidth={2}
-      />
-      <line
-        x1={padding.left}
-        y1={height - padding.bottom}
-        x2={width - padding.right}
-        y2={height - padding.bottom}
-        stroke={config.darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'}
-        strokeWidth={2}
-      />
-
-      {/* Axis title labels */}
-      <text
-        x={-(height / 2)}
-        y={18}
-        textAnchor="middle"
-        fill={config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'}
-        fontSize={9}
-        fontWeight={700}
-        fontFamily={theme.fontFamily}
-        letterSpacing="0.2em"
-        transform={`rotate(-90)`}
-      >
-        DAYS
-      </text>
-
-      <text
-        x={padding.left + chartWidth / 2}
-        y={height - 6}
-        textAnchor="middle"
-        fill={config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.6)'}
-        fontSize={9}
-        fontWeight={700}
-        fontFamily={theme.fontFamily}
-        letterSpacing="0.2em"
-      >
-        COMPLETION
-      </text>
-    </svg>
+          );
+        })}
+      </LineChart>
+    </ResponsiveContainer>
   );
 };

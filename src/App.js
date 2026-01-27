@@ -875,11 +875,8 @@ function TimelineOS() {
     // Set a maximum time for loading
     const loadTimeout = setTimeout(() => {
       console.warn('⚠️ Loading taking too long, showing app anyway...');
-      setEvents([]);
-      setDeletedEvents([]);
-      setTags({ personal: [], family: [] });
       setLoading(false);
-    }, 3000); // 3 second max
+    }, 8000); // 8 second max - don't wipe data, just stop loading indicator
 
     try {
       // Load events from Supabase
@@ -888,7 +885,7 @@ function TimelineOS() {
       const eventsPromise = loadEvents(u.uid);
       const eventsResult = await Promise.race([
         eventsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 2000))
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 5000))
       ]);
       const eventsEndTime = performance.now();
 
@@ -913,7 +910,7 @@ function TimelineOS() {
       const tagsPromise = loadTags(u.uid);
       const tagsResult = await Promise.race([
         tagsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 2000))
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 5000))
       ]);
       const tagsEndTime = performance.now();
 
@@ -1086,6 +1083,42 @@ function TimelineOS() {
     };
   }, [loadData]);
 
+  // Reload data when user returns to the app (only if away for >60s, no loading flash)
+  const lastLoadTimeRef = useRef(Date.now());
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && user) {
+        const elapsed = Date.now() - lastLoadTimeRef.current;
+        if (elapsed > 60000) {
+          lastLoadTimeRef.current = Date.now();
+          // Silently reload without showing loading state
+          (async () => {
+            try {
+              const [eventsResult, tagsResult] = await Promise.all([
+                loadEvents(user.uid),
+                loadTags(user.uid)
+              ]);
+              if (!eventsResult.error && eventsResult.data) {
+                setEvents(eventsResult.data.filter(e => !e.deleted));
+                setDeletedEvents(eventsResult.data.filter(e => e.deleted));
+              }
+              if (!tagsResult.error && tagsResult.data) {
+                setTags({
+                  personal: tagsResult.data.filter(t => t.context === 'personal'),
+                  family: tagsResult.data.filter(t => t.context === 'family')
+                });
+              }
+            } catch (err) {
+              console.error('Background refresh error:', err);
+            }
+          })();
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [user]);
+
   useEffect(() => {
     localStorage.setItem('timeline_v5_cfg', JSON.stringify(config));
   }, [config]);
@@ -1221,7 +1254,9 @@ function TimelineOS() {
         description: data.description?.trim() || "",
         location: data.location?.trim() || "",
         start: start.toISOString(),
-        end: end.toISOString()
+        end: end.toISOString(),
+        recurrencePattern: data.recurrencePattern || 'none',
+        recurrenceEndDate: data.recurrenceEndDate || null
       };
 
       let result;
@@ -1245,7 +1280,8 @@ function TimelineOS() {
 
     } catch (error) {
       console.error("Error saving event:", error);
-      notify("Failed to save event", "error");
+      const msg = error?.message || error?.details || 'Unknown error';
+      notify(`Failed to save event: ${msg}`, "error");
 
       const saveEndTime = performance.now();
       recordPerformance('handleSaveEvent', saveEndTime - saveStartTime, {
@@ -2312,9 +2348,9 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics', 'telemetry'].map(mode => {
+            {['day', 'week', 'month', 'year', 'focus', 'metrics', 'telemetry'].map(mode => {
               // Custom label for telemetry
-              const label = mode === 'telemetry' ? 'journal' : mode;
+              const label = mode === 'telemetry' ? 'insights' : mode;
 
               return (
                 <button
@@ -2497,11 +2533,6 @@ function TimelineOS() {
                 tags={currentTags}
                 setEditingEvent={setEditingEvent}
               />
-            ) : viewMode === 'life' ? (
-              <LifeView
-                theme={theme}
-                accentColor={accentColor}
-              />
             ) : viewMode === 'metrics' ? (
               <MetricsTab
                 theme={theme}
@@ -2588,6 +2619,7 @@ function TimelineOS() {
         <EventEditor
           event={editingEvent}
           theme={theme}
+          config={config}
           tags={currentTags}
           onSave={handleSaveEvent}
           onDelete={editingEvent?.id ? () => softDeleteEvent(editingEvent.id) : null}
@@ -2690,6 +2722,58 @@ function TimelineOS() {
           }}
         >
           <ICONS.ChevronRight width={16} height={16} />
+        </button>
+      )}
+
+      {/* Floating Timer Toggle Button - Always Visible */}
+      {!floatingTimerVisible && (
+        <button
+          onClick={() => setFloatingTimerVisible(true)}
+          title={runningTimersCount > 0 ? `${formatTimer(timers.find(t => t.running)?.seconds || 0)} - ${timers.find(t => t.running)?.name}` : 'Open Timer'}
+          style={{
+            position: 'fixed',
+            bottom: 20,
+            right: 20,
+            width: 44,
+            height: 44,
+            borderRadius: 14,
+            background: runningTimersCount > 0
+              ? `linear-gradient(135deg, ${timers.find(t => t.running)?.color || accentColor}, ${timers.find(t => t.running)?.color || accentColor}cc)`
+              : (config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+            border: `1px solid ${runningTimersCount > 0 ? 'transparent' : theme.border}`,
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            color: runningTimersCount > 0 ? '#fff' : theme.textMuted,
+            boxShadow: runningTimersCount > 0
+              ? `0 4px 16px ${timers.find(t => t.running)?.color || accentColor}40`
+              : (config.darkMode ? '0 2px 8px rgba(0,0,0,0.3)' : '0 2px 8px rgba(0,0,0,0.1)'),
+            zIndex: 9999,
+            transition: 'all 0.2s'
+          }}
+        >
+          <ICONS.Timer width={20} height={20} />
+          {runningTimersCount > 0 && (
+            <div style={{
+              position: 'absolute',
+              bottom: -6,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              fontSize: 9,
+              fontWeight: 700,
+              fontFamily: "'Inter', sans-serif",
+              color: '#fff',
+              background: timers.find(t => t.running)?.color || accentColor,
+              padding: '1px 5px',
+              borderRadius: 6,
+              whiteSpace: 'nowrap'
+            }}>
+              {formatTimer(timers.find(t => t.running)?.seconds || 0)}
+            </div>
+          )}
         </button>
       )}
 
@@ -2916,15 +3000,71 @@ function TimelineOS() {
                           );
                         })}
                       </div>
+                      {/* Duration Selector */}
+                      <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, textTransform: 'uppercase', fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em' }}>
+                        Duration
+                      </div>
+                      <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: 8, color: theme.textMuted, display: 'block', marginBottom: 3, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>Hours</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="23"
+                            value={Math.floor(timer.originalSeconds / 3600)}
+                            onChange={(e) => {
+                              const hrs = Math.max(0, Math.min(23, parseInt(e.target.value) || 0));
+                              const currentMins = Math.floor((timer.originalSeconds % 3600) / 60);
+                              const secs = Math.max(60, (hrs * 3600) + (currentMins * 60));
+                              updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: 'SF Mono, Menlo, monospace',
+                              background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                              border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                              borderRadius: 6,
+                              color: theme.text,
+                              textAlign: 'center',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                        <div style={{ flex: 1 }}>
+                          <label style={{ fontSize: 8, color: theme.textMuted, display: 'block', marginBottom: 3, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>Minutes</label>
+                          <input
+                            type="number"
+                            min="0"
+                            max="59"
+                            value={Math.floor((timer.originalSeconds % 3600) / 60)}
+                            onChange={(e) => {
+                              const mins = Math.max(0, Math.min(59, parseInt(e.target.value) || 0));
+                              const currentHrs = Math.floor(timer.originalSeconds / 3600);
+                              const secs = Math.max(60, (currentHrs * 3600) + (mins * 60));
+                              updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
+                            }}
+                            style={{
+                              width: '100%',
+                              padding: '6px 8px',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              fontFamily: 'SF Mono, Menlo, monospace',
+                              background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+                              border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                              borderRadius: 6,
+                              color: theme.text,
+                              textAlign: 'center',
+                              outline: 'none'
+                            }}
+                          />
+                        </div>
+                      </div>
                       <div style={{ display: 'flex', gap: 4 }}>
                         <button
-                          onClick={() => {
-                            const mins = prompt('Duration (minutes):', Math.floor(timer.originalSeconds / 60));
-                            if (mins && !isNaN(mins)) {
-                              const secs = Math.max(1, parseInt(mins)) * 60;
-                              updateTimer(timer.id, { seconds: secs, originalSeconds: secs });
-                            }
-                          }}
+                          onClick={() => setCustomizingTimer(null)}
                           style={{
                             flex: 1,
                             padding: '6px',
@@ -2938,7 +3078,7 @@ function TimelineOS() {
                             fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
                           }}
                         >
-                          Edit Time
+                          Done
                         </button>
                         {timers.length > 1 && (
                           <button
@@ -5402,14 +5542,14 @@ letterSpacing: '0.02em'
 <div style={{
 height: 6,
 background: config.darkMode
-? 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)'
-: 'linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.04) 100%)',
+? `${accentColor}18`
+: `${accentColor}12`,
 borderRadius: 10,
 overflow: 'hidden',
 position: 'relative',
 boxShadow: config.darkMode
-? 'inset 0 1px 2px rgba(0,0,0,0.3)'
-: 'inset 0 1px 2px rgba(0,0,0,0.1)'
+? 'inset 0 1px 2px rgba(0,0,0,0.2)'
+: 'inset 0 1px 2px rgba(0,0,0,0.06)'
 }}>
 <div style={{
 width: `${yearProgress}%`,
@@ -5876,7 +6016,7 @@ const EventListItem = React.memo(({ event, tag, accentColor, theme, isDark, form
 // Focus View - For Goals and Timers
 function FocusView({
   theme,
-  // config,
+  config,
   goals,
   toggleGoal,
   addGoal,
@@ -5894,7 +6034,7 @@ function FocusView({
   tags,
   setEditingEvent
 }) {
-  const isDark = theme.id === 'dark';
+  const isDark = config.darkMode;
   const [quickNotes, setQuickNotes] = React.useState(() => {
     const saved = localStorage.getItem('quickNotes');
     return saved || '';
@@ -6025,14 +6165,14 @@ function FocusView({
                   <div style={{
                     flex: 1,
                     height: 5,
-                    background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                    background: isDark ? `${accentColor}18` : `${accentColor}12`,
                     borderRadius: 3,
                     overflow: 'hidden'
                   }}>
                     <div style={{
                       width: `${goalsProgress}%`,
                       height: '100%',
-                      background: 'linear-gradient(90deg, #10b981, #059669)',
+                      background: `linear-gradient(90deg, ${accentColor}, ${accentColor}cc)`,
                       borderRadius: 3,
                       transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
                     }} />
@@ -6589,7 +6729,7 @@ function EventListPanel({
   const [draggedEvent, setDraggedEvent] = React.useState(null);
   const [dropTarget, setDropTarget] = React.useState(null);
   const [showAllDays, setShowAllDays] = React.useState(false);
-  const isDark = theme.id === 'dark';
+  const isDark = config.darkMode;
 
   // Group events by date
   const groupedEvents = React.useMemo(() => {
@@ -6985,18 +7125,20 @@ function EventListPanel({
   );
 }
 
-function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
+function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
   const [form, setForm] = React.useState({
     title: event?.title || '',
     category: event?.category || (tags[0]?.tagId || ''),
     description: event?.description || '',
     location: event?.location || '',
     start: event?.start ? new Date(event.start) : new Date(),
-    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 60 * 60 * 1000)
+    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 60 * 60 * 1000),
+    recurrencePattern: event?.recurrencePattern || 'none',
+    recurrenceEndDate: event?.recurrenceEndDate || ''
   });
   const [errors, setErrors] = React.useState({});
   const [showMore, setShowMore] = React.useState(false);
-  const isDark = theme.id === 'dark';
+  const isDark = config.darkMode;
   const accentColor = context === 'family' ? theme.familyAccent : theme.accent;
 
   // Find conflicts with current form times across ALL calendars
@@ -7171,6 +7313,54 @@ function EventEditor({ event, theme, tags, onSave, onDelete, onCancel, context, 
               />
               {errors.end && <div style={{ fontSize: 10, color: theme.indicator, marginTop: 4 }}>{errors.end}</div>}
             </div>
+          </div>
+
+          {/* Recurrence Options */}
+          <div style={{ marginBottom: 12 }}>
+            <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Repeat</label>
+            <div style={{ display: 'flex', gap: 4 }}>
+              {[
+                { value: 'none', label: 'Never' },
+                { value: 'daily', label: 'Daily' },
+                { value: 'weekly', label: 'Weekly' },
+                { value: 'fortnightly', label: '2 Wks' },
+                { value: 'monthly', label: 'Monthly' },
+                { value: 'yearly', label: 'Yearly' }
+              ].map(option => (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => setForm({ ...form, recurrencePattern: option.value })}
+                  style={{
+                    flex: 1,
+                    padding: '5px 0',
+                    fontSize: 10,
+                    fontWeight: 600,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    borderRadius: 6,
+                    border: `1px solid ${form.recurrencePattern === option.value ? accentColor : (isDark ? 'rgba(255,255,255,0.08)' : '#E5E7EB')}`,
+                    background: form.recurrencePattern === option.value ? `${accentColor}15` : (isDark ? 'rgba(255,255,255,0.03)' : '#FAFBFC'),
+                    color: form.recurrencePattern === option.value ? accentColor : theme.textSec,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                    textAlign: 'center'
+                  }}
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+            {form.recurrencePattern && form.recurrencePattern !== 'none' && (
+              <div style={{ marginTop: 8 }}>
+                <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 4, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Repeat Until (optional)</label>
+                <input
+                  type="date"
+                  value={form.recurrenceEndDate || ''}
+                  onChange={(e) => setForm({ ...form, recurrenceEndDate: e.target.value || null })}
+                  style={{ ...inputStyle, fontSize: 13 }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Conflict Warning - Show when time overlaps with other events */}
@@ -9744,7 +9934,7 @@ function MultiLineChart({ data, theme, accentColor, selectedMetrics, loading }) 
 }
 
 // LifeView Component - Visualize life in weeks
-function LifeView({ theme, accentColor }) {
+function LifeView({ theme, config, accentColor }) {
   const [birthDate, setBirthDate] = React.useState(() => {
     const saved = localStorage.getItem('userBirthDate');
     return saved || '';
@@ -9813,7 +10003,7 @@ function LifeView({ theme, accentColor }) {
     };
   }, [birthDate, lifeExpectancy]);
 
-  const isDark = theme.id === 'dark';
+  const isDark = config.darkMode;
   const totalWeeks = 52 * lifeExpectancy;
   const weeksLived = lifeStats?.weeks || 0;
 
@@ -9880,49 +10070,116 @@ function LifeView({ theme, accentColor }) {
           />
           <div style={{
             display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '8px 14px',
-            background: isDark ? '#1a1a1d' : '#ffffff',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-            borderRadius: 10
+            flexDirection: 'column',
+            gap: 8
           }}>
-            <span style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: theme.textSec
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              padding: '8px 14px',
+              background: isDark ? '#1a1a1d' : '#ffffff',
+              border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+              borderRadius: 10
             }}>
-              Life expectancy:
-            </span>
-            <input
-              type="number"
-              value={lifeExpectancy}
-              onChange={(e) => setLifeExpectancy(Math.max(1, Math.min(120, parseInt(e.target.value) || 80)))}
-              min="1"
-              max="120"
-              style={{
-                width: 50,
-                padding: '4px 8px',
-                background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
-                borderRadius: 6,
-                color: theme.text,
-                fontSize: 13,
-                fontWeight: 600,
-                fontFamily: theme.fontFamily,
-                textAlign: 'center',
-                outline: 'none'
-              }}
-            />
-            <span style={{
-              fontSize: 12,
-              fontWeight: 500,
-              color: theme.textSec
+              <span style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: theme.textSec
+              }}>
+                Expected lifespan:
+              </span>
+              <input
+                type="number"
+                value={lifeExpectancy}
+                onChange={(e) => setLifeExpectancy(Math.max(1, Math.min(120, parseInt(e.target.value) || 80)))}
+                min="1"
+                max="120"
+                style={{
+                  width: 50,
+                  padding: '4px 8px',
+                  background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
+                  border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                  borderRadius: 6,
+                  color: theme.text,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  fontFamily: theme.fontFamily,
+                  textAlign: 'center',
+                  outline: 'none'
+                }}
+              />
+              <span style={{
+                fontSize: 12,
+                fontWeight: 500,
+                color: theme.textSec
+              }}>
+                yrs
+              </span>
+            </div>
+            {/* Preset buttons */}
+            <div style={{
+              display: 'flex',
+              gap: 4
             }}>
-              yrs
-            </span>
+              {[70, 75, 80, 85, 90].map(preset => (
+                <button
+                  key={preset}
+                  onClick={() => setLifeExpectancy(preset)}
+                  style={{
+                    padding: '4px 10px',
+                    background: lifeExpectancy === preset
+                      ? `${accentColor}20`
+                      : (isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'),
+                    border: `1px solid ${lifeExpectancy === preset ? accentColor : (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}`,
+                    borderRadius: 6,
+                    color: lifeExpectancy === preset ? accentColor : theme.textSec,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: theme.fontFamily,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (lifeExpectancy !== preset) {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (lifeExpectancy !== preset) {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)';
+                    }
+                  }}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
+
+      {/* Disclaimer Banner */}
+      <div style={{
+        padding: '12px 16px',
+        background: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)',
+        border: `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+        borderRadius: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10
+      }}>
+        <span style={{ fontSize: 14 }}>ℹ️</span>
+        <p style={{
+          fontSize: 13,
+          color: theme.textSec,
+          margin: 0,
+          fontStyle: 'italic',
+          fontFamily: theme.fontFamily,
+          lineHeight: 1.5
+        }}>
+          This visualization is an approximation based on average life expectancy. It's a tool for reflection and perspective, not a prediction.
+        </p>
       </div>
 
       {/* Main Content Grid */}

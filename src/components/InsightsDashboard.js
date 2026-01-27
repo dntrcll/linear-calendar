@@ -364,17 +364,17 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
 
         {/* Dashboard Content */}
         <div style={{
-          padding: 24,
+          padding: '16px 24px 24px',
           flex: 1,
           overflow: 'auto',
           display: 'flex',
           flexDirection: 'column',
-          gap: 20
+          gap: 14
         }}>
           {/* Today's Overview - Full Width */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+            gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 10,
             flexShrink: 0
           }}>
@@ -414,179 +414,173 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
             />
           </div>
 
-          {/* 2-Column Grid */}
+          {/* Charts Row - 2 equal charts */}
           <div style={{
             display: 'grid',
             gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: 14,
-            flex: 1,
-            minHeight: 0
+            gap: 12,
+            flexShrink: 0
           }}>
-            {/* Left Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-              {/* Weekly Time Chart */}
-              <ChartCard
-                title="Weekly Time Trend"
-                icon={<ICONS.TrendingUp width={16} height={16} style={{ color: accentColor }} />}
-              >
-                <Suspense fallback={<div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
-                  color: theme.textMuted, fontSize: 12
-                }}>Loading chart...</div>}>
-                  <AreaChartWidget
-                    data={weeklyData}
-                    dataKey="hours"
-                    xDataKey="date"
-                    theme={theme}
-                    height={150}
-                  />
-                </Suspense>
-              </ChartCard>
+            <ChartCard
+              title="Weekly Time Trend"
+              icon={<ICONS.TrendingUp width={16} height={16} style={{ color: accentColor }} />}
+            >
+              <Suspense fallback={<div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
+                color: theme.textMuted, fontSize: 12
+              }}>Loading chart...</div>}>
+                <AreaChartWidget
+                  data={weeklyData}
+                  dataKey="hours"
+                  xDataKey="date"
+                  theme={theme}
+                  height={130}
+                />
+              </Suspense>
+            </ChartCard>
 
-              {/* Category Breakdown */}
-              <ChartCard
-                title="Time by Category"
-                icon={<ICONS.Tag width={16} height={16} style={{ color: accentColor }} />}
-              >
-                <Suspense fallback={<div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
-                  color: theme.textMuted, fontSize: 12
-                }}>Loading chart...</div>}>
-                  <BarChartWidget
-                    data={categoryData}
-                    dataKey="hours"
-                    xDataKey="name"
-                    theme={theme}
-                    height={150}
-                  />
-                </Suspense>
-              </ChartCard>
+            <ChartCard
+              title="Productivity Trend"
+              icon={<ICONS.Activity width={16} height={16} style={{ color: accentColor }} />}
+            >
+              <Suspense fallback={<div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
+                color: theme.textMuted, fontSize: 12
+              }}>Loading chart...</div>}>
+                <LineChartWidget
+                  data={weeklyData}
+                  dataKey="events"
+                  xDataKey="date"
+                  theme={theme}
+                  height={130}
+                />
+              </Suspense>
+            </ChartCard>
+          </div>
 
-              {/* Quick Stats */}
-              <div style={{
-                background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 12,
-                padding: 14,
-                flexShrink: 0
-              }}>
-                <h3 style={{
-                  fontSize: 13, fontWeight: 600, color: theme.text,
-                  marginBottom: 12, fontFamily: theme.fontFamily
-                }}>
-                  Week Summary
-                </h3>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: theme.textSec }}>Best Day</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{bestDay}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: theme.textSec }}>Most Used</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{mostUsedCategory}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 12, color: theme.textSec }}>Daily Average</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{avgDailyHours}h</span>
-                  </div>
-                </div>
-              </div>
-            </div>
+          {/* Bottom Row - 3 equal panels */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: 12,
+            flexShrink: 0
+          }}>
+            {/* Time by Category */}
+            <ChartCard
+              title="Time by Category"
+              icon={<ICONS.Tag width={16} height={16} style={{ color: accentColor }} />}
+            >
+              <Suspense fallback={<div style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
+                color: theme.textMuted, fontSize: 12
+              }}>Loading chart...</div>}>
+                <BarChartWidget
+                  data={categoryData}
+                  dataKey="hours"
+                  xDataKey="name"
+                  theme={theme}
+                  height={120}
+                />
+              </Suspense>
+            </ChartCard>
 
-            {/* Right Column */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, minHeight: 0 }}>
-              {/* Productivity Curve */}
-              <ChartCard
-                title="Productivity Trend"
-                icon={<ICONS.Activity width={16} height={16} style={{ color: accentColor }} />}
-              >
-                <Suspense fallback={<div style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%',
-                  color: theme.textMuted, fontSize: 12
-                }}>Loading chart...</div>}>
-                  <LineChartWidget
-                    data={weeklyData}
-                    dataKey="events"
-                    xDataKey="date"
-                    theme={theme}
-                    height={150}
-                  />
-                </Suspense>
-              </ChartCard>
-
-              {/* Context Split */}
-              <div style={{
-                background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 12,
-                padding: 14,
-                flexShrink: 0
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <ICONS.Briefcase width={16} height={16} style={{ color: accentColor }} />
+            {/* Context Split + Top Categories */}
+            <div style={{
+              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              border: `1px solid ${theme.border}`,
+              borderRadius: 12,
+              padding: 14,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 14
+            }}>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <ICONS.Briefcase width={14} height={14} style={{ color: accentColor }} />
                   <h3 style={{
-                    fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: theme.fontFamily
+                    fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: theme.fontFamily
                   }}>
                     Context Split
                   </h3>
                 </div>
-                <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+                <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
                   <div style={{
                     flex: contextSplit.personal,
-                    height: 12,
+                    height: 10,
                     background: '#6366f1',
-                    borderRadius: 6,
+                    borderRadius: 5,
                     transition: 'flex 0.3s'
                   }} />
                   <div style={{
                     flex: contextSplit.work,
-                    height: 12,
+                    height: 10,
                     background: '#10b981',
-                    borderRadius: 6,
+                    borderRadius: 5,
                     transition: 'flex 0.3s'
                   }} />
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#6366f1' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: 2, background: '#6366f1' }} />
                     <span style={{ color: theme.textSec }}>Personal</span>
                     <span style={{ fontWeight: 600, color: theme.text }}>{contextSplit.personal}%</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: '#10b981' }} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                    <div style={{ width: 7, height: 7, borderRadius: 2, background: '#10b981' }} />
                     <span style={{ color: theme.textSec }}>Work</span>
                     <span style={{ fontWeight: 600, color: theme.text }}>{contextSplit.work}%</span>
                   </div>
                 </div>
               </div>
-
-              {/* Category List */}
-              <div style={{
-                background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 12,
-                padding: 14,
-                flexShrink: 0
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
-                  <ICONS.List width={16} height={16} style={{ color: accentColor }} />
+              <div style={{ borderTop: `1px solid ${theme.border}`, paddingTop: 12 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <ICONS.List width={14} height={14} style={{ color: accentColor }} />
                   <h3 style={{
-                    fontSize: 13, fontWeight: 600, color: theme.text, fontFamily: theme.fontFamily
+                    fontSize: 12, fontWeight: 600, color: theme.text, fontFamily: theme.fontFamily
                   }}>
                     Top Categories
                   </h3>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                  {categoryData.slice(0, 5).map((cat, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {categoryData.slice(0, 4).map((cat, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <div style={{
                         width: 6, height: 6, borderRadius: 3,
                         background: cat.color
                       }} />
-                      <span style={{ flex: 1, fontSize: 12, color: theme.text }}>{cat.name}</span>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: theme.textMuted }}>{cat.hours}h</span>
+                      <span style={{ flex: 1, fontSize: 11, color: theme.text }}>{cat.name}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, color: theme.textMuted }}>{cat.hours}h</span>
                     </div>
                   ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Week Summary */}
+            <div style={{
+              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              border: `1px solid ${theme.border}`,
+              borderRadius: 12,
+              padding: 14
+            }}>
+              <h3 style={{
+                fontSize: 12, fontWeight: 600, color: theme.text,
+                marginBottom: 12, fontFamily: theme.fontFamily
+              }}>
+                Week Summary
+              </h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: theme.textSec }}>Best Day</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{bestDay}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: theme.textSec }}>Most Used</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{mostUsedCategory}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: 11, color: theme.textSec }}>Daily Average</span>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: theme.text }}>{avgDailyHours}h</span>
                 </div>
               </div>
             </div>

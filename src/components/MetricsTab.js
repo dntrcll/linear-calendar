@@ -116,13 +116,13 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
       }}>
         <div>
           <h1 style={{
-            fontSize: 28,
+            fontSize: 32,
             fontWeight: 700,
             fontFamily: theme.fontDisplay,
             color: theme.text,
-            marginBottom: 2,
-            letterSpacing: '-0.04em',
-            background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+            marginBottom: 4,
+            letterSpacing: '-0.03em',
+            background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
@@ -130,11 +130,11 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
             Metrics
           </h1>
           <p style={{
-            fontSize: 11,
+            fontSize: 13,
             color: theme.textSec,
             fontFamily: theme.fontFamily,
-            fontWeight: 600,
-            letterSpacing: '0.02em'
+            fontWeight: 500,
+            letterSpacing: '0.01em'
           }}>
             Track health & productivity metrics
           </p>
@@ -367,6 +367,7 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
     : '—';
 
   const latestWeight = weightData.length > 0 ? weightData[weightData.length - 1].value : '—';
+  const displayWeightUnit = localStorage.getItem('weightUnit') || 'lbs';
 
   const avgProductivity = productivityData.length > 0
     ? Math.round(productivityData.reduce((sum, d) => sum + d.value, 0) / productivityData.length)
@@ -400,7 +401,8 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
       overflow: 'auto',
       display: 'flex',
       flexDirection: 'column',
-      gap: 20
+      gap: 20,
+      paddingBottom: 8
     }}>
       {/* Summary Cards */}
       <div style={{
@@ -442,7 +444,7 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             color: accentColor,
             fontFamily: theme.fontDisplay
           }}>
-            {latestWeight}{latestWeight !== '—' && <span style={{ fontSize: 16 }}> lbs</span>}
+            {latestWeight}{latestWeight !== '—' && <span style={{ fontSize: 16 }}> {displayWeightUnit}</span>}
           </div>
         </div>
 
@@ -477,7 +479,7 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
           <div style={{
             fontSize: 32,
             fontWeight: 700,
-            color: accentColor,
+            color: totalWorkouts > 0 ? accentColor : theme.textMuted,
             fontFamily: theme.fontDisplay
           }}>
             {totalWorkouts}
@@ -768,7 +770,7 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
           sleep: { label: 'Sleep', color: '#6366f1', format: (m) => `${m.metric_value}h` },
           mood: { label: 'Mood', color: '#f59e0b', format: (m) => `${m.metric_value}/5` },
           energy: { label: 'Energy', color: '#10b981', format: (m) => `${m.metric_value}/5` },
-          weight: { label: 'Weight', color: '#ec4899', format: (m) => `${m.metric_value} lbs` },
+          weight: { label: 'Weight', color: '#ec4899', format: (m) => `${m.metric_value} ${m.metric_data?.unit || localStorage.getItem('weightUnit') || 'lbs'}` },
           workout: { label: 'Workout', color: '#8b5cf6', format: (m) => {
             const type = m.metric_data?.type || 'workout';
             const duration = m.metric_data?.duration_minutes || m.metric_value;
@@ -892,6 +894,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
   // Health metrics
   const [sleepHours, setSleepHours] = useState('');
   const [weight, setWeight] = useState('');
+  const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem('weightUnit') || 'lbs');
   const [workoutType, setWorkoutType] = useState('');
   const [workoutDuration, setWorkoutDuration] = useState('');
   const [healthyEating, setHealthyEating] = useState(false);
@@ -933,7 +936,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
           metric_type: 'manual',
           metric_name: 'weight',
           metric_value: parseFloat(weight),
-          metric_data: { unit: 'lbs' }
+          metric_data: { unit: weightUnit }
         });
       }
 
@@ -1109,22 +1112,44 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
 
           {/* Weight */}
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 8
-            }}>
-              Weight (lbs)
-            </label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+              <label style={{
+                fontSize: 12,
+                fontWeight: 600,
+                color: theme.textSec
+              }}>
+                Weight
+              </label>
+              <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: `1px solid ${theme.border}` }}>
+                {['lbs', 'kg'].map(unit => (
+                  <button
+                    key={unit}
+                    type="button"
+                    onClick={() => { setWeightUnit(unit); localStorage.setItem('weightUnit', unit); }}
+                    style={{
+                      padding: '3px 10px',
+                      fontSize: 10,
+                      fontWeight: 600,
+                      fontFamily: theme.fontFamily,
+                      background: weightUnit === unit ? `${accentColor}20` : (config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)'),
+                      color: weightUnit === unit ? accentColor : theme.textMuted,
+                      border: 'none',
+                      cursor: 'pointer',
+                      borderRight: unit === 'lbs' ? `1px solid ${theme.border}` : 'none'
+                    }}
+                  >
+                    {unit}
+                  </button>
+                ))}
+              </div>
+            </div>
             <input
               type="number"
               step="0.1"
               min="0"
               value={weight}
               onChange={e => setWeight(e.target.value)}
-              placeholder="e.g., 165.5"
+              placeholder={weightUnit === 'kg' ? 'e.g., 75.0' : 'e.g., 165.5'}
               style={{
                 width: '100%',
                 padding: '12px 14px',
