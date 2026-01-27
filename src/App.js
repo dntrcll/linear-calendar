@@ -5446,9 +5446,9 @@ zIndex: 1
 fontSize: 16,
 fontWeight: 800,
 fontFamily: 'SF Mono, monospace',
-color: '#FFFFFF',
+color: config.darkMode ? '#000000' : '#FFFFFF',
 letterSpacing: '-0.02em',
-textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+textShadow: config.darkMode ? '0 1px 2px rgba(255,255,255,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
 lineHeight: 1
 }}>
 {yearProgress.toFixed(1)}%
@@ -7797,7 +7797,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           {user && activeTab === 'appearance' && (
             <div style={{
               padding: 18,
-              background: theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : theme.sidebar),
+              background: theme.premiumGlass || (config.darkMode ? 'rgba(255,255,255,0.04)' : theme.sidebar),
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               borderRadius: 16,
@@ -7805,8 +7805,8 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              border: `1px solid ${theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border)}`,
-              boxShadow: theme.premiumShadow || (theme.id === 'dark'
+              border: `1px solid ${theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border)}`,
+              boxShadow: theme.premiumShadow || (config.darkMode
                 ? '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
                 : '0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)'),
               position: 'relative',
@@ -7819,7 +7819,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 left: 0,
                 right: 0,
                 height: '50%',
-                background: theme.id === 'dark'
+                background: config.darkMode
                   ? 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%)'
                   : 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%)',
                 pointerEvents: 'none'
@@ -7869,7 +7869,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 style={{
                   padding: '10px 16px',
                   background: theme.metallicGradient || 'transparent',
-                  border: `1px solid ${theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border)}`,
+                  border: `1px solid ${theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border)}`,
                   borderRadius: 10,
                   color: theme.text,
                   fontSize: 11,
@@ -7880,7 +7880,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                   cursor: 'pointer',
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   backdropFilter: 'blur(10px)',
-                  boxShadow: theme.metallicShadow || (theme.id === 'dark'
+                  boxShadow: theme.metallicShadow || (config.darkMode
                     ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
                     : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'),
                   position: 'relative',
@@ -7890,15 +7890,15 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                   e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
                   e.currentTarget.style.borderColor = theme.accent;
                   e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = theme.id === 'dark'
+                  e.currentTarget.style.boxShadow = config.darkMode
                     ? `0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 2px ${theme.accent}20`
                     : `0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 2px ${theme.accent}20`;
                 }}
                 onMouseLeave={e => {
                   e.currentTarget.style.background = theme.metallicGradient || 'transparent';
-                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || (theme.id === 'dark' ? theme.subtleBorder : theme.border);
+                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border);
                   e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = theme.metallicShadow || (theme.id === 'dark'
+                  e.currentTarget.style.boxShadow = theme.metallicShadow || (config.darkMode
                     ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
                     : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)');
                 }}
@@ -7929,7 +7929,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         padding: 8,
                         background: isSelected
                           ? `linear-gradient(135deg, ${themeOption.selection}, ${themeOption.hoverBg})`
-                          : theme.id === 'dark' ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                          : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
                         backdropFilter: 'blur(10px)',
                         border: isSelected
                           ? `1.5px solid ${themeOption.accent}`
