@@ -98,27 +98,30 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      maxWidth: 1400,
+      maxWidth: 1600,
       margin: '0 auto',
-      padding: 20,
+      padding: '16px 20px',
       display: 'flex',
       flexDirection: 'column',
-      gap: 20
+      gap: 16,
+      overflow: 'hidden',
+      fontFamily: theme.fontFamily
     }}>
       {/* Header */}
       <div style={{
         display: 'flex',
-        alignItems: 'flex-start',
-        justifyContent: 'space-between'
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexShrink: 0
       }}>
         <div>
           <h1 style={{
-            fontSize: 32,
-            fontWeight: 700,
-            fontFamily: theme.fontDisplay,
+            fontSize: 28,
+            fontWeight: 800,
+            fontFamily: theme.fontFamily,
             color: theme.text,
-            marginBottom: 4,
-            letterSpacing: '-0.03em',
+            marginBottom: 2,
+            letterSpacing: '-0.04em',
             background: `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
@@ -127,10 +130,11 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
             Metrics
           </h1>
           <p style={{
-            fontSize: 12,
+            fontSize: 11,
             color: theme.textSec,
             fontFamily: theme.fontFamily,
-            fontWeight: 500
+            fontWeight: 600,
+            letterSpacing: '0.02em'
           }}>
             Track health & productivity metrics
           </p>
@@ -143,16 +147,17 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
             background: calculating
               ? theme.border
               : `linear-gradient(135deg, ${accentColor}22, ${accentColor}11)`,
-            border: `1px solid ${accentColor}`,
-            borderRadius: 8,
+            border: `1.5px solid ${accentColor}`,
+            borderRadius: 10,
             color: accentColor,
             fontSize: 12,
-            fontWeight: 600,
+            fontWeight: 700,
             cursor: calculating ? 'not-allowed' : 'pointer',
             fontFamily: theme.fontFamily,
             display: 'flex',
             alignItems: 'center',
-            gap: 6
+            gap: 6,
+            letterSpacing: '0.01em'
           }}
         >
           <ICONS.Refresh width={14} height={14} />
@@ -164,8 +169,9 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
       <div style={{
         display: 'flex',
         gap: 8,
-        borderBottom: `1px solid ${theme.border}`,
-        paddingBottom: 0
+        borderBottom: `1.5px solid ${theme.border}`,
+        paddingBottom: 0,
+        flexShrink: 0
       }}>
         {[
           { id: 'dashboard', label: 'Dashboard', icon: ICONS.BarChart },
@@ -179,20 +185,21 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               style={{
-                padding: '12px 20px',
+                padding: '10px 18px',
                 background: 'transparent',
                 border: 'none',
-                borderBottom: isActive ? `2px solid ${accentColor}` : '2px solid transparent',
+                borderBottom: isActive ? `2.5px solid ${accentColor}` : '2.5px solid transparent',
                 color: isActive ? theme.text : theme.textMuted,
-                fontSize: 13,
-                fontWeight: 600,
+                fontSize: 12,
+                fontWeight: isActive ? 700 : 600,
                 fontFamily: theme.fontFamily,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
                 transition: 'all 0.2s',
-                marginBottom: -1
+                marginBottom: -1.5,
+                letterSpacing: '0.01em'
               }}
               onMouseEnter={e => {
                 if (!isActive) e.currentTarget.style.color = theme.text;
@@ -201,15 +208,19 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
                 if (!isActive) e.currentTarget.style.color = theme.textMuted;
               }}
             >
-              <Icon width={16} height={16} />
+              <Icon width={15} height={15} />
               {tab.label}
             </button>
           );
         })}
       </div>
 
-      {/* Tab Content */}
-      <div style={{ flex: 1, overflow: 'hidden' }}>
+      {/* Tab Content - Fixed height, no scroll */}
+      <div style={{
+        flex: 1,
+        overflow: 'hidden',
+        minHeight: 0
+      }}>
         {loading ? (
           <div style={{
             height: '100%',
@@ -217,7 +228,9 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
             alignItems: 'center',
             justifyContent: 'center',
             color: theme.textMuted,
-            fontSize: 13
+            fontSize: 13,
+            fontFamily: theme.fontFamily,
+            fontWeight: 600
           }}>
             Loading metrics...
           </div>
@@ -666,9 +679,11 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
       eating: filtered.filter(m => m.metric_name === 'healthy_eating')
     };
 
-    // Sort each group by date desc
+    // Sort each group by date desc and limit to 5 most recent
     Object.keys(groups).forEach(key => {
-      groups[key] = groups[key].sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at));
+      groups[key] = groups[key]
+        .sort((a, b) => new Date(b.recorded_at) - new Date(a.recorded_at))
+        .slice(0, 5); // Only show 5 most recent
     });
 
     return groups;
@@ -683,35 +698,53 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
         justifyContent: 'center',
         flexDirection: 'column',
         gap: 12,
-        color: theme.textMuted
+        color: theme.textMuted,
+        fontFamily: theme.fontFamily
       }}>
         <ICONS.List width={48} height={48} style={{ opacity: 0.5 }} />
-        <p style={{ fontSize: 14 }}>No metrics yet</p>
-        <p style={{ fontSize: 12 }}>Add your first entry to get started</p>
+        <p style={{ fontSize: 14, fontWeight: 600, fontFamily: theme.fontFamily }}>No metrics yet</p>
+        <p style={{ fontSize: 12, fontFamily: theme.fontFamily }}>Add your first entry to get started</p>
       </div>
     );
   }
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div style={{
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: 16,
+      overflow: 'hidden'
+    }}>
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 8 }}>
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        flexShrink: 0,
+        flexWrap: 'nowrap',
+        alignItems: 'center'
+      }}>
         {['all', 'manual', 'auto'].map(type => (
           <button
             key={type}
             onClick={() => setFilterType(type)}
             style={{
-              padding: '8px 16px',
+              padding: '10px 20px',
               background: filterType === type
                 ? `${accentColor}15`
                 : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-              border: `1px solid ${filterType === type ? accentColor : theme.border}`,
-              borderRadius: 8,
+              border: `1.5px solid ${filterType === type ? accentColor : theme.border}`,
+              borderRadius: 10,
               color: filterType === type ? accentColor : theme.text,
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 13,
+              fontWeight: 700,
               cursor: 'pointer',
-              textTransform: 'capitalize'
+              textTransform: 'capitalize',
+              fontFamily: theme.fontFamily,
+              letterSpacing: '0.02em',
+              transition: 'all 0.2s',
+              whiteSpace: 'nowrap',
+              minWidth: 90
             }}
           >
             {type}
@@ -719,98 +752,130 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
         ))}
       </div>
 
-      {/* Grouped Metrics List */}
-      <div style={{ flex: 1, overflow: 'auto' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Helper function for metric display */}
-          {Object.entries({
-            sleep: { label: 'Sleep', color: '#6366f1', format: (m) => `${m.metric_value} hrs` },
-            mood: { label: 'Mood', color: '#f59e0b', format: (m) => `${m.metric_value}/5` },
-            energy: { label: 'Energy', color: '#10b981', format: (m) => `${m.metric_value}/5` },
-            weight: { label: 'Weight', color: '#ec4899', format: (m) => `${m.metric_value} lbs` },
-            workout: { label: 'Workout', color: '#8b5cf6', format: (m) => {
-              const type = m.metric_data?.type || 'workout';
-              const duration = m.metric_data?.duration_minutes || m.metric_value;
-              return `${type} (${duration} min)`;
-            }},
-            eating: { label: 'Healthy Eating', color: '#14b8a6', format: () => '✓' }
-          }).map(([key, config]) => {
-            const categoryMetrics = groupedMetrics[key];
-            if (categoryMetrics.length === 0) return null;
+      {/* Grouped Metrics List - 2 column grid, no scroll */}
+      <div style={{
+        flex: 1,
+        overflow: 'hidden',
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
+        gap: 16,
+        alignContent: 'start'
+      }}>
+        {Object.entries({
+          sleep: { label: 'Sleep', color: '#6366f1', format: (m) => `${m.metric_value}h` },
+          mood: { label: 'Mood', color: '#f59e0b', format: (m) => `${m.metric_value}/5` },
+          energy: { label: 'Energy', color: '#10b981', format: (m) => `${m.metric_value}/5` },
+          weight: { label: 'Weight', color: '#ec4899', format: (m) => `${m.metric_value} lbs` },
+          workout: { label: 'Workout', color: '#8b5cf6', format: (m) => {
+            const type = m.metric_data?.type || 'workout';
+            const duration = m.metric_data?.duration_minutes || m.metric_value;
+            return `${type} (${duration}m)`;
+          }},
+          eating: { label: 'Healthy Eating', color: '#14b8a6', format: () => '✓' }
+        }).map(([key, categoryConfig]) => {
+          const categoryMetrics = groupedMetrics[key];
+          if (categoryMetrics.length === 0) return null;
 
-            return (
-              <div key={key} style={{
-                background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 12,
+          return (
+            <div key={key} style={{
+              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+              border: `1px solid ${theme.border}`,
+              borderRadius: 12,
+              overflow: 'hidden',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '100%'
+            }}>
+              {/* Category Header */}
+              <div style={{
+                padding: '10px 14px',
+                background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                borderBottom: `1px solid ${theme.border}`,
+                flexShrink: 0
+              }}>
+                <h3 style={{
+                  fontSize: 11,
+                  fontWeight: 800,
+                  color: categoryConfig.color,
+                  margin: 0,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  fontFamily: theme.fontFamily
+                }}>
+                  {categoryConfig.label}
+                </h3>
+              </div>
+
+              {/* Entries - Compact List */}
+              <div style={{
+                padding: '6px 0',
                 overflow: 'hidden'
               }}>
-                {/* Category Header */}
-                <div style={{
-                  padding: '12px 16px',
-                  background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                  borderBottom: `1px solid ${theme.border}`
-                }}>
-                  <h3 style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: config.color,
-                    margin: 0,
-                    letterSpacing: '0.05em',
-                    textTransform: 'uppercase'
-                  }}>
-                    {config.label}
-                  </h3>
-                </div>
-
-                {/* Entries Table */}
-                <div style={{ padding: '8px 0' }}>
-                  {categoryMetrics.map(metric => (
-                    <div
-                      key={metric.id}
-                      style={{
-                        padding: '12px 16px',
+                {categoryMetrics.map((metric, idx) => (
+                  <div
+                    key={metric.id}
+                    style={{
+                      padding: '8px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      borderBottom: idx < categoryMetrics.length - 1 ? `1px solid ${theme.border}10` : 'none'
+                    }}
+                  >
+                    <div style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 2
+                    }}>
+                      <div style={{
+                        fontSize: 10,
+                        color: theme.textMuted,
+                        fontFamily: theme.fontFamily,
+                        fontWeight: 500,
                         display: 'flex',
                         alignItems: 'center',
-                        justifyContent: 'space-between',
-                        borderBottom: `1px solid ${theme.border}15`
-                      }}
-                    >
-                      <div style={{ flex: 1 }}>
-                        <div style={{
-                          fontSize: 11,
-                          color: theme.textMuted,
-                          marginBottom: 2
-                        }}>
-                          {new Date(metric.recorded_at).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric'
-                          })} • <span style={{
-                            color: metric.metric_type === 'auto' ? '#10b981' : '#6366f1',
-                            fontWeight: 700,
-                            textTransform: 'uppercase',
-                            fontSize: 10,
-                            letterSpacing: '0.05em'
-                          }}>
-                            {metric.metric_type}
-                          </span>
-                        </div>
-                      </div>
-                      <div style={{
-                        fontSize: 18,
-                        fontWeight: 700,
-                        color: config.color
+                        gap: 6,
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}>
-                        {config.format(metric)}
+                        {new Date(metric.recorded_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                        <span style={{
+                          color: metric.metric_type === 'auto' ? '#10b981' : '#6366f1',
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          fontSize: 9,
+                          letterSpacing: '0.08em',
+                          background: metric.metric_type === 'auto' ? '#10b98110' : '#6366f110',
+                          padding: '2px 6px',
+                          borderRadius: 4
+                        }}>
+                          {metric.metric_type}
+                        </span>
                       </div>
                     </div>
-                  ))}
-                </div>
+                    <div style={{
+                      fontSize: 16,
+                      fontWeight: 800,
+                      color: categoryConfig.color,
+                      fontFamily: theme.fontFamily,
+                      flexShrink: 0,
+                      letterSpacing: '-0.01em'
+                    }}>
+                      {categoryConfig.format(metric)}
+                    </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
