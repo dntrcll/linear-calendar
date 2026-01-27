@@ -862,17 +862,19 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
                         padding: '16px 20px',
-                        fontSize: 10,
-                        fontWeight: 700,
-                        color: theme.textMuted,
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: theme.text,
                         textAlign: 'left',
-                        minWidth: 200,
+                        minWidth: 240,
+                        maxWidth: 400,
                         zIndex: 100,
-                        fontFamily: theme.fontFamily,
-                        letterSpacing: '0.08em',
-                        textTransform: 'uppercase'
+                        fontFamily: "'Georgia', 'Times New Roman', serif",
+                        letterSpacing: '0.05em',
+                        fontStyle: 'italic',
+                        textTransform: 'none'
                       }}>
-                        Memorable Moment
+                        Journal Entry
                       </th>
                       {habits.map((habit, index) => (
                         <th
@@ -893,7 +895,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             maxWidth: 110,
                             zIndex: 100,
                             fontFamily: theme.fontFamily,
-                            position: 'relative',
                             letterSpacing: '0.04em',
                             textTransform: 'uppercase',
                             cursor: 'default'
@@ -1125,8 +1126,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             )}
                           </td>
                           <td style={{
-                            padding: '14px 20px',
-                            borderBottom: `1px solid ${theme.border}`
+                            padding: '16px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
+                            minWidth: 240,
+                            maxWidth: 400
                           }}>
                             {editingMemorable === dayNum ? (
                               <input
@@ -1136,19 +1139,23 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 onBlur={() => handleMemorableSave(dayNum)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleMemorableSave(dayNum)}
                                 autoFocus
+                                placeholder="Write your thoughts..."
                                 style={{
                                   width: '100%',
-                                  padding: '4px 6px',
-                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                                  border: `1px solid ${accentColor}`,
-                                  borderRadius: 4,
+                                  padding: '8px 10px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                                  border: `1.5px solid ${accentColor}`,
+                                  borderRadius: 8,
                                   color: theme.text,
-                                  fontSize: 11,
-                                  fontFamily: theme.fontFamily
+                                  fontSize: 13,
+                                  fontFamily: "'Georgia', 'Times New Roman', serif",
+                                  fontStyle: 'italic',
+                                  lineHeight: 1.5,
+                                  letterSpacing: '0.01em'
                                 }}
                               />
                             ) : (
-                              <span
+                              <div
                                 onClick={() => {
                                   setEditingMemorable(dayNum);
                                   setEditingMemoText(dayData.memorable_moment);
@@ -1156,17 +1163,26 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 style={{
                                   cursor: 'pointer',
                                   color: dayData.memorable_moment ? theme.text : theme.textMuted,
-                                  fontSize: 11,
-                                  fontStyle: dayData.memorable_moment ? 'normal' : 'italic',
-                                  display: 'block',
-                                  whiteSpace: 'nowrap',
+                                  fontSize: 13,
+                                  fontStyle: dayData.memorable_moment ? 'italic' : 'normal',
+                                  fontFamily: dayData.memorable_moment
+                                    ? "'Georgia', 'Times New Roman', serif"
+                                    : theme.fontFamily,
+                                  lineHeight: 1.6,
+                                  letterSpacing: '0.01em',
+                                  whiteSpace: 'normal',
                                   overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  fontFamily: theme.fontFamily
+                                  display: '-webkit-box',
+                                  WebkitLineClamp: 2,
+                                  WebkitBoxOrient: 'vertical',
+                                  fontWeight: dayData.memorable_moment ? 400 : 500,
+                                  opacity: dayData.memorable_moment ? 0.9 : 0.5,
+                                  padding: '2px 0'
                                 }}
+                                title={dayData.memorable_moment}
                               >
-                                {dayData.memorable_moment || 'Click to add...'}
-                              </span>
+                                {dayData.memorable_moment || 'Add a memorable moment...'}
+                              </div>
                             )}
                           </td>
                           {habits.map(habit => (

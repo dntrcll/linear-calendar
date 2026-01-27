@@ -2312,29 +2312,34 @@ function TimelineOS() {
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
             boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
-            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics', 'telemetry'].map(mode => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                style={{
-                  padding: "7px 16px",
-                  borderRadius: 7,
-                  border: "none",
-                  background: viewMode === mode ? (theme.chromeGradient || theme.card) : "transparent",
-                  color: viewMode === mode ? theme.text : theme.textSec,
-                  fontSize: 11,
-                  fontWeight: 600,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  letterSpacing: '0.02em',
-                  cursor: "pointer",
-                  textTransform: "capitalize",
-                  transition: "all 0.2s",
-                  boxShadow: viewMode === mode ? (theme.metallicShadow || `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}`) : 'none'
-                }}
-              >
-                {mode}
-              </button>
-            ))}
+            {['day', 'week', 'month', 'year', 'focus', 'life', 'metrics', 'telemetry'].map(mode => {
+              // Custom label for telemetry
+              const label = mode === 'telemetry' ? 'journal' : mode;
+
+              return (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    padding: "7px 16px",
+                    borderRadius: 7,
+                    border: "none",
+                    background: viewMode === mode ? (theme.chromeGradient || theme.card) : "transparent",
+                    color: viewMode === mode ? theme.text : theme.textSec,
+                    fontSize: 11,
+                    fontWeight: 600,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    letterSpacing: '0.02em',
+                    cursor: "pointer",
+                    textTransform: "capitalize",
+                    transition: "all 0.2s",
+                    boxShadow: viewMode === mode ? (theme.metallicShadow || `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}`) : 'none'
+                  }}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
 
           {/* Right Section - Event List Toggle */}
