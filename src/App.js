@@ -3323,10 +3323,10 @@ function AuthScreen({ onLogin, theme }) {
             style={{
               width: "100%",
               padding: "15px 28px",
-              background: theme.id === 'dark'
+              background: config.darkMode
                 ? 'linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 100%)'
                 : 'linear-gradient(135deg, #000000 0%, #1C1C1C 100%)',
-              color: theme.id === 'dark' ? '#000' : '#fff',
+              color: config.darkMode ? '#000' : '#fff',
               border: 'none',
               borderRadius: 14,
               fontSize: 14.5,
@@ -3339,7 +3339,7 @@ function AuthScreen({ onLogin, theme }) {
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              boxShadow: theme.id === 'dark'
+              boxShadow: config.darkMode
                 ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
                 : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)',
               position: "relative",
@@ -3347,13 +3347,13 @@ function AuthScreen({ onLogin, theme }) {
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-              e.currentTarget.style.boxShadow = theme.id === 'dark'
+              e.currentTarget.style.boxShadow = config.darkMode
                 ? '0 8px 28px rgba(255,255,255,0.25), 0 16px 48px rgba(255,255,255,0.15), inset 0 1px 2px rgba(0,0,0,0.05)'
                 : '0 8px 28px rgba(0,0,0,0.5), 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.15)';
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = theme.id === 'dark'
+              e.currentTarget.style.boxShadow = config.darkMode
                 ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
                 : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)';
             }}
@@ -5351,12 +5351,12 @@ width: "100%",
 maxWidth: 1400,
 margin: "0 auto",
 padding: '10px 16px',
-background: theme.id === 'dark'
+background: config.darkMode
   ? 'linear-gradient(135deg, #1a1a1d 0%, #18181b 100%)'
   : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
-border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
+border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
 borderRadius: 20,
-boxShadow: theme.id === 'dark'
+boxShadow: config.darkMode
   ? 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.2)'
   : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)',
 display: 'flex',
@@ -5398,13 +5398,13 @@ letterSpacing: '0.02em'
 {/* Premium Progress Bar */}
 <div style={{
 height: 6,
-background: theme.id === 'dark'
+background: config.darkMode
 ? 'linear-gradient(90deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%)'
 : 'linear-gradient(90deg, rgba(0,0,0,0.06) 0%, rgba(0,0,0,0.04) 100%)',
 borderRadius: 10,
 overflow: 'hidden',
 position: 'relative',
-boxShadow: theme.id === 'dark'
+boxShadow: config.darkMode
 ? 'inset 0 1px 2px rgba(0,0,0,0.3)'
 : 'inset 0 1px 2px rgba(0,0,0,0.1)'
 }}>

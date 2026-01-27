@@ -117,8 +117,8 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
         <div>
           <h1 style={{
             fontSize: 28,
-            fontWeight: 800,
-            fontFamily: theme.fontFamily,
+            fontWeight: 700,
+            fontFamily: theme.fontDisplay,
             color: theme.text,
             marginBottom: 2,
             letterSpacing: '-0.04em',
