@@ -66,8 +66,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
         .from('life_metrics')
         .select('*')
         .eq('user_id', user.uid)
-        .gte('date', startDate)
-        .lte('date', endDate);
+        .gte('recorded_at', startDate)
+        .lte('recorded_at', endDate);
 
       setMetrics(metricsData || []);
       setLoading(false);
@@ -211,16 +211,40 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
       return;
     }
 
-    // Save to life_metrics
-    const { error } = await supabase.from('life_metrics').upsert({
-      user_id: user.uid,
-      date: dateStr,
-      metric_name: 'sleep_hours',
-      metric_value: sleepHours,
-      created_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id,date,metric_name'
-    });
+    // Save to life_metrics - check if exists first, then update or insert
+    const { data: existing } = await supabase
+      .from('life_metrics')
+      .select('id')
+      .eq('user_id', user.uid)
+      .eq('recorded_at', dateStr)
+      .eq('metric_name', 'sleep_hours')
+      .maybeSingle();
+
+    let error;
+    if (existing) {
+      // Update existing record
+      const { error: updateError } = await supabase
+        .from('life_metrics')
+        .update({
+          metric_value: sleepHours,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+      error = updateError;
+    } else {
+      // Insert new record
+      const { error: insertError } = await supabase
+        .from('life_metrics')
+        .insert({
+          user_id: user.uid,
+          recorded_at: dateStr,
+          metric_type: 'manual',
+          metric_name: 'sleep_hours',
+          metric_value: sleepHours,
+          created_at: new Date().toISOString()
+        });
+      error = insertError;
+    }
 
     if (error) {
       console.error('Error saving sleep:', error);
@@ -234,8 +258,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
       .from('life_metrics')
       .select('*')
       .eq('user_id', user.uid)
-      .gte('date', startDate)
-      .lte('date', endDate);
+      .gte('recorded_at', startDate)
+      .lte('recorded_at', endDate);
 
     setMetrics(metricsData || []);
 
@@ -245,7 +269,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   const getSleepHours = (dayNum) => {
     const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
-    const sleepMetric = metrics.find(m => m.date === dateStr && m.metric_name === 'sleep_hours');
+    const sleepMetric = metrics.find(m => {
+      const metricDate = m.recorded_at?.split('T')[0];
+      return metricDate === dateStr && m.metric_name === 'sleep_hours';
+    });
     return sleepMetric ? sleepMetric.metric_value : null;
   };
 
