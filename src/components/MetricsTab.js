@@ -714,7 +714,8 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
       display: 'flex',
       flexDirection: 'column',
       gap: 16,
-      overflow: 'hidden'
+      overflow: 'hidden',
+      paddingTop: 4
     }}>
       {/* Filters */}
       <div style={{
@@ -722,7 +723,8 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
         gap: 10,
         flexShrink: 0,
         flexWrap: 'nowrap',
-        alignItems: 'center'
+        alignItems: 'center',
+        paddingTop: 2
       }}>
         {['all', 'manual', 'auto'].map(type => (
           <button
@@ -744,7 +746,8 @@ const LogTab = ({ metrics, theme, config, accentColor, onUpdate, onDelete }) => 
               letterSpacing: '0.02em',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap',
-              minWidth: 90
+              minWidth: 90,
+              flexShrink: 0
             }}
           >
             {type}

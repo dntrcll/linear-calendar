@@ -862,19 +862,18 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
                         padding: '16px 20px',
-                        fontSize: 11,
-                        fontWeight: 600,
-                        color: theme.text,
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: theme.textMuted,
                         textAlign: 'left',
                         minWidth: 240,
                         maxWidth: 400,
                         zIndex: 100,
-                        fontFamily: "'Georgia', 'Times New Roman', serif",
-                        letterSpacing: '0.05em',
-                        fontStyle: 'italic',
-                        textTransform: 'none'
+                        fontFamily: theme.fontFamily,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase'
                       }}>
-                        Journal Entry
+                        Memorable Moment
                       </th>
                       {habits.map((habit, index) => (
                         <th
@@ -1126,7 +1125,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             )}
                           </td>
                           <td style={{
-                            padding: '16px 20px',
+                            padding: '14px 20px',
                             borderBottom: `1px solid ${theme.border}`,
                             minWidth: 240,
                             maxWidth: 400
@@ -1139,19 +1138,19 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 onBlur={() => handleMemorableSave(dayNum)}
                                 onKeyPress={(e) => e.key === 'Enter' && handleMemorableSave(dayNum)}
                                 autoFocus
-                                placeholder="Write your thoughts..."
+                                placeholder="Something memorable..."
                                 style={{
                                   width: '100%',
-                                  padding: '8px 10px',
+                                  padding: '6px 8px',
                                   background: config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
-                                  border: `1.5px solid ${accentColor}`,
-                                  borderRadius: 8,
+                                  border: `1px solid ${accentColor}`,
+                                  borderRadius: 6,
                                   color: theme.text,
-                                  fontSize: 13,
-                                  fontFamily: "'Georgia', 'Times New Roman', serif",
-                                  fontStyle: 'italic',
+                                  fontSize: 12,
+                                  fontFamily: theme.fontFamily,
                                   lineHeight: 1.5,
-                                  letterSpacing: '0.01em'
+                                  letterSpacing: '0.01em',
+                                  fontWeight: 500
                                 }}
                               />
                             ) : (
@@ -1163,11 +1162,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 style={{
                                   cursor: 'pointer',
                                   color: dayData.memorable_moment ? theme.text : theme.textMuted,
-                                  fontSize: 13,
-                                  fontStyle: dayData.memorable_moment ? 'italic' : 'normal',
-                                  fontFamily: dayData.memorable_moment
-                                    ? "'Georgia', 'Times New Roman', serif"
-                                    : theme.fontFamily,
+                                  fontSize: 12,
+                                  fontFamily: theme.fontFamily,
                                   lineHeight: 1.6,
                                   letterSpacing: '0.01em',
                                   whiteSpace: 'normal',
@@ -1175,13 +1171,22 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                   display: '-webkit-box',
                                   WebkitLineClamp: 2,
                                   WebkitBoxOrient: 'vertical',
-                                  fontWeight: dayData.memorable_moment ? 400 : 500,
-                                  opacity: dayData.memorable_moment ? 0.9 : 0.5,
-                                  padding: '2px 0'
+                                  fontWeight: dayData.memorable_moment ? 500 : 500,
+                                  opacity: dayData.memorable_moment ? 1 : 0.5,
+                                  padding: '2px 0',
+                                  transition: 'opacity 0.15s'
                                 }}
                                 title={dayData.memorable_moment}
+                                onMouseEnter={(e) => {
+                                  if (dayData.memorable_moment) {
+                                    e.currentTarget.style.opacity = '0.7';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  e.currentTarget.style.opacity = dayData.memorable_moment ? '1' : '0.5';
+                                }}
                               >
-                                {dayData.memorable_moment || 'Add a memorable moment...'}
+                                {dayData.memorable_moment || 'Click to add...'}
                               </div>
                             )}
                           </td>
