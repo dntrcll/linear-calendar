@@ -7,15 +7,12 @@ import { supabase } from '../supabaseClient';
  */
 export const loadEvents = async (userId) => {
   try {
-    console.log('Loading events for user:', userId);
-
     // Run both queries in parallel to stay within timeout
     const [eventsResult, tagsResult] = await Promise.all([
       supabase
         .from('events')
         .select('*')
         .eq('user_id', userId)
-        .eq('deleted', false)
         .order('start_time', { ascending: true }),
       supabase
         .from('tags')
@@ -28,31 +25,19 @@ export const loadEvents = async (userId) => {
       return { data: [], error: eventsResult.error };
     }
 
+    if (tagsResult.error) {
+      console.error('Supabase tags query error:', tagsResult.error);
+      // Continue with empty tagMap so events still appear
+    }
+
     // Build tag UUID → tag_id map
     const tagMap = {};
     (tagsResult.data || []).forEach(t => { tagMap[t.id] = t.tag_id; });
 
     const data = eventsResult.data || [];
-    console.log('Loaded events from Supabase:', data.length);
 
     // Transform Supabase data to match app format
-    const events = data.map(event => ({
-      id: event.id,
-      title: event.title,
-      description: event.description || '',
-      location: event.location || '',
-      category: tagMap[event.tag_id] || 'other',
-      context: event.context,
-      start: event.start_time,
-      end: event.end_time,
-      deleted: event.deleted,
-      deleted_at: event.deleted_at,
-      created_at: event.created_at,
-      updated_at: event.updated_at,
-      recurrencePattern: event.recurrence_pattern || 'none',
-      recurrenceEndDate: event.recurrence_end_date,
-      parentEventId: event.parent_event_id
-    }));
+    const events = data.map(event => transformEvent(event, tagMap));
 
     return { data: events, error: null };
   } catch (error) {
@@ -60,6 +45,31 @@ export const loadEvents = async (userId) => {
     return { data: [], error };
   }
 };
+
+/**
+ * Transform a database row into app event format
+ * @param {Object} dbRow - The raw database row
+ * @param {Object} tagMap - Map of tag UUID to tag_id string
+ * @param {string} knownCategory - Optional known category (avoids tagMap lookup)
+ * @returns {Object} - Transformed event object
+ */
+const transformEvent = (dbRow, tagMap = {}, knownCategory = null) => ({
+  id: dbRow.id,
+  title: dbRow.title,
+  description: dbRow.description || '',
+  location: dbRow.location || '',
+  category: knownCategory || tagMap[dbRow.tag_id] || 'other',
+  context: dbRow.context,
+  start: dbRow.start_time,
+  end: dbRow.end_time,
+  deleted: dbRow.deleted,
+  deleted_at: dbRow.deleted_at,
+  created_at: dbRow.created_at,
+  updated_at: dbRow.updated_at,
+  recurrencePattern: dbRow.recurrence_pattern || 'none',
+  recurrenceEndDate: dbRow.recurrence_end_date,
+  parentEventId: dbRow.parent_event_id
+});
 
 /**
  * Look up tag UUID from tag_id string - handles duplicates gracefully
@@ -82,15 +92,17 @@ const lookupTagId = async (userId, category, context) => {
     // Fallback: try without context filter (tag might be shared across contexts)
     const { data: fallbackData, error: fallbackError } = await supabase
       .from('tags')
-      .select('id')
+      .select('id, context')
       .eq('user_id', userId)
       .eq('tag_id', category)
       .limit(1);
 
     if (fallbackError || !fallbackData || fallbackData.length === 0) {
-      console.error('Tag not found even without context filter:', category);
+      console.error('Tag not found:', category);
       return null;
     }
+    // Warn about context mismatch - event may appear in wrong calendar
+    console.warn(`Tag "${category}" not found in "${context}" context, using tag from "${fallbackData[0].context}" context`);
     return fallbackData[0].id;
   }
 
@@ -194,25 +206,8 @@ export const createEvent = async (userId, eventData) => {
 
     if (error) throw error;
 
-    // Transform to app format
-    const event = {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      location: data.location || '',
-      category: eventData.category,
-      context: data.context,
-      start: data.start_time,
-      end: data.end_time,
-      deleted: data.deleted,
-      created_at: data.created_at,
-      updated_at: data.updated_at,
-      recurrencePattern: data.recurrence_pattern || 'none',
-      recurrenceEndDate: data.recurrence_end_date,
-      parentEventId: data.parent_event_id
-    };
-
-    return { data: event, error: null };
+    // Transform to app format using helper
+    return { data: transformEvent(data, {}, eventData.category), error: null };
   } catch (error) {
     console.error('Error creating event:', error);
     return { data: null, error };
@@ -238,13 +233,26 @@ export const updateEvent = async (eventId, userId, updates) => {
     if (updates.end !== undefined) updateData.end_time = updates.end;
 
     // If category changed, get the new tag UUID
+    // Need to determine context - use provided context or fetch current from DB
+    let resolvedCategory = null;
     if (updates.category) {
-      const ctx = updates.context || 'personal';
+      let ctx = updates.context;
+      if (!ctx) {
+        // Fetch current event's context from DB
+        const { data: currentEvent } = await supabase
+          .from('events')
+          .select('context, tag_id')
+          .eq('id', eventId)
+          .eq('user_id', userId)
+          .single();
+        ctx = currentEvent?.context || 'personal';
+      }
       const tagUuid = await lookupTagId(userId, updates.category, ctx);
       if (!tagUuid) {
         throw new Error(`Tag not found for category "${updates.category}" in ${ctx} context`);
       }
       updateData.tag_id = tagUuid;
+      resolvedCategory = updates.category;
     }
 
     const { data, error } = await supabase
@@ -257,21 +265,17 @@ export const updateEvent = async (eventId, userId, updates) => {
 
     if (error) throw error;
 
-    // Transform to app format
-    const event = {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      location: data.location || '',
-      category: updates.category || data.tag_id,
-      context: data.context,
-      start: data.start_time,
-      end: data.end_time,
-      deleted: data.deleted,
-      updated_at: data.updated_at
-    };
+    // Need tagMap to resolve category if not explicitly updated
+    let tagMap = {};
+    if (!resolvedCategory) {
+      const { data: tags } = await supabase
+        .from('tags')
+        .select('id, tag_id')
+        .eq('user_id', userId);
+      (tags || []).forEach(t => { tagMap[t.id] = t.tag_id; });
+    }
 
-    return { data: event, error: null };
+    return { data: transformEvent(data, tagMap, resolvedCategory), error: null };
   } catch (error) {
     console.error('Error updating event:', error);
     return { data: null, error };
@@ -346,20 +350,15 @@ export const restoreEvent = async (eventId, userId) => {
 
     if (error) throw error;
 
-    const event = {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      location: data.location || '',
-      category: data.tag_id,
-      context: data.context,
-      start: data.start_time,
-      end: data.end_time,
-      deleted: data.deleted,
-      updated_at: data.updated_at
-    };
+    // Fetch tagMap to resolve category
+    const { data: tags } = await supabase
+      .from('tags')
+      .select('id, tag_id')
+      .eq('user_id', userId);
+    const tagMap = {};
+    (tags || []).forEach(t => { tagMap[t.id] = t.tag_id; });
 
-    return { data: event, error: null };
+    return { data: transformEvent(data, tagMap), error: null };
   } catch (error) {
     console.error('Error restoring event:', error);
     return { data: null, error };
@@ -391,10 +390,43 @@ export const generateRecurringInstances = (parentEvent, endDate = null) => {
     : new Date(startDate.getTime() + (2 * 365 * 24 * 60 * 60 * 1000)); // 2 years
 
   let currentDate = new Date(startDate);
+  const originalDay = startDate.getDate(); // Preserve original day for monthly/yearly
 
   // Limit to 1000 instances for safety
   let count = 0;
   const MAX_INSTANCES = 1000;
+
+  // Skip the first date since parent event already exists
+  // Increment before loop starts
+  switch (pattern) {
+    case 'daily':
+      currentDate.setDate(currentDate.getDate() + 1);
+      break;
+    case 'weekly':
+      currentDate.setDate(currentDate.getDate() + 7);
+      break;
+    case 'fortnightly':
+      currentDate.setDate(currentDate.getDate() + 14);
+      break;
+    case 'monthly': {
+      // Fix: Set date to 1 first to avoid overflow (Jan 31 -> Feb 31 = Mar 3)
+      currentDate.setDate(1);
+      currentDate.setMonth(currentDate.getMonth() + 1);
+      const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+      currentDate.setDate(Math.min(originalDay, lastDay));
+      break;
+    }
+    case 'yearly': {
+      // Fix: Set date to 1 first to avoid overflow for leap year edge cases
+      currentDate.setDate(1);
+      currentDate.setFullYear(currentDate.getFullYear() + 1);
+      const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+      currentDate.setDate(Math.min(originalDay, lastDay));
+      break;
+    }
+    default:
+      return instances;
+  }
 
   while (currentDate <= maxEndDate && count < MAX_INSTANCES) {
     // Create instance
@@ -421,12 +453,24 @@ export const generateRecurringInstances = (parentEvent, endDate = null) => {
       case 'fortnightly':
         currentDate.setDate(currentDate.getDate() + 14);
         break;
-      case 'monthly':
+      case 'monthly': {
+        // Fix: Set date to 1 first to avoid overflow (Jan 31 -> Feb 31 = Mar 3)
+        currentDate.setDate(1);
         currentDate.setMonth(currentDate.getMonth() + 1);
+        // Clamp to original day or last day of month
+        const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+        currentDate.setDate(Math.min(originalDay, lastDayOfMonth));
         break;
-      case 'yearly':
+      }
+      case 'yearly': {
+        // Fix: Set date to 1 first to avoid overflow for leap year edge cases
+        currentDate.setDate(1);
         currentDate.setFullYear(currentDate.getFullYear() + 1);
+        // Handle Feb 29 -> Feb 28 for non-leap years
+        const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+        currentDate.setDate(Math.min(originalDay, lastDayOfMonth));
         break;
+      }
       default:
         return instances;
     }
@@ -452,28 +496,37 @@ export const createRecurringInstances = async (userId, parentEvent, endDate = nu
       return { data: [], error: null };
     }
 
-    // Create all instances
-    const createdEvents = [];
-    for (const instance of instances) {
-      const { data, error } = await createEvent(userId, {
-        title: instance.title,
-        description: instance.description,
-        location: instance.location,
-        category: instance.category,
-        context: instance.context,
-        start: instance.start,
-        end: instance.end,
-        parentEventId: parentEvent.id,
-        recurrencePattern: 'none'
-      });
-
-      if (error) {
-        console.error('Error creating recurring instance:', error);
-        continue;
-      }
-
-      createdEvents.push(data);
+    // Pre-resolve tag UUID once
+    const tagUuid = await lookupTagId(userId, parentEvent.category, parentEvent.context);
+    if (!tagUuid) {
+      throw new Error(`Tag not found for category "${parentEvent.category}" in ${parentEvent.context} context`);
     }
+
+    // Build insert array for batch insert
+    const insertRows = instances.map(instance => ({
+      user_id: userId,
+      title: instance.title,
+      description: instance.description || '',
+      location: instance.location || '',
+      tag_id: tagUuid,
+      context: instance.context,
+      start_time: instance.start,
+      end_time: instance.end,
+      deleted: false,
+      parent_event_id: parentEvent.id,
+      recurrence_pattern: 'none'
+    }));
+
+    // Single batch insert
+    const { data, error } = await supabase
+      .from('events')
+      .insert(insertRows)
+      .select('*');
+
+    if (error) throw error;
+
+    // Transform all results using helper
+    const createdEvents = (data || []).map(row => transformEvent(row, {}, parentEvent.category));
 
     return { data: createdEvents, error: null };
   } catch (error) {

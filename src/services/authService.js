@@ -38,6 +38,75 @@ export const signOut = async () => {
   }
 };
 
+// Email authentication - Magic Link (OTP)
+export const signInWithEmail = async (email) => {
+  try {
+    console.log('[Auth] Starting email sign-in with magic link...');
+    const { data, error } = await supabase.auth.signInWithOtp({
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/`,
+        shouldCreateUser: true
+      }
+    });
+
+    if (error) {
+      console.error('[Auth] Email sign-in error:', error);
+      throw error;
+    }
+    console.log('[Auth] Magic link sent successfully');
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error signing in with email:', error);
+    return { data: null, error };
+  }
+};
+
+// Email + Password Sign Up
+export const signUpWithEmail = async (email, password) => {
+  try {
+    console.log('[Auth] Starting email sign-up...');
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        emailRedirectTo: `${window.location.origin}/`
+      }
+    });
+
+    if (error) {
+      console.error('[Auth] Sign-up error:', error);
+      throw error;
+    }
+    console.log('[Auth] Sign-up successful');
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error signing up with email:', error);
+    return { data: null, error };
+  }
+};
+
+// Email + Password Sign In
+export const signInWithPassword = async (email, password) => {
+  try {
+    console.log('[Auth] Starting password sign-in...');
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password
+    });
+
+    if (error) {
+      console.error('[Auth] Password sign-in error:', error);
+      throw error;
+    }
+    console.log('[Auth] Password sign-in successful');
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error signing in with password:', error);
+    return { data: null, error };
+  }
+};
+
 export const onAuthStateChange = (callback) => {
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
     callback(event, session);

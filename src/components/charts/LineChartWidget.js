@@ -16,15 +16,19 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'rec
 export const LineChartWidget = ({ data, dataKey, xDataKey, theme, height = 200 }) => {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <LineChart data={data}>
+      <LineChart data={data} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
         <XAxis
           dataKey={xDataKey}
           stroke={theme.textMuted}
-          tick={{ fill: theme.textSec, fontSize: 11 }}
+          tick={{ fill: theme.textSec, fontSize: 10 }}
+          tickMargin={5}
+          axisLine={{ stroke: theme.border }}
         />
         <YAxis
           stroke={theme.textMuted}
-          tick={{ fill: theme.textSec, fontSize: 11 }}
+          tick={{ fill: theme.textSec, fontSize: 10 }}
+          width={35}
+          axisLine={{ stroke: theme.border }}
         />
         <Tooltip
           contentStyle={{

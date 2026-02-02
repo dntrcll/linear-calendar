@@ -98,9 +98,8 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      maxWidth: 1600,
-      margin: '0 auto',
-      padding: '16px 20px',
+      width: '100%',
+      padding: '16px 24px',
       display: 'flex',
       flexDirection: 'column',
       gap: 16,
@@ -402,7 +401,7 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
       display: 'flex',
       flexDirection: 'column',
       gap: 20,
-      paddingBottom: 8
+      paddingBottom: 40
     }}>
       {/* Summary Cards */}
       <div style={{
@@ -491,15 +490,17 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
       <div style={{
         display: 'grid',
         gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))',
-        gap: 16
+        gap: 16,
+        paddingBottom: 32
       }}>
         {/* Sleep Trend */}
         {sleepData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -509,13 +510,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Sleep Trend (Last 30 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <LineChartWidget
                 data={sleepData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -524,10 +525,11 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
         {/* Weight Progress */}
         {weightData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -537,13 +539,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Weight Trend (Last 30 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <LineChartWidget
                 data={weightData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -552,10 +554,11 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
         {/* Productivity Score */}
         {productivityData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -565,13 +568,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Productivity Score (Last 30 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <LineChartWidget
                 data={productivityData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -580,10 +583,11 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
         {/* Focus Time */}
         {focusTimeData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -593,13 +597,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Focus Time Hours (Last 30 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <BarChartWidget
                 data={focusTimeData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -608,10 +612,11 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
         {/* Workout Frequency */}
         {workoutData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -621,13 +626,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Workout Duration (Last 14 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <BarChartWidget
                 data={workoutData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -636,10 +641,11 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
         {/* Mood Trend */}
         {moodData.length > 0 && (
           <div style={{
-            padding: 16,
+            padding: '16px 16px 8px 16px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
             border: `1px solid ${theme.border}`,
-            borderRadius: 12
+            borderRadius: 12,
+            overflow: 'visible'
           }}>
             <h3 style={{
               fontSize: 13,
@@ -649,13 +655,13 @@ const DashboardTab = ({ metrics, theme, config, accentColor }) => {
             }}>
               Mood Trend (Last 30 Days)
             </h3>
-            <Suspense fallback={<div style={{ height: 200 }} />}>
+            <Suspense fallback={<div style={{ height: 180 }} />}>
               <LineChartWidget
                 data={moodData}
                 dataKey="value"
                 xDataKey="date"
                 theme={theme}
-                height={200}
+                height={180}
               />
             </Suspense>
           </div>
@@ -896,6 +902,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
   const [weight, setWeight] = useState('');
   const [weightUnit, setWeightUnit] = useState(() => localStorage.getItem('weightUnit') || 'lbs');
   const [workoutType, setWorkoutType] = useState('');
+  const [customWorkout, setCustomWorkout] = useState('');
   const [workoutDuration, setWorkoutDuration] = useState('');
   const [healthyEating, setHealthyEating] = useState(false);
   const [mood, setMood] = useState('');
@@ -942,6 +949,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
 
       // Workout entry
       if (workoutType) {
+        const finalWorkoutType = workoutType === 'other' && customWorkout ? customWorkout : workoutType;
         entries.push({
           user_id: user.uid,
           recorded_at: new Date(date).toISOString(),
@@ -949,7 +957,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
           metric_name: 'workout',
           metric_value: workoutDuration ? parseFloat(workoutDuration) : 0,
           metric_data: {
-            type: workoutType,
+            type: finalWorkoutType,
             duration_minutes: workoutDuration ? parseFloat(workoutDuration) : 0
           }
         });
@@ -1003,6 +1011,7 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
         setSleepHours('');
         setWeight('');
         setWorkoutType('');
+        setCustomWorkout('');
         setWorkoutDuration('');
         setHealthyEating(false);
         setMood('');
@@ -1020,190 +1029,84 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
   return (
     <div style={{
       height: '100%',
-      overflow: 'auto',
-      padding: '20px 0'
+      overflow: 'hidden',
+      padding: '8px 0',
+      display: 'flex',
+      flexDirection: 'column'
     }}>
       <form onSubmit={handleSubmit} style={{
         width: '100%',
-        maxWidth: 600,
+        maxWidth: 900,
         margin: '0 auto',
-        background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+        background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
         border: `1px solid ${theme.border}`,
-        borderRadius: 16,
-        padding: 28
+        borderRadius: 14,
+        padding: '20px 24px',
+        display: 'flex',
+        flexDirection: 'column'
       }}>
-        <h2 style={{
-          fontSize: 20,
-          fontWeight: 700,
-          color: theme.text,
-          marginBottom: 8,
-          fontFamily: theme.fontDisplay
-        }}>
-          Add Health Metrics
-        </h2>
-        <p style={{
-          fontSize: 12,
-          color: theme.textMuted,
-          marginBottom: 24
-        }}>
-          Fill in one or more metrics for the day
-        </p>
-
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Date */}
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
           <div>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 8
+            <h2 style={{
+              fontSize: 18,
+              fontWeight: 700,
+              color: theme.text,
+              marginBottom: 4,
+              fontFamily: theme.fontDisplay,
+              letterSpacing: '-0.02em'
             }}>
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={e => setDate(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 10,
-                color: theme.text,
-                fontSize: 13,
-                fontFamily: theme.fontFamily
-              }}
-            />
-          </div>
-
-          {/* Sleep Hours */}
-          <div>
-            <label style={{
-              display: 'block',
+              Add Health Metrics
+            </h2>
+            <p style={{
               fontSize: 12,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 8
+              color: theme.textMuted
             }}>
-              Sleep Hours
-            </label>
-            <input
-              type="number"
-              step="0.5"
-              min="0"
-              max="24"
-              value={sleepHours}
-              onChange={e => setSleepHours(e.target.value)}
-              placeholder="e.g., 7.5"
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 10,
-                color: theme.text,
-                fontSize: 13,
-                fontFamily: theme.fontFamily
-              }}
-            />
+              Fill in one or more metrics for the day
+            </p>
           </div>
+          <button
+            type="submit"
+            disabled={saving}
+            style={{
+              padding: '12px 24px',
+              background: saving
+                ? theme.border
+                : `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
+              border: 'none',
+              borderRadius: 10,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              fontFamily: theme.fontFamily,
+              boxShadow: saving ? 'none' : `0 2px 8px ${accentColor}40`
+            }}
+          >
+            {saving ? 'Saving...' : 'Save Metrics'}
+          </button>
+        </div>
 
-          {/* Weight */}
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+        {/* Form Fields - 2 rows of 4 columns each */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Row 1 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            {/* Date */}
+            <div>
               <label style={{
-                fontSize: 12,
+                display: 'block',
+                fontSize: 11,
                 fontWeight: 600,
-                color: theme.textSec
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
               }}>
-                Weight
+                Date
               </label>
-              <div style={{ display: 'flex', borderRadius: 6, overflow: 'hidden', border: `1px solid ${theme.border}` }}>
-                {['lbs', 'kg'].map(unit => (
-                  <button
-                    key={unit}
-                    type="button"
-                    onClick={() => { setWeightUnit(unit); localStorage.setItem('weightUnit', unit); }}
-                    style={{
-                      padding: '3px 10px',
-                      fontSize: 10,
-                      fontWeight: 600,
-                      fontFamily: theme.fontFamily,
-                      background: weightUnit === unit ? `${accentColor}20` : (config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.01)'),
-                      color: weightUnit === unit ? accentColor : theme.textMuted,
-                      border: 'none',
-                      cursor: 'pointer',
-                      borderRight: unit === 'lbs' ? `1px solid ${theme.border}` : 'none'
-                    }}
-                  >
-                    {unit}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <input
-              type="number"
-              step="0.1"
-              min="0"
-              value={weight}
-              onChange={e => setWeight(e.target.value)}
-              placeholder={weightUnit === 'kg' ? 'e.g., 75.0' : 'e.g., 165.5'}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 10,
-                color: theme.text,
-                fontSize: 13,
-                fontFamily: theme.fontFamily
-              }}
-            />
-          </div>
-
-          {/* Workout */}
-          <div>
-            <label style={{
-              display: 'block',
-              fontSize: 12,
-              fontWeight: 600,
-              color: theme.textSec,
-              marginBottom: 8
-            }}>
-              Workout Type
-            </label>
-            <select
-              value={workoutType}
-              onChange={e => setWorkoutType(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '12px 14px',
-                background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
-                border: `1px solid ${theme.border}`,
-                borderRadius: 10,
-                color: theme.text,
-                fontSize: 13,
-                fontFamily: theme.fontFamily
-              }}
-            >
-              <option value="">None</option>
-              <option value="cardio">Cardio</option>
-              <option value="strength">Strength Training</option>
-              <option value="yoga">Yoga</option>
-              <option value="sports">Sports</option>
-              <option value="walk">Walking</option>
-              <option value="other">Other</option>
-            </select>
-            {workoutType && (
               <input
-                type="number"
-                step="5"
-                min="0"
-                value={workoutDuration}
-                onChange={e => setWorkoutDuration(e.target.value)}
-                placeholder="Duration (minutes)"
+                type="date"
+                value={date}
+                onChange={e => setDate(e.target.value)}
                 style={{
                   width: '100%',
                   padding: '12px 14px',
@@ -1212,52 +1115,109 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
                   borderRadius: 10,
                   color: theme.text,
                   fontSize: 13,
-                  fontFamily: theme.fontFamily,
-                  marginTop: 8
+                  fontFamily: theme.fontFamily
                 }}
               />
-            )}
-          </div>
+            </div>
 
-          {/* Healthy Eating */}
-          <div>
-            <label style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              cursor: 'pointer',
-              fontSize: 13,
-              color: theme.text
-            }}>
-              <input
-                type="checkbox"
-                checked={healthyEating}
-                onChange={e => setHealthyEating(e.target.checked)}
-                style={{
-                  width: 18,
-                  height: 18,
-                  cursor: 'pointer'
-                }}
-              />
-              <span style={{ fontWeight: 600 }}>Ate healthy today</span>
-            </label>
-          </div>
-
-          {/* Mood & Energy */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 16
-          }}>
+            {/* Sleep Hours */}
             <div>
               <label style={{
                 display: 'block',
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 600,
-                color: theme.textSec,
-                marginBottom: 8
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
               }}>
-                Mood (1-5)
+                Sleep Hours
+              </label>
+              <input
+                type="number"
+                step="0.5"
+                min="0"
+                max="24"
+                value={sleepHours}
+                onChange={e => setSleepHours(e.target.value)}
+                placeholder="7.5"
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 10,
+                  color: theme.text,
+                  fontSize: 13,
+                  fontFamily: theme.fontFamily
+                }}
+              />
+            </div>
+
+            {/* Weight */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <label style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: accentColor,
+                  letterSpacing: '0.02em'
+                }}>
+                  Weight
+                </label>
+                <div style={{ display: 'flex', borderRadius: 5, overflow: 'hidden', border: `1px solid ${theme.border}` }}>
+                  {['lbs', 'kg'].map(unit => (
+                    <button
+                      key={unit}
+                      type="button"
+                      onClick={() => { setWeightUnit(unit); localStorage.setItem('weightUnit', unit); }}
+                      style={{
+                        padding: '3px 8px',
+                        fontSize: 9,
+                        fontWeight: 600,
+                        fontFamily: theme.fontFamily,
+                        background: weightUnit === unit ? `${accentColor}20` : 'transparent',
+                        color: weightUnit === unit ? accentColor : theme.textMuted,
+                        border: 'none',
+                        cursor: 'pointer',
+                        borderRight: unit === 'lbs' ? `1px solid ${theme.border}` : 'none'
+                      }}
+                    >
+                      {unit}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                placeholder={weightUnit === 'kg' ? '75.0' : '165.5'}
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                  border: `1px solid ${theme.border}`,
+                  borderRadius: 10,
+                  color: theme.text,
+                  fontSize: 13,
+                  fontFamily: theme.fontFamily
+                }}
+              />
+            </div>
+
+            {/* Mood */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
+              }}>
+                Mood
               </label>
               <select
                 value={mood}
@@ -1274,26 +1234,32 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
                 }}
               >
                 <option value="">—</option>
-                <option value="1">1 - Bad</option>
-                <option value="2">2 - Low</option>
-                <option value="3">3 - Okay</option>
-                <option value="4">4 - Good</option>
-                <option value="5">5 - Great</option>
+                <option value="1">1 Bad</option>
+                <option value="2">2 Low</option>
+                <option value="3">3 Okay</option>
+                <option value="4">4 Good</option>
+                <option value="5">5 Great</option>
               </select>
             </div>
+          </div>
+
+          {/* Row 2 */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+            {/* Workout Type */}
             <div>
               <label style={{
                 display: 'block',
-                fontSize: 12,
+                fontSize: 11,
                 fontWeight: 600,
-                color: theme.textSec,
-                marginBottom: 8
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
               }}>
-                Energy (1-5)
+                Workout
               </label>
               <select
-                value={energy}
-                onChange={e => setEnergy(e.target.value)}
+                value={workoutType}
+                onChange={e => { setWorkoutType(e.target.value); if (e.target.value !== 'other') setCustomWorkout(''); }}
                 style={{
                   width: '100%',
                   padding: '12px 14px',
@@ -1305,37 +1271,227 @@ const AddEntryTab = ({ theme, config, accentColor, user, onSave }) => {
                   fontFamily: theme.fontFamily
                 }}
               >
-                <option value="">—</option>
-                <option value="1">1 - Drained</option>
-                <option value="2">2 - Low</option>
-                <option value="3">3 - Okay</option>
-                <option value="4">4 - High</option>
-                <option value="5">5 - Energized</option>
+                <option value="">None</option>
+                <option value="cardio">Cardio</option>
+                <option value="strength">Strength</option>
+                <option value="yoga">Yoga</option>
+                <option value="sports">Sports</option>
+                <option value="walk">Walk</option>
+                <option value="other">Other...</option>
               </select>
+            </div>
+
+            {/* Custom Workout or Duration */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
+              }}>
+                {workoutType === 'other' ? 'Workout Name' : 'Duration (min)'}
+              </label>
+              {workoutType === 'other' ? (
+                <input
+                  type="text"
+                  value={customWorkout}
+                  onChange={e => setCustomWorkout(e.target.value)}
+                  placeholder="e.g. Swimming"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.text,
+                    fontSize: 13,
+                    fontFamily: theme.fontFamily
+                  }}
+                />
+              ) : (
+                <input
+                  type="number"
+                  step="5"
+                  min="0"
+                  value={workoutDuration}
+                  onChange={e => setWorkoutDuration(e.target.value)}
+                  placeholder="30"
+                  disabled={!workoutType}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.text,
+                    fontSize: 13,
+                    fontFamily: theme.fontFamily,
+                    opacity: workoutType ? 1 : 0.5
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Duration (shown when custom workout selected) or Energy */}
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: 11,
+                fontWeight: 600,
+                color: accentColor,
+                marginBottom: 6,
+                letterSpacing: '0.02em'
+              }}>
+                {workoutType === 'other' ? 'Duration (min)' : 'Energy'}
+              </label>
+              {workoutType === 'other' ? (
+                <input
+                  type="number"
+                  step="5"
+                  min="0"
+                  value={workoutDuration}
+                  onChange={e => setWorkoutDuration(e.target.value)}
+                  placeholder="30"
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.text,
+                    fontSize: 13,
+                    fontFamily: theme.fontFamily
+                  }}
+                />
+              ) : (
+                <select
+                  value={energy}
+                  onChange={e => setEnergy(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                    border: `1px solid ${theme.border}`,
+                    borderRadius: 10,
+                    color: theme.text,
+                    fontSize: 13,
+                    fontFamily: theme.fontFamily
+                  }}
+                >
+                  <option value="">—</option>
+                  <option value="1">1 Drained</option>
+                  <option value="2">2 Low</option>
+                  <option value="3">3 Okay</option>
+                  <option value="4">4 High</option>
+                  <option value="5">5 Energized</option>
+                </select>
+              )}
+            </div>
+
+            {/* Ate Healthy or Energy (when other workout) */}
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              {workoutType === 'other' ? (
+                <div style={{ width: '100%' }}>
+                  <label style={{
+                    display: 'block',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: accentColor,
+                    marginBottom: 6,
+                    letterSpacing: '0.02em'
+                  }}>
+                    Energy
+                  </label>
+                  <select
+                    value={energy}
+                    onChange={e => setEnergy(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '12px 14px',
+                      background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                      border: `1px solid ${theme.border}`,
+                      borderRadius: 10,
+                      color: theme.text,
+                      fontSize: 13,
+                      fontFamily: theme.fontFamily
+                    }}
+                  >
+                    <option value="">—</option>
+                    <option value="1">1 Drained</option>
+                    <option value="2">2 Low</option>
+                    <option value="3">3 Okay</option>
+                    <option value="4">4 High</option>
+                    <option value="5">5 Energized</option>
+                  </select>
+                </div>
+              ) : (
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: theme.text,
+                  padding: '12px 14px',
+                  background: healthyEating ? `${accentColor}12` : (config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'),
+                  border: `1px solid ${healthyEating ? accentColor : theme.border}`,
+                  borderRadius: 10,
+                  width: '100%',
+                  transition: 'all 0.2s'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={healthyEating}
+                    onChange={e => setHealthyEating(e.target.checked)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      cursor: 'pointer',
+                      accentColor: accentColor
+                    }}
+                  />
+                  <span style={{ fontWeight: 600 }}>Ate healthy</span>
+                </label>
+              )}
             </div>
           </div>
 
-          {/* Submit */}
-          <button
-            type="submit"
-            disabled={saving}
-            style={{
-              padding: '14px',
-              background: saving
-                ? theme.border
-                : `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-              border: 'none',
-              borderRadius: 10,
-              color: '#fff',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              fontFamily: theme.fontFamily,
-              marginTop: 8
-            }}
-          >
-            {saving ? 'Saving...' : 'Save Metrics'}
-          </button>
+          {/* Row 3 - Only shows when custom workout is selected */}
+          {workoutType === 'other' && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+              <div style={{ gridColumn: 'span 1' }}>
+                <label style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 12,
+                  cursor: 'pointer',
+                  fontSize: 13,
+                  color: theme.text,
+                  padding: '12px 14px',
+                  background: healthyEating ? `${accentColor}12` : (config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)'),
+                  border: `1px solid ${healthyEating ? accentColor : theme.border}`,
+                  borderRadius: 10,
+                  width: '100%',
+                  transition: 'all 0.2s'
+                }}>
+                  <input
+                    type="checkbox"
+                    checked={healthyEating}
+                    onChange={e => setHealthyEating(e.target.checked)}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      cursor: 'pointer',
+                      accentColor: accentColor
+                    }}
+                  />
+                  <span style={{ fontWeight: 600 }}>Ate healthy</span>
+                </label>
+              </div>
+            </div>
+          )}
         </div>
       </form>
     </div>

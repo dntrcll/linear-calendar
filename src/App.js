@@ -23,6 +23,9 @@ import {
 } from "./utils";
 import {
   signInWithGoogle,
+  signInWithEmail,
+  signUpWithEmail,
+  signInWithPassword,
   signOut as supabaseSignOut,
   onAuthStateChange
 } from "./services/authService";
@@ -32,7 +35,8 @@ import {
   updateEvent,
   deleteEvent,
   permanentlyDeleteEvent,
-  restoreEvent as restoreSupabaseEvent
+  restoreEvent as restoreSupabaseEvent,
+  createRecurringInstances
 } from "./services/eventService";
 import {
   loadTags,
@@ -41,6 +45,17 @@ import {
   deleteTag,
   // getTagsByContext
 } from "./services/tagService";
+import {
+  SUBSCRIPTION_PLANS,
+  FEATURE_DESCRIPTIONS,
+  TRIAL_CONFIG,
+  getSubscriptionStatus,
+  startFreeTrial,
+  canUseFeature,
+  hasReachedLimit,
+  getTrialDaysRemaining,
+  localSubscriptionManager
+} from "./services/subscriptionService";
 // import {
 //   loadUserPreferences,
 //   updateUserPreferences
@@ -525,6 +540,53 @@ const CSS = `
     input, textarea, select {
       font-size: 16px !important; /* Prevents iOS zoom on focus */
     }
+
+    /* Holidays grid responsive */
+    .holidays-grid {
+      grid-template-columns: repeat(3, 1fr) !important;
+    }
+    .holidays-grid .holiday-text {
+      font-size: 9px !important;
+    }
+    .holidays-grid .holiday-date {
+      font-size: 8px !important;
+    }
+    .holidays-grid .holiday-state {
+      font-size: 7px !important;
+    }
+  }
+
+  /* Small phone - 2 columns for holidays */
+  @media (max-width: 480px) {
+    .holidays-grid {
+      grid-template-columns: repeat(2, 1fr) !important;
+    }
+    .holidays-grid .holiday-text {
+      font-size: 9px !important;
+    }
+    .holidays-grid .holiday-date {
+      font-size: 8px !important;
+    }
+    .holidays-grid .holiday-state {
+      font-size: 7px !important;
+    }
+  }
+
+  /* Ultrawide displays - scale up year view */
+  @media (min-width: 1800px) {
+    .year-view-container {
+      padding: 0 20px !important;
+    }
+    .year-progress-bar {
+      max-width: 1400px !important;
+      padding: 12px 18px !important;
+    }
+    .year-calendar-grid {
+      max-width: 1400px !important;
+    }
+    .holidays-section {
+      max-width: 1400px !important;
+    }
   }
 
   /* Small phone adjustments */
@@ -568,6 +630,16 @@ const CSS = `
 
 function TimelineOS() {
   const [user, setUser] = useState(null);
+  const [subscription, setSubscription] = useState(() => {
+    // Initialize from localStorage for demo mode
+    const local = localSubscriptionManager.getLocalSubscription();
+    return local || {
+      plan: 'free',
+      status: 'active',
+      trialActive: false,
+      features: SUBSCRIPTION_PLANS.FREE.features
+    };
+  });
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [nowTime, setNowTime] = useState(() => new Date()); // Separate state for current time display
@@ -869,18 +941,23 @@ function TimelineOS() {
   
   const loadData = useCallback(async (u) => {
     const loadStartTime = performance.now();
-    console.log('loadData called for user:', u);
+
+    // Generate unique request ID to prevent race conditions
+    const requestId = ++loadRequestIdRef.current;
+    const isCurrentRequest = () => loadRequestIdRef.current === requestId;
+
     setLoading(true);
 
-    // Set a maximum time for loading
+    // Set a maximum time for loading - only affects loading indicator, not data
     const loadTimeout = setTimeout(() => {
-      console.warn('⚠️ Loading taking too long, showing app anyway...');
-      setLoading(false);
-    }, 8000); // 8 second max - don't wipe data, just stop loading indicator
+      if (isCurrentRequest()) {
+        console.warn('Loading timeout - showing app with current data');
+        setLoading(false);
+      }
+    }, 8000);
 
     try {
       // Load events from Supabase
-      console.log('Calling loadEvents...');
       const eventsStartTime = performance.now();
       const eventsPromise = loadEvents(u.uid);
       const eventsResult = await Promise.race([
@@ -889,12 +966,14 @@ function TimelineOS() {
       ]);
       const eventsEndTime = performance.now();
 
+      // Skip state updates if this request is stale
+      if (!isCurrentRequest()) return;
+
       if (eventsResult.error) {
         console.error("Error loading events:", eventsResult.error);
         setEvents([]);
         setDeletedEvents([]);
       } else {
-        console.log('Events loaded successfully:', eventsResult.data?.length);
         setEvents(eventsResult.data.filter(e => !e.deleted));
         setDeletedEvents(eventsResult.data.filter(e => e.deleted));
 
@@ -905,7 +984,6 @@ function TimelineOS() {
       }
 
       // Load tags from Supabase
-      console.log('Calling loadTags...');
       const tagsStartTime = performance.now();
       const tagsPromise = loadTags(u.uid);
       const tagsResult = await Promise.race([
@@ -914,16 +992,16 @@ function TimelineOS() {
       ]);
       const tagsEndTime = performance.now();
 
+      // Skip state updates if this request is stale
+      if (!isCurrentRequest()) return;
+
       if (tagsResult.error) {
         console.error("Error loading tags:", tagsResult.error);
         setTags({ personal: [], family: [] });
       } else {
-        console.log('Tags loaded successfully:', tagsResult.data?.length);
 
         // If no tags exist, initialize with defaults
         if (!tagsResult.data || tagsResult.data.length === 0) {
-          console.log('No tags found, initializing defaults...');
-
           // Create default tags - extract only needed properties (don't pass 'id')
           const defaultTagsToCreate = [
             ...DEFAULT_TAGS.personal.map(t => ({
@@ -955,29 +1033,17 @@ function TimelineOS() {
 
           const createdTags = await Promise.all(createPromises);
 
-          // Log detailed results
-          console.log('Tag creation results:', createdTags.map((result, i) => ({
-            tag: defaultTagsToCreate[i].name,
-            success: !!result.data,
-            error: result.error?.message || null
-          })));
+          // Skip if request is stale after async tag creation
+          if (!isCurrentRequest()) return;
 
           const successfulTags = createdTags
             .filter(result => result.data)
             .map(result => result.data);
 
-          const failedTags = createdTags
-            .filter(result => result.error)
-            .map((result, i) => ({
-              tag: defaultTagsToCreate[i].name,
-              error: result.error
-            }));
-
+          const failedTags = createdTags.filter(result => result.error);
           if (failedTags.length > 0) {
-            console.error('Failed to create some tags:', failedTags);
+            console.error('Failed to create some tags:', failedTags.length);
           }
-
-          console.log('Created default tags:', successfulTags.length, 'out of', defaultTagsToCreate.length);
 
           const tagsByContext = {
             personal: successfulTags.filter(t => t.context === 'personal'),
@@ -1002,16 +1068,19 @@ function TimelineOS() {
       console.error("Error loading data:", error);
     } finally {
       clearTimeout(loadTimeout);
-      const loadEndTime = performance.now();
-      const totalLoadTime = loadEndTime - loadStartTime;
 
-      // Record total load performance
-      recordPerformance('loadData', totalLoadTime, {
-        success: true
-      });
+      // Only update loading state if this is still the current request
+      if (isCurrentRequest()) {
+        const loadEndTime = performance.now();
+        const totalLoadTime = loadEndTime - loadStartTime;
 
-      console.log('loadData finished, setting loading to false');
-      setLoading(false);
+        // Record total load performance
+        recordPerformance('loadData', totalLoadTime, {
+          success: true
+        });
+
+        setLoading(false);
+      }
     }
   }, []);
   
@@ -1020,11 +1089,8 @@ function TimelineOS() {
 
     const setupAuth = async () => {
       try {
-        console.log('[Auth Setup] Starting...');
-
         // Clean up URL after OAuth callback (removes ugly tokens from address bar)
         if (window.location.hash && window.location.hash.includes('access_token')) {
-          console.log('[Auth Setup] Cleaning OAuth tokens from URL');
           window.history.replaceState({}, document.title, window.location.pathname);
         }
 
@@ -1033,10 +1099,8 @@ function TimelineOS() {
 
         // First check if there's an existing session
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('[Auth Setup] Session check:', session ? 'Found' : 'None');
 
         if (session?.user) {
-          console.log('[Auth Setup] Found existing session for:', session.user.email);
           setUser({
             uid: session.user.id,
             email: session.user.email,
@@ -1045,27 +1109,27 @@ function TimelineOS() {
           });
           loadData({ uid: session.user.id });
         } else {
-          console.log('[Auth Setup] No existing session, showing login screen');
           setUser(null);
           setLoading(false);
         }
 
-        // Then listen for changes
+        // Then listen for changes - but only reload on actual sign-in, not token refresh
         subscription = onAuthStateChange(async (event, session) => {
-          console.log('[Auth State Change]', event, session ? 'with session' : 'no session');
           const user = session?.user || null;
 
           if (user) {
-            console.log('[Auth State Change] User signed in:', user.email);
             setUser({
               uid: user.id,
               email: user.email,
               displayName: user.user_metadata?.full_name || user.email?.split('@')[0],
               photoURL: user.user_metadata?.avatar_url
             });
-            loadData({ uid: user.id });
+            // Only reload data on actual sign-in events, not token refresh
+            // TOKEN_REFRESHED fires periodically and causes unwanted reloads
+            if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+              loadData({ uid: user.id });
+            }
           } else {
-            console.log('[Auth State Change] User signed out');
             setUser(null);
             setLoading(false);
           }
@@ -1085,6 +1149,7 @@ function TimelineOS() {
 
   // Reload data when user returns to the app (only if away for >60s, no loading flash)
   const lastLoadTimeRef = useRef(Date.now());
+  const loadRequestIdRef = useRef(0); // Track current load request to prevent race conditions
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user) {
@@ -1267,7 +1332,19 @@ function TimelineOS() {
       } else {
         result = await createEvent(user.uid, eventData);
         if (result.error) throw result.error;
-        notify("Event created", "success");
+
+        // Generate recurring instances if pattern is set
+        if (eventData.recurrencePattern && eventData.recurrencePattern !== 'none') {
+          const { error: recError } = await createRecurringInstances(user.uid, result.data);
+          if (recError) {
+            console.error('Error creating recurring instances:', recError);
+            notify("Event created but recurring instances failed", "warning");
+          } else {
+            notify("Recurring events created", "success");
+          }
+        } else {
+          notify("Event created", "success");
+        }
       }
 
       setModalOpen(false);
@@ -1427,7 +1504,13 @@ function TimelineOS() {
   }
   
   if (!user) {
-    return <AuthScreen onLogin={signInWithGoogle} theme={theme} />;
+    return <AuthScreen
+      onLogin={signInWithGoogle}
+      onEmailLogin={signInWithEmail}
+      onEmailSignUp={signUpWithEmail}
+      onPasswordLogin={signInWithPassword}
+      theme={theme}
+    />;
   }
 
   return (
@@ -2031,7 +2114,7 @@ function TimelineOS() {
               </button>
             </div>
             
-            {/* Compact horizontal tag pills with Liquid Glass */}
+            {/* Compact horizontal tag pills */}
             <div style={{
               display: "flex",
               flexWrap: "wrap",
@@ -2052,77 +2135,68 @@ function TimelineOS() {
                       );
                     }}
                     style={{
-                      padding: "4px 8px",
-                      borderRadius: 20,
+                      padding: "5px 10px",
+                      borderRadius: 16,
                       cursor: "pointer",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 5,
-                      // Enhanced Liquid Glass
                       background: isActive
-                        ? `linear-gradient(135deg, ${tag.color}30 0%, ${tag.color}15 100%)`
+                        ? `${tag.color}18`
                         : config.darkMode
-                          ? 'rgba(255, 255, 255, 0.05)'
+                          ? 'rgba(255, 255, 255, 0.04)'
                           : 'rgba(255, 255, 255, 0.7)',
-                      backdropFilter: 'blur(20px) saturate(180%)',
-                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                       border: isActive
-                        ? `1px solid ${tag.color}60`
-                        : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)'}`,
-                      boxShadow: isActive
-                        ? `0 2px 12px ${tag.color}25, inset 0 1px 0 rgba(255,255,255,0.2)`
-                        : `0 1px 3px ${config.darkMode ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.05)'}, inset 0 1px 0 rgba(255,255,255,${config.darkMode ? '0.05' : '0.8'})`,
-                      transition: "all 0.2s cubic-bezier(0.4, 0, 0.2, 1)",
-                      fontSize: 9,
+                        ? `1px solid ${tag.color}40`
+                        : `1px solid ${config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                      transition: "all 0.15s ease",
+                      fontSize: 10,
                       fontWeight: 600,
-                      color: isActive ? tag.color : theme.textSec
+                      fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                      color: isActive ? tag.color : theme.textSec,
+                      lineHeight: 1
                     }}
                     onMouseEnter={e => {
-                      e.currentTarget.style.transform = 'scale(1.02)';
                       if (!isActive) {
-                        e.currentTarget.style.background = config.darkMode
-                          ? 'rgba(255, 255, 255, 0.08)'
-                          : 'rgba(255, 255, 255, 0.9)';
+                        e.currentTarget.style.borderColor = tag.color + '30';
                       }
                     }}
                     onMouseLeave={e => {
-                      e.currentTarget.style.transform = 'scale(1)';
                       if (!isActive) {
-                        e.currentTarget.style.background = config.darkMode
-                          ? 'rgba(255, 255, 255, 0.05)'
-                          : 'rgba(255, 255, 255, 0.7)';
+                        e.currentTarget.style.borderColor = config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
                       }
                     }}
                   >
-                    <div style={{
+                    <span style={{
                       width: 6,
                       height: 6,
                       borderRadius: '50%',
                       background: tag.color,
-                      flexShrink: 0,
-                      boxShadow: isActive ? `0 0 6px ${tag.color}` : 'none'
+                      flexShrink: 0
                     }} />
                     <span>{tag.name}</span>
                   </button>
                 );
               })}
 
-              {/* All/Clear toggle */}
+              {/* Clear toggle */}
               <button
                 onClick={() => {
                   const allTagIds = currentTags.map(t => t.id);
                   setActiveTagIds(activeTagIds.length === allTagIds.length ? [] : allTagIds);
                 }}
                 style={{
-                  padding: "4px 8px",
-                  borderRadius: 20,
-                  border: `1px dashed ${theme.border}`,
+                  padding: "5px 10px",
+                  borderRadius: 16,
+                  border: `1px dashed ${config.darkMode ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.12)'}`,
                   background: "transparent",
                   color: theme.textMuted,
-                  fontSize: 9,
+                  fontSize: 10,
                   fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                   cursor: "pointer",
-                  transition: "all 0.2s"
+                  transition: "all 0.15s ease",
+                  lineHeight: 1
                 }}
                 onMouseEnter={e => {
                   e.currentTarget.style.borderStyle = 'solid';
@@ -2556,7 +2630,7 @@ function TimelineOS() {
             <EventListPanel
               events={events}
               theme={theme}
-              tags={currentTags}
+              tags={getAllTags()}
               config={config}
               accentColor={accentColor}
               onClose={() => setEventListOpen(false)}
@@ -2618,6 +2692,7 @@ function TimelineOS() {
       {modalOpen && (
         <EventEditor
           event={editingEvent}
+          currentDate={currentDate}
           theme={theme}
           config={config}
           tags={currentTags}
@@ -3157,19 +3232,47 @@ function TimelineOS() {
   );
 }
 
-function AuthScreen({ onLogin, theme }) {
+function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, theme }) {
   const [email, setEmail] = React.useState('');
+  const [password, setPassword] = React.useState('');
   const [showEmailInput, setShowEmailInput] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState('magic'); // 'magic', 'signin', 'signup'
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [message, setMessage] = React.useState(null);
+  const [error, setError] = React.useState(null);
 
-  // Determine if theme is dark by checking bg color luminosity
-  const isDarkTheme = theme.bg && parseInt(theme.bg.replace('#', '').substring(0, 2), 16) < 40;
-
-  const handleEmailSubmit = (e) => {
+  const handleEmailSubmit = async (e) => {
     e.preventDefault();
-    if (email.trim()) {
-      // For now, just call onLogin - email auth can be implemented later
-      console.log('Email auth:', email);
-      alert('Email authentication will be available soon. Please use Google or Apple Sign In.');
+    if (!email.trim()) return;
+
+    setIsLoading(true);
+    setError(null);
+    setMessage(null);
+
+    try {
+      if (authMode === 'magic') {
+        // Magic link (passwordless)
+        const { error } = await onEmailLogin(email);
+        if (error) throw error;
+        setMessage('Check your email for a magic link to sign in.');
+      } else if (authMode === 'signup') {
+        // Email + Password Sign Up
+        if (!password || password.length < 6) {
+          throw new Error('Password must be at least 6 characters');
+        }
+        const { error } = await onEmailSignUp(email, password);
+        if (error) throw error;
+        setMessage('Check your email to confirm your account.');
+      } else {
+        // Email + Password Sign In
+        const { error } = await onPasswordLogin(email, password);
+        if (error) throw error;
+        // Success - will redirect automatically
+      }
+    } catch (err) {
+      setError(err.message || 'An error occurred. Please try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -3335,15 +3438,16 @@ function AuthScreen({ onLogin, theme }) {
           {[
             {
               name: 'Smart Calendar',
-              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              icon: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
                 <line x1="16" y1="2" x2="16" y2="6"/>
                 <line x1="8" y1="2" x2="8" y2="6"/>
                 <line x1="3" y1="10" x2="21" y2="10"/>
-                <circle cx="8" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="16" cy="14" r="1.5" fill="currentColor"/>
-                <circle cx="12" cy="18" r="1.5" fill="currentColor"/>
+                <path d="M8 14h.01"/>
+                <path d="M12 14h.01"/>
+                <path d="M16 14h.01"/>
+                <path d="M8 18h.01"/>
+                <path d="M12 18h.01"/>
               </svg>
             },
             {
@@ -3460,54 +3564,7 @@ function AuthScreen({ onLogin, theme }) {
             <span style={{ position: 'relative', zIndex: 1 }}>Continue with Google</span>
           </button>
 
-          {/* Apple Sign In - Secondary */}
-          <button
-            onClick={() => alert('Apple Sign In will be available soon!')}
-            style={{
-              width: "100%",
-              padding: "15px 28px",
-              background: isDarkTheme
-                ? 'linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 100%)'
-                : 'linear-gradient(135deg, #000000 0%, #1C1C1C 100%)',
-              color: isDarkTheme ? '#000' : '#fff',
-              border: 'none',
-              borderRadius: 14,
-              fontSize: 14.5,
-              fontWeight: 600,
-              fontFamily: theme.fontFamily,
-              letterSpacing: '0.01em',
-              cursor: "pointer",
-              transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              boxShadow: isDarkTheme
-                ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)',
-              position: "relative",
-              overflow: "hidden"
-            }}
-            onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-              e.currentTarget.style.boxShadow = isDarkTheme
-                ? '0 8px 28px rgba(255,255,255,0.25), 0 16px 48px rgba(255,255,255,0.15), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 8px 28px rgba(0,0,0,0.5), 0 16px 48px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.15)';
-            }}
-            onMouseLeave={e => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = isDarkTheme
-                ? '0 6px 20px rgba(255,255,255,0.2), 0 12px 40px rgba(255,255,255,0.12), inset 0 1px 2px rgba(0,0,0,0.05)'
-                : '0 6px 20px rgba(0,0,0,0.4), 0 12px 40px rgba(0,0,0,0.25), inset 0 1px 2px rgba(255,255,255,0.1)';
-            }}
-          >
-            <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor" style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
-              <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.53 4.09l-.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            <span style={{ position: 'relative', zIndex: 1 }}>Continue with Apple</span>
-          </button>
-
-          {/* Email Sign In - Tertiary */}
+          {/* Email Sign In - Secondary */}
           {!showEmailInput ? (
             <button
               onClick={() => setShowEmailInput(true)}
@@ -3552,69 +3609,193 @@ function AuthScreen({ onLogin, theme }) {
               <span>Continue with Email</span>
             </button>
           ) : (
-            <form onSubmit={handleEmailSubmit} style={{ width: '100%' }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ width: '100%' }}>
+              {/* Auth Mode Tabs */}
+              <div style={{
+                display: 'flex',
+                gap: 4,
+                marginBottom: 12,
+                padding: 4,
+                background: theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                borderRadius: 10
+              }}>
+                {[
+                  { id: 'magic', label: 'Magic Link' },
+                  { id: 'signin', label: 'Sign In' },
+                  { id: 'signup', label: 'Sign Up' }
+                ].map(mode => (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => { setAuthMode(mode.id); setError(null); setMessage(null); }}
+                    style={{
+                      flex: 1,
+                      padding: '8px 12px',
+                      background: authMode === mode.id
+                        ? `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)`
+                        : 'transparent',
+                      border: authMode === mode.id
+                        ? `1px solid ${theme.accent}40`
+                        : '1px solid transparent',
+                      borderRadius: 8,
+                      fontSize: 11,
+                      fontWeight: 600,
+                      fontFamily: theme.fontFamily,
+                      color: authMode === mode.id ? theme.accent : theme.textSec,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s'
+                    }}
+                  >
+                    {mode.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Message/Error Display */}
+              {(message || error) && (
+                <div style={{
+                  padding: '10px 14px',
+                  marginBottom: 12,
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontFamily: theme.fontFamily,
+                  background: message
+                    ? `${theme.accent}15`
+                    : 'rgba(239, 68, 68, 0.1)',
+                  color: message ? theme.accent : '#EF4444',
+                  border: `1px solid ${message ? theme.accent + '30' : 'rgba(239, 68, 68, 0.2)'}`
+                }}>
+                  {message || error}
+                </div>
+              )}
+
+              <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
                   autoFocus
+                  required
+                  disabled={isLoading}
                   style={{
-                    flex: 1,
-                    padding: "15px 18px",
+                    width: '100%',
+                    padding: "14px 18px",
                     background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
                     color: theme.text,
                     border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
-                    borderRadius: 14,
-                    fontSize: 14.5,
+                    borderRadius: 12,
+                    fontSize: 14,
                     fontFamily: theme.fontFamily,
                     outline: 'none',
                     transition: 'all 0.2s',
-                    backdropFilter: 'blur(16px)',
-                    WebkitBackdropFilter: 'blur(16px)'
+                    boxSizing: 'border-box',
+                    opacity: isLoading ? 0.6 : 1
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = theme.accent;
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.05)';
-                    e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}20`;
+                    e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
                   }}
                   onBlur={(e) => {
                     e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
-                    e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)';
                     e.currentTarget.style.boxShadow = 'none';
                   }}
                 />
-                <button
-                  type="submit"
-                  style={{
-                    padding: "15px 22px",
-                    background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-                    color: "#fff",
-                    border: 'none',
-                    borderRadius: 14,
-                    fontSize: 18,
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    transition: "all 0.3s",
-                    boxShadow: `0 6px 20px ${theme.accent}50, inset 0 1px 2px rgba(255,255,255,0.3)`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center'
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.transform = "translateY(-2px) scale(1.05)";
-                    e.currentTarget.style.boxShadow = `0 8px 28px ${theme.accent}60, inset 0 1px 2px rgba(255,255,255,0.4)`;
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.transform = "translateY(0) scale(1)";
-                    e.currentTarget.style.boxShadow = `0 6px 20px ${theme.accent}50, inset 0 1px 2px rgba(255,255,255,0.3)`;
-                  }}
-                >
-                  →
-                </button>
-              </div>
-            </form>
+
+                {/* Password field for signin/signup modes */}
+                {(authMode === 'signin' || authMode === 'signup') && (
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder={authMode === 'signup' ? "Create password (min 6 chars)" : "Password"}
+                    required
+                    disabled={isLoading}
+                    minLength={authMode === 'signup' ? 6 : undefined}
+                    style={{
+                      width: '100%',
+                      padding: "14px 18px",
+                      background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                      color: theme.text,
+                      border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontFamily: theme.fontFamily,
+                      outline: 'none',
+                      transition: 'all 0.2s',
+                      boxSizing: 'border-box',
+                      opacity: isLoading ? 0.6 : 1
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = theme.accent;
+                      e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
+                      e.currentTarget.style.boxShadow = 'none';
+                    }}
+                  />
+                )}
+
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setShowEmailInput(false); setEmail(''); setPassword(''); setError(null); setMessage(null); }}
+                    disabled={isLoading}
+                    style={{
+                      padding: "14px 18px",
+                      background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                      color: theme.textSec,
+                      border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 500,
+                      fontFamily: theme.fontFamily,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: isLoading ? 0.6 : 1
+                    }}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    style={{
+                      flex: 1,
+                      padding: "14px 22px",
+                      background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+                      color: "#fff",
+                      border: 'none',
+                      borderRadius: 12,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      fontFamily: theme.fontFamily,
+                      cursor: isLoading ? 'not-allowed' : 'pointer',
+                      transition: "all 0.3s",
+                      boxShadow: `0 4px 16px ${theme.accent}40`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: 8,
+                      opacity: isLoading ? 0.7 : 1
+                    }}
+                  >
+                    {isLoading ? (
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="32" strokeLinecap="round"/>
+                        </svg>
+                        Processing...
+                      </span>
+                    ) : (
+                      authMode === 'magic' ? 'Send Magic Link' :
+                      authMode === 'signup' ? 'Create Account' : 'Sign In'
+                    )}
+                  </button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
 
@@ -5145,7 +5326,11 @@ function MonthView({ currentDate, events, allCalendarEvents = [], theme, config,
 const today = useMemo(() => new Date(), []);
 const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
 const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
-const startDay = monthStart.getDay();
+let startDay = monthStart.getDay();
+// Adjust for week starting on Monday
+if (config.weekStartMon) {
+  startDay = startDay === 0 ? 6 : startDay - 1;
+}
 const daysInMonth = monthEnd.getDate();
 const days = useMemo(() => {
 const dayArray = [];
@@ -5168,7 +5353,7 @@ for (let i = 1; i <= nextMonthDays; i++) {
 }
 
 return dayArray;
-}, [currentDate, startDay, daysInMonth]);
+}, [currentDate, startDay, daysInMonth, config.weekStartMon]);
 
 // Check if an event has conflicts across all calendars
 const hasConflict = (event) => {
@@ -5187,7 +5372,7 @@ const weekDays = config.weekStartMon
 ? ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 : ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 return (
-<div style={{ maxWidth: 1600, margin: "0 auto", padding: "0 20px" }}>
+<div style={{ width: "100%", padding: "0 20px" }}>
 <div style={{
 display: "grid",
 gridTemplateColumns: "repeat(7, 1fr)",
@@ -5463,7 +5648,8 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-const CELL_SIZE = 32;
+// Responsive cell size - slightly larger to fill the width better
+const CELL_SIZE = 30;
 
 // Calculate year progress
 const now = new Date();
@@ -5477,36 +5663,50 @@ const daysElapsed = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
 const daysRemaining = daysInYear - daysElapsed;
 const isCurrentYear = year === now.getFullYear();
 
+// Calculate year statistics
+const yearEvents = events.filter(e => {
+  const eventDate = new Date(e.start);
+  return eventDate.getFullYear() === year;
+});
+const eventsByMonth = Array.from({ length: 12 }, (_, i) =>
+  yearEvents.filter(e => new Date(e.start).getMonth() === i).length
+);
+const totalYearEvents = yearEvents.length;
+const busiestMonthIndex = eventsByMonth.indexOf(Math.max(...eventsByMonth));
+const busiestMonth = monthNames[busiestMonthIndex];
+const upcomingEvents = yearEvents.filter(e => new Date(e.start) > now).length;
+
 return (
-<div style={{
+<div className="year-view-container" style={{
 width: "100%",
 height: "100%",
 display: "flex",
 flexDirection: "column",
-gap: 16,
-overflow: "auto",
-paddingBottom: 12
+gap: 6,
+overflow: "hidden",
+padding: '0 4px'
 }}>
 {/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
-<div style={{
+<div className="year-progress-bar" style={{
 width: "100%",
-maxWidth: 1400,
+maxWidth: 1160,
 margin: "0 auto",
-padding: '10px 16px',
+padding: '8px 14px',
 background: config.darkMode
   ? 'linear-gradient(135deg, #1a1a1d 0%, #18181b 100%)'
   : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
 border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'}`,
-borderRadius: 20,
+borderRadius: 12,
 boxShadow: config.darkMode
   ? 'inset 0 1px 0 rgba(255,255,255,0.05), inset 0 -1px 0 rgba(0,0,0,0.2)'
   : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)',
 display: 'flex',
 alignItems: 'center',
-gap: 16,
+gap: 12,
 position: 'relative',
-overflow: 'hidden'
+overflow: 'hidden',
+flexShrink: 0
 }}>
 
 {/* Left side - Text content */}
@@ -5515,10 +5715,10 @@ overflow: 'hidden'
 display: 'flex',
 alignItems: 'baseline',
 gap: 8,
-marginBottom: 3
+marginBottom: 4
 }}>
 <h3 style={{
-fontSize: 14,
+fontSize: 13,
 fontWeight: 700,
 fontFamily: theme.fontDisplay,
 color: theme.text,
@@ -5528,7 +5728,7 @@ lineHeight: 1
 {year} Progress
 </h3>
 <span style={{
-fontSize: 10,
+fontSize: 11,
 fontWeight: 600,
 color: theme.textMuted,
 fontFamily: theme.fontFamily,
@@ -5540,7 +5740,7 @@ letterSpacing: '0.02em'
 
 {/* Premium Progress Bar */}
 <div style={{
-height: 6,
+height: 5,
 background: config.darkMode
 ? `${accentColor}18`
 : `${accentColor}12`,
@@ -5574,21 +5774,20 @@ animation: yearProgress > 0 ? 'shimmer 2s infinite' : 'none'
 
 {/* Right side - Premium percentage badge */}
 <div style={{
-padding: '6px 14px',
+padding: '5px 12px',
 background: theme.metallicAccent || `linear-gradient(135deg, ${accentColor}, ${accentColor}dd)`,
-borderRadius: 12,
-boxShadow: `0 4px 16px ${accentColor}40, inset 0 1px 0 rgba(255,255,255,0.25), inset 0 -1px 0 rgba(0,0,0,0.15)`,
+borderRadius: 8,
+boxShadow: `0 2px 8px ${accentColor}30`,
 border: `1px solid ${accentColor}30`,
 position: 'relative',
 zIndex: 1
 }}>
 <div style={{
-fontSize: 16,
-fontWeight: 800,
+fontSize: 12,
+fontWeight: 700,
 fontFamily: 'SF Mono, monospace',
 color: config.darkMode ? '#000000' : '#FFFFFF',
 letterSpacing: '-0.02em',
-textShadow: config.darkMode ? '0 1px 2px rgba(255,255,255,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
 lineHeight: 1
 }}>
 {yearProgress.toFixed(1)}%
@@ -5597,13 +5796,14 @@ lineHeight: 1
 </div>
 )}
 
-<div style={{
+<div className="year-calendar-grid" style={{
 width: "100%",
-maxWidth: 1400,
+maxWidth: 1160,
 margin: "0 auto",
 display: "flex",
 flexDirection: "column",
-gap: 0
+gap: 0,
+flexShrink: 0
 }}>
 <div style={{
 position: "sticky",
@@ -5611,8 +5811,9 @@ top: 0,
 zIndex: 10,
 background: theme.bg,
 borderBottom: `1px solid ${theme.border}`,
-paddingBottom: 5,
-marginBottom: 5
+paddingBottom: 3,
+marginBottom: 3,
+flexShrink: 0
 }}>
 <div style={{
 display: "flex",
@@ -5620,37 +5821,40 @@ alignItems: "center",
 gap: 0
 }}>
 <div style={{
-width: 50,
+width: 36,
 flexShrink: 0
 }} />
         <div style={{
           display: "flex",
           gap: 0
         }}>
-          {Array.from({ length: 37 }).map((_, i) => (
+          {Array.from({ length: 37 }).map((_, i) => {
+            const isWeekendHeader = (i % 7 === 5 || i % 7 === 6);
+            return (
             <div
               key={i}
               style={{
                 width: CELL_SIZE,
                 textAlign: "center",
-                fontSize: 11,
-                fontWeight: 600,
-                color: (i % 7 === 5 || i % 7 === 6) ? theme.familyAccent : theme.textMuted,
-                padding: "4px 0",
-                fontFamily: theme.fontFamily,
-                letterSpacing: '0.02em'
+                fontSize: 10,
+                fontWeight: 500,
+                color: isWeekendHeader ? '#F97316' : theme.textMuted,
+                padding: "3px 0",
+                fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+                letterSpacing: '0.01em'
               }}
             >
               {weekDayAbbr[i % 7]}
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
     </div>
-    
+
     {Array.from({ length: 12 }).map((_, monthIndex) => {
       const monthData = getMonthRowData(monthIndex);
-      
+
       return (
         <div
           key={monthIndex}
@@ -5658,17 +5862,19 @@ flexShrink: 0
             display: "flex",
             alignItems: "center",
             gap: 0,
-            marginBottom: 2
+            marginBottom: 0
           }}
         >
           <div style={{
-            width: 50,
+            width: 36,
             flexShrink: 0,
-            fontSize: 12,
-            fontWeight: 600,
+            fontSize: 11,
+            fontWeight: 500,
             color: accentColor,
             paddingRight: 8,
-            textAlign: "right"
+            textAlign: "right",
+            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+            letterSpacing: '-0.01em'
           }}>
             {monthNames[monthIndex]}
           </div>
@@ -5689,7 +5895,7 @@ flexShrink: 0
                   />
                 );
               }
-              
+
               const { date, day, isToday, isWeekend, events: cellEvents } = cell;
               const hasEvents = cellEvents.length > 0;
               const hasConflicts = dayHasConflicts(cellEvents);
@@ -5706,17 +5912,11 @@ flexShrink: 0
                       const rect = e.currentTarget.getBoundingClientRect();
                       setTooltipPos({ x: rect.left, y: rect.bottom + 6 });
                     }
-                    if (!isToday) {
-                      e.currentTarget.style.transform = "scale(1.15)";
-                      e.currentTarget.style.zIndex = 5;
-                    }
+                    e.currentTarget.style.opacity = "0.7";
                   }}
                   onMouseLeave={(e) => {
                     setHoveredDay(null);
-                    if (!isToday) {
-                      e.currentTarget.style.transform = "scale(1)";
-                      e.currentTarget.style.zIndex = 1;
-                    }
+                    e.currentTarget.style.opacity = "1";
                   }}
                   style={{
                     width: CELL_SIZE,
@@ -5724,83 +5924,66 @@ flexShrink: 0
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    borderRadius: 3,
                     cursor: "pointer",
                     position: "relative",
-                    background: isToday
-                      ? accentColor
-                      : (hasConflicts && config.showConflictNotifications)
-                      ? '#EF444420'
-                      : hasEvents
-                      ? theme.selection
-                      : isWeekend
-                      ? theme.hoverBg
-                      : "transparent",
-                    border: (hasConflicts && config.showConflictNotifications)
-                      ? '1.5px solid #EF4444'
-                      : isToday
-                      ? `1.5px solid ${accentColor}`
-                      : hasEvents
-                      ? `1px solid ${accentColor}30`
-                      : "1px solid transparent",
-                    transition: "all 0.15s",
-                    fontSize: 11,
-                    fontWeight: isToday ? 700 : hasEvents ? 600 : 500,
+                    transition: "opacity 0.15s",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+                    letterSpacing: '-0.01em',
                     color: isToday
-                      ? "#fff"
+                      ? accentColor
                       : (hasConflicts && config.showConflictNotifications)
                       ? '#EF4444'
                       : hasEvents
-                      ? accentColor
-                      : theme.text
+                      ? theme.text
+                      : isWeekend
+                      ? '#F97316'
+                      : theme.textMuted
                   }}
                 >
-                  {day}
-
-                  {/* Event indicator dot */}
-                  {hasEvents && !isToday && !(hasConflicts && config.showConflictNotifications) && (
+                  {/* Today circle indicator */}
+                  {isToday && (
                     <div style={{
                       position: "absolute",
-                      bottom: 2,
-                      left: "50%",
-                      transform: "translateX(-50%)",
-                      width: 2,
-                      height: 2,
+                      inset: 3,
                       borderRadius: "50%",
-                      background: accentColor
+                      border: `2px solid ${accentColor}`,
+                      pointerEvents: "none"
                     }} />
                   )}
 
-                  {/* Conflict indicator */}
-                  {hasConflicts && config.showConflictNotifications && (
+                  {day}
+
+                  {/* Event indicator - subtle underline */}
+                  {hasEvents && !isToday && (
                     <div style={{
                       position: "absolute",
-                      top: -2,
-                      right: -2,
+                      bottom: 4,
+                      left: "50%",
+                      transform: "translateX(-50%)",
                       width: 8,
-                      height: 8,
-                      background: "#EF4444",
-                      borderRadius: "50%",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: 6,
-                      fontWeight: 700,
-                      color: "#fff"
-                    }}>!</div>
+                      height: 2,
+                      borderRadius: 1,
+                      background: (hasConflicts && config.showConflictNotifications)
+                        ? '#EF4444'
+                        : accentColor,
+                      opacity: 0.8
+                    }} />
                   )}
 
                   {/* Other calendar indicator */}
-                  {hasOtherCalendarEvents && !(hasConflicts && config.showConflictNotifications) && (
+                  {hasOtherCalendarEvents && !hasEvents && (
                     <div style={{
                       position: "absolute",
-                      top: 1,
-                      right: 1,
+                      bottom: 4,
+                      left: "50%",
+                      transform: "translateX(-50%)",
                       width: 4,
-                      height: 4,
-                      borderRadius: "50%",
+                      height: 2,
+                      borderRadius: 1,
                       background: otherEvents[0]?.context === 'family' ? theme.familyAccent : theme.accent,
-                      opacity: 0.7
+                      opacity: 0.5
                     }} />
                   )}
                 </div>
@@ -5810,9 +5993,236 @@ flexShrink: 0
         </div>
       );
     })}
-    
+
   </div>
-  
+
+  {/* Year Insights - Clean Pill */}
+  {(() => {
+    const maxEvents = Math.max(...eventsByMonth, 1);
+    const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
+    yearEvents.forEach(e => {
+      dayOfWeekCounts[new Date(e.start).getDay()]++;
+    });
+    const busiestDayIndex = dayOfWeekCounts.indexOf(Math.max(...dayOfWeekCounts));
+    const busiestDayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][busiestDayIndex];
+    const eventDates = yearEvents.map(e => new Date(e.start).toDateString());
+    const uniqueDays = [...new Set(eventDates)].length;
+    const monthInitials = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+
+    return (
+      <div style={{
+        width: "100%",
+        maxWidth: 1160,
+        margin: "10px auto",
+        padding: '10px 16px',
+        background: config.darkMode
+          ? 'rgba(255,255,255,0.02)'
+          : 'rgba(0,0,0,0.015)',
+        border: `1px solid ${theme.border}`,
+        borderRadius: 10,
+        display: 'flex',
+        alignItems: 'center',
+        gap: 16,
+        flexShrink: 0
+      }}>
+        {/* Monthly activity sparkline with labels */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'flex-end',
+            gap: 3,
+            height: 28
+          }}>
+            {eventsByMonth.map((count, i) => {
+              const h = maxEvents > 0 ? Math.max(4, (count / maxEvents) * 26) : 4;
+              const isBusiest = i === busiestMonthIndex && count > 0;
+              const isCurrent = i === now.getMonth() && year === now.getFullYear();
+              return (
+                <div
+                  key={i}
+                  style={{
+                    width: 8,
+                    height: h,
+                    background: isBusiest ? accentColor
+                      : isCurrent ? `${accentColor}aa`
+                      : count > 0 ? (config.darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)')
+                      : (config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+                    borderRadius: 2
+                  }}
+                />
+              );
+            })}
+          </div>
+          <div style={{ display: 'flex', gap: 3 }}>
+            {monthInitials.map((m, i) => (
+              <span
+                key={i}
+                style={{
+                  width: 8,
+                  textAlign: 'center',
+                  fontSize: 7,
+                  fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+                  fontWeight: i === busiestMonthIndex ? 700 : 400,
+                  color: i === busiestMonthIndex ? accentColor
+                    : (i === now.getMonth() && year === now.getFullYear()) ? theme.text
+                    : theme.textMuted
+                }}
+              >
+                {m}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{ width: 1, height: 28, background: theme.border }} />
+
+        {/* Stats */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{
+            fontSize: 18,
+            fontWeight: 700,
+            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+            color: accentColor,
+            letterSpacing: '-0.03em'
+          }}>
+            {totalYearEvents}
+          </span>
+          <span style={{ fontSize: 10, color: theme.textMuted }}>events</span>
+        </div>
+
+        <div style={{ width: 1, height: 28, background: theme.border }} />
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+            color: theme.text
+          }}>
+            {busiestMonth}
+          </span>
+          <span style={{ fontSize: 10, color: theme.textMuted }}>peak</span>
+        </div>
+
+        <div style={{ width: 1, height: 28, background: theme.border }} />
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+            color: theme.text
+          }}>
+            {busiestDayName}
+          </span>
+          <span style={{ fontSize: 10, color: theme.textMuted }}>busiest</span>
+        </div>
+
+        <div style={{ width: 1, height: 28, background: theme.border }} />
+
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
+          <span style={{
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+            color: theme.textSec
+          }}>
+            {uniqueDays}
+          </span>
+          <span style={{ fontSize: 10, color: theme.textMuted }}>active days</span>
+        </div>
+
+        {/* Spacer */}
+        <div style={{ flex: 1 }} />
+
+        {/* Upcoming pill */}
+        {upcomingEvents > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            padding: '5px 10px',
+            background: `${accentColor}12`,
+            borderRadius: 6,
+            border: `1px solid ${accentColor}20`
+          }}>
+            <span style={{
+              fontSize: 12,
+              fontWeight: 700,
+              fontFamily: 'SF Mono, Menlo, Monaco, monospace',
+              color: accentColor
+            }}>
+              {upcomingEvents}
+            </span>
+            <span style={{ fontSize: 10, color: theme.textSec }}>upcoming</span>
+          </div>
+        )}
+      </div>
+    );
+  })()}
+
+  {/* Australian Public Holidays - Compact Premium Grid */}
+  <div className="holidays-section" style={{
+    width: "100%",
+    maxWidth: 1160,
+    margin: "8px auto 0",
+    padding: '10px 14px',
+    background: config.darkMode ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
+    border: `1px solid ${theme.border}`,
+    borderRadius: 10,
+    flexShrink: 0
+  }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+      <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        {year} Public Holidays
+      </span>
+      <span style={{ fontSize: 9, color: theme.textMuted, opacity: 0.6 }}>* regional</span>
+    </div>
+    <div className="holidays-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
+      {[
+        { month: 'Jan', holidays: [{ d: 1, n: "New Year's", s: 'ALL' }, { d: 26, n: 'Australia Day', s: 'ALL' }] },
+        { month: 'Feb', holidays: [{ d: 9, n: 'Regatta', s: 'TAS*' }] },
+        { month: 'Mar', holidays: [{ d: 2, n: 'Labour', s: 'WA' }, { d: 9, n: 'Labour', s: 'VIC' }, { d: 9, n: 'Canberra', s: 'ACT' }, { d: 9, n: 'Adelaide Cup', s: 'SA' }] },
+        { month: 'Apr', holidays: [{ d: 3, n: 'Good Fri', s: 'ALL' }, { d: 4, n: 'Easter Sat', s: 'ALL' }, { d: 6, n: 'Easter Mon', s: 'ALL' }, { d: 25, n: 'ANZAC', s: 'ALL' }] },
+        { month: 'May', holidays: [{ d: 4, n: 'Labour', s: 'QLD' }, { d: 4, n: 'May Day', s: 'NT' }] },
+        { month: 'Jun', holidays: [{ d: 1, n: 'WA Day', s: 'WA' }, { d: 1, n: 'Reconciliation', s: 'ACT' }, { d: 8, n: "King's Bday", s: 'NSW VIC' }] },
+        { month: 'Jul', holidays: [] },
+        { month: 'Aug', holidays: [{ d: 12, n: 'Ekka', s: 'QLD*' }] },
+        { month: 'Sep', holidays: [{ d: 28, n: "King's Bday", s: 'WA' }] },
+        { month: 'Oct', holidays: [{ d: 5, n: 'Labour', s: 'NSW ACT SA' }] },
+        { month: 'Nov', holidays: [{ d: 2, n: 'Recreation', s: 'TAS*' }, { d: 3, n: 'Melb Cup', s: 'VIC*' }] },
+        { month: 'Dec', holidays: [{ d: 25, n: 'Christmas', s: 'ALL' }, { d: 26, n: 'Boxing', s: 'ALL' }] },
+      ].map(({ month, holidays }) => (
+        <div key={month} style={{
+          padding: '6px 8px',
+          background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+          borderRadius: 6,
+          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, marginBottom: 3, fontFamily: theme.fontFamily }}>{month}</div>
+          {holidays.length === 0 ? (
+            <div className="holiday-text" style={{ fontSize: 10, color: theme.textMuted, opacity: 0.4 }}>—</div>
+          ) : holidays.map((h, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1, lineHeight: 1.3 }}>
+              <span className="holiday-date" style={{ fontSize: 9, color: theme.textMuted, fontFamily: 'SF Mono, monospace', minWidth: 14, opacity: 0.7 }}>{h.d}</span>
+              <span className="holiday-text" style={{ fontSize: 10, color: theme.text, fontWeight: 500, flex: 1 }}>{h.n}</span>
+              <span className="holiday-state" style={{
+                fontSize: 8,
+                padding: '1px 3px',
+                borderRadius: 2,
+                background: h.s === 'ALL' ? `${accentColor}15` : 'transparent',
+                color: h.s === 'ALL' ? accentColor : theme.textMuted,
+                fontWeight: 600,
+                opacity: h.s === 'ALL' ? 1 : 0.6
+              }}>{h.s}</span>
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  </div>
+
   {hoveredDay && (
     <div style={{
       position: "fixed",
@@ -5825,7 +6235,7 @@ flexShrink: 0
       padding: "12px",
       boxShadow: theme.liquidShadow,
       border: `1px solid ${theme.liquidBorder}`,
-      zIndex: 1000,
+      zIndex: 900, // Tooltips layer
       minWidth: "180px",
       maxWidth: "280px",
       pointerEvents: "none"
@@ -6061,9 +6471,8 @@ function FocusView({
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      maxWidth: 1400,
-      margin: '0 auto',
-      padding: '20px',
+      width: '100%',
+      padding: '20px 24px',
       display: 'flex',
       flexDirection: 'column',
       gap: 16
@@ -6843,7 +7252,7 @@ function EventListPanel({
       display: 'flex',
       flexDirection: 'column',
       overflow: 'hidden',
-      zIndex: 1000,
+      zIndex: 950, // Sidebar/panel layer - below modals
       transform: 'translateX(0)',
       transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
     }}>
@@ -7125,14 +7534,24 @@ function EventListPanel({
   );
 }
 
-function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
+function EventEditor({ event, currentDate, theme, config, tags, onSave, onDelete, onCancel, context, allCalendarEvents = [], eventsOverlap }) {
+  // For new events, use currentDate with current time rounded to 15 min
+  const getInitialStart = () => {
+    if (event?.start) return new Date(event.start);
+    const now = new Date();
+    const base = currentDate ? new Date(currentDate) : new Date();
+    base.setHours(now.getHours(), Math.ceil(now.getMinutes() / 15) * 15, 0, 0);
+    return base;
+  };
+  const initialStart = getInitialStart();
+
   const [form, setForm] = React.useState({
     title: event?.title || '',
     category: event?.category || (tags[0]?.tagId || ''),
     description: event?.description || '',
     location: event?.location || '',
-    start: event?.start ? new Date(event.start) : new Date(),
-    end: event?.end ? new Date(event.end) : new Date(new Date().getTime() + 60 * 60 * 1000),
+    start: initialStart,
+    end: event?.end ? new Date(event.end) : new Date(initialStart.getTime() + 60 * 60 * 1000),
     recurrencePattern: event?.recurrencePattern || 'none',
     recurrenceEndDate: event?.recurrenceEndDate || ''
   });
@@ -7152,14 +7571,6 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
   }, [form.start, form.end, allCalendarEvents, event?.id, eventsOverlap]);
 
   React.useEffect(() => {
-    if (!event?.id) {
-      const now = new Date();
-      const roundedMinutes = Math.ceil(now.getMinutes() / 15) * 15;
-      const start = new Date(now);
-      start.setMinutes(roundedMinutes, 0, 0);
-      const end = new Date(start.getTime() + 60 * 60 * 1000);
-      setForm(prev => ({ ...prev, start, end }));
-    }
     // Show more options if editing existing event with location/notes
     if (event?.id && (event.location || event.description)) {
       setShowMore(true);
@@ -7196,18 +7607,22 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      inset: 0,
-      background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(15, 23, 42, 0.4)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: 16,
-      backdropFilter: 'blur(8px)'
-    }}>
-      <div onClick={onCancel} style={{ position: 'absolute', inset: 0 }} />
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="event-editor-title"
+      style={{
+        position: 'fixed',
+        inset: 0,
+        background: isDark ? 'rgba(0, 0, 0, 0.7)' : 'rgba(15, 23, 42, 0.4)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1000,
+        padding: 16,
+        backdropFilter: 'blur(8px)'
+      }}>
+      <div onClick={onCancel} aria-label="Close dialog" style={{ position: 'absolute', inset: 0 }} />
 
       <div
         className="scale-enter"
@@ -7234,7 +7649,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
           borderBottom: `1px solid ${isDark ? 'rgba(255,255,255,0.06)' : '#F1F5F9'}`
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h3 style={{ fontSize: 22, fontWeight: 600, fontFamily: theme.fontDisplay, color: theme.text, margin: 0, letterSpacing: '-0.02em' }}>
+            <h3 id="event-editor-title" style={{ fontSize: 22, fontWeight: 600, fontFamily: theme.fontDisplay, color: theme.text, margin: 0, letterSpacing: '-0.02em' }}>
               {event?.id ? 'Edit Event' : 'New Event'}
             </h3>
             <span style={{
@@ -7252,6 +7667,7 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
           </div>
           <button
             onClick={onCancel}
+            aria-label="Close"
             style={{
               background: 'transparent',
               border: 'none',
@@ -7584,6 +8000,673 @@ function EventEditor({ event, theme, config, tags, onSave, onDelete, onCancel, c
     </div>
   );
 }
+// Subscription/Billing Content Component
+function SubscriptionContent({ theme, user }) {
+  const [subscription, setSubscription] = React.useState(() => {
+    return localSubscriptionManager.getLocalSubscription() || {
+      plan: 'free',
+      status: 'active',
+      trialActive: false,
+      features: SUBSCRIPTION_PLANS.FREE.features
+    };
+  });
+  const [isProcessing, setIsProcessing] = React.useState(false);
+  const [billingPeriod, setBillingPeriod] = React.useState('monthly');
+
+  const isPro = subscription.plan === 'pro' && (subscription.status === 'active' || subscription.trialActive);
+  const trialDays = subscription.trialEndsAt ? getTrialDaysRemaining(subscription.trialEndsAt) : 0;
+
+  // Use theme-consistent styling
+  const cardBg = theme.premiumGlass || theme.liquidGlass || `${theme.accent}08`;
+  const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
+
+  const handleStartTrial = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      const newSub = localSubscriptionManager.startTrialDemo();
+      setSubscription(newSub);
+      setIsProcessing(false);
+    }, 1000);
+  };
+
+  const handleUpgrade = () => {
+    setIsProcessing(true);
+    // In production, this would redirect to Stripe Checkout
+    setTimeout(() => {
+      const newSub = localSubscriptionManager.activateProDemo();
+      setSubscription(newSub);
+      setIsProcessing(false);
+    }, 1500);
+  };
+
+  const handleDowngrade = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      const newSub = localSubscriptionManager.resetToFree();
+      setSubscription(newSub);
+      setIsProcessing(false);
+    }, 500);
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Current Plan Status */}
+      <div style={{
+        padding: '18px 20px',
+        borderRadius: 14,
+        background: isPro
+          ? `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`
+          : cardBg,
+        border: `1.5px solid ${isPro ? theme.accent + '50' : cardBorder}`,
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{
+              width: 42,
+              height: 42,
+              borderRadius: 10,
+              background: isPro
+                ? theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`
+                : `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: isPro ? `0 4px 12px ${theme.accent}40` : 'none',
+              border: `1px solid ${theme.accent}30`
+            }}>
+              {isPro ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSec} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <path d="M12 6v6l4 2"/>
+                </svg>
+              )}
+            </div>
+            <div>
+              <div style={{
+                fontSize: 15,
+                fontWeight: 700,
+                color: theme.text,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+              }}>
+                {subscription.trialActive ? 'Pro Trial' : isPro ? 'Pro Plan' : 'Free Plan'}
+              </div>
+              <div style={{
+                fontSize: 11,
+                color: theme.textSec,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+              }}>
+                {subscription.trialActive
+                  ? `${trialDays} days remaining`
+                  : isPro ? 'All features unlocked' : 'Basic features'}
+              </div>
+            </div>
+          </div>
+          {isPro && (
+            <div style={{
+              padding: '4px 10px',
+              borderRadius: 20,
+              background: theme.accent,
+              color: '#fff',
+              fontSize: 10,
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em'
+            }}>
+              Active
+            </div>
+          )}
+        </div>
+
+        {/* Trial/Upgrade CTA */}
+        {!isPro && !subscription.trialActive && (
+          <button
+            onClick={handleStartTrial}
+            disabled={isProcessing}
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              marginTop: 8,
+              background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 13,
+              fontWeight: 600,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: `0 4px 16px ${theme.accent}40`,
+              opacity: isProcessing ? 0.7 : 1
+            }}
+          >
+            {isProcessing ? 'Starting...' : `Start ${TRIAL_CONFIG.durationDays}-Day Free Trial`}
+          </button>
+        )}
+      </div>
+
+      {/* Pricing Cards */}
+      {!isPro && (
+        <>
+          {/* Billing Period Toggle */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'center',
+            gap: 4,
+            padding: 4,
+            background: cardBg,
+            border: `1px solid ${cardBorder}`,
+            borderRadius: 12,
+            marginBottom: 4,
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}>
+            {['monthly', 'yearly'].map(period => (
+              <button
+                key={period}
+                onClick={() => setBillingPeriod(period)}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  background: billingPeriod === period
+                    ? `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)`
+                    : 'transparent',
+                  border: billingPeriod === period
+                    ? `1.5px solid ${theme.accent}50`
+                    : '1.5px solid transparent',
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  color: billingPeriod === period ? theme.accent : theme.textSec,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  boxShadow: billingPeriod === period ? `0 2px 8px ${theme.accent}20` : 'none'
+                }}
+              >
+                {period === 'monthly' ? 'Monthly' : 'Yearly (Save 17%)'}
+              </button>
+            ))}
+          </div>
+
+          {/* Pro Plan Card */}
+          <div style={{
+            padding: '20px',
+            borderRadius: 14,
+            background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}06)`,
+            border: `2px solid ${theme.accent}50`,
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <div>
+                <div style={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: theme.text,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  marginBottom: 2
+                }}>
+                  Timeline Pro
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: theme.textSec,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}>
+                  For power users
+                </div>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{
+                  fontSize: 28,
+                  fontWeight: 700,
+                  color: theme.accent,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  lineHeight: 1
+                }}>
+                  ${billingPeriod === 'monthly' ? '9.99' : '99.99'}
+                </div>
+                <div style={{
+                  fontSize: 11,
+                  color: theme.textSec,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                }}>
+                  /{billingPeriod === 'monthly' ? 'month' : 'year'}
+                </div>
+              </div>
+            </div>
+
+            {/* Feature List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
+              {Object.entries(FEATURE_DESCRIPTIONS).slice(0, 6).map(([key, feat]) => (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  <span style={{
+                    fontSize: 12,
+                    color: theme.text,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+                  }}>
+                    {feat.proValue === true ? feat.label : `${feat.proValue} ${feat.label}`}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleUpgrade}
+              disabled={isProcessing}
+              style={{
+                width: '100%',
+                padding: '14px 20px',
+                background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                cursor: isProcessing ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+                boxShadow: `0 6px 24px ${theme.accent}50`,
+                opacity: isProcessing ? 0.7 : 1
+              }}
+            >
+              {isProcessing ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="32" strokeLinecap="round"/>
+                  </svg>
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                  </svg>
+                  Upgrade to Pro
+                </>
+              )}
+            </button>
+          </div>
+        </>
+      )}
+
+      {/* Manage Subscription (for Pro users) */}
+      {isPro && (
+        <div style={{
+          padding: '14px 16px',
+          borderRadius: 12,
+          background: cardBg,
+          border: `1px solid ${cardBorder}`,
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)'
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: theme.accent,
+            marginBottom: 10,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Manage Subscription
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={() => alert('This would open the Stripe Customer Portal')}
+              style={{
+                flex: 1,
+                padding: '10px 14px',
+                background: `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`,
+                color: theme.text,
+                border: `1px solid ${theme.accent}30`,
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Update Payment
+            </button>
+            <button
+              onClick={handleDowngrade}
+              style={{
+                padding: '10px 14px',
+                background: cardBg,
+                color: theme.textSec,
+                border: `1px solid ${cardBorder}`,
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 500,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Security Badge */}
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 8,
+        padding: '10px 0',
+        fontSize: 10,
+        color: theme.textSec,
+        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+      }}>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        <span>Secure payment powered by Stripe</span>
+      </div>
+    </div>
+  );
+}
+
+// Family Sharing Content Component
+function SharingContent({ theme, user }) {
+  const [inviteLink, setInviteLink] = React.useState('');
+  const [copied, setCopied] = React.useState(false);
+  const [isGenerating, setIsGenerating] = React.useState(false);
+
+  const generateInviteLink = () => {
+    setIsGenerating(true);
+    // Generate a unique invite code based on user ID and timestamp
+    const inviteCode = btoa(`${user?.id || 'guest'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`).replace(/=/g, '');
+    const link = `${window.location.origin}/invite/${inviteCode}`;
+    setTimeout(() => {
+      setInviteLink(link);
+      setIsGenerating(false);
+    }, 500);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  };
+
+  // Use theme-consistent glass background
+  const cardBg = theme.premiumGlass || theme.liquidGlass || `${theme.accent}08`;
+  const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Info Card */}
+      <div style={{
+        padding: '16px 18px',
+        borderRadius: 12,
+        background: cardBg,
+        border: `1px solid ${cardBorder}`,
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 12
+        }}>
+          <div style={{
+            width: 40,
+            height: 40,
+            borderRadius: 10,
+            background: `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            border: `1.5px solid ${theme.accent}40`
+          }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{
+              fontSize: 13,
+              fontWeight: 600,
+              color: theme.text,
+              marginBottom: 4,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+            }}>
+              Share with Family
+            </div>
+            <div style={{
+              fontSize: 11,
+              color: theme.textSec,
+              lineHeight: 1.5,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+            }}>
+              Generate an invite link to share your calendar with family members. They'll be able to view and add events to your shared family calendar.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Generate Link Button */}
+      {!inviteLink ? (
+        <button
+          onClick={generateInviteLink}
+          disabled={isGenerating}
+          style={{
+            width: '100%',
+            padding: '14px 20px',
+            background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+            color: '#fff',
+            border: 'none',
+            borderRadius: 12,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            cursor: isGenerating ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            boxShadow: `0 4px 16px ${theme.accent}40`,
+            opacity: isGenerating ? 0.7 : 1
+          }}
+        >
+          {isGenerating ? (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" style={{ animation: 'spin 1s linear infinite' }}>
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" fill="none" strokeDasharray="32" strokeLinecap="round"/>
+              </svg>
+              Generating...
+            </>
+          ) : (
+            <>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+              </svg>
+              Generate Invite Link
+            </>
+          )}
+        </button>
+      ) : (
+        /* Invite Link Display */
+        <div style={{
+          padding: '14px 16px',
+          borderRadius: 12,
+          background: cardBg,
+          border: `1px solid ${theme.accent}40`,
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)'
+        }}>
+          <div style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: theme.accent,
+            marginBottom: 8,
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Your Invite Link
+          </div>
+          <div style={{
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center'
+          }}>
+            <input
+              type="text"
+              value={inviteLink}
+              readOnly
+              style={{
+                flex: 1,
+                padding: '10px 12px',
+                background: theme.card || theme.sidebar,
+                color: theme.text,
+                border: `1px solid ${cardBorder}`,
+                borderRadius: 8,
+                fontSize: 11,
+                fontFamily: "'SF Mono', 'Monaco', monospace",
+                outline: 'none'
+              }}
+            />
+            <button
+              onClick={copyToClipboard}
+              style={{
+                padding: '10px 16px',
+                background: copied
+                  ? `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`
+                  : theme.hoverBg,
+                color: copied ? '#fff' : theme.text,
+                border: `1px solid ${copied ? 'transparent' : cardBorder}`,
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 600,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                whiteSpace: 'nowrap'
+              }}
+            >
+              {copied ? (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12"/>
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                  </svg>
+                  Copy
+                </>
+              )}
+            </button>
+          </div>
+          <div style={{
+            marginTop: 10,
+            display: 'flex',
+            gap: 8
+          }}>
+            <button
+              onClick={() => { setInviteLink(''); setCopied(false); }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                background: 'transparent',
+                color: theme.textSec,
+                border: `1px solid ${cardBorder}`,
+                borderRadius: 8,
+                fontSize: 11,
+                fontWeight: 500,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                cursor: 'pointer',
+                transition: 'all 0.2s'
+              }}
+            >
+              Generate New Link
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Shared Members (placeholder) */}
+      <div style={{
+        padding: '14px 16px',
+        borderRadius: 12,
+        background: cardBg,
+        border: `1px solid ${cardBorder}`,
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)'
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginBottom: 10
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: theme.accent,
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em'
+          }}>
+            Shared With
+          </span>
+        </div>
+        <div style={{
+          fontSize: 12,
+          color: theme.textSec,
+          fontStyle: 'italic',
+          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+        }}>
+          No family members yet. Share your invite link to get started.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
   const [activeTab, setActiveTab] = React.useState('appearance');
 
@@ -7670,6 +8753,27 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       icon: (
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      )
+    },
+    {
+      id: 'sharing',
+      label: 'Sharing',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+          <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+        </svg>
+      )
+    },
+    {
+      id: 'subscription',
+      label: 'Pro',
+      icon: (
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
       )
     }
@@ -7803,23 +8907,28 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
   };
 
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: 20,
-      backdropFilter: 'blur(16px)',
-      WebkitBackdropFilter: 'blur(16px)'
-    }}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="settings-modal-title"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 1100, // Settings modal layer - above base modals
+        padding: 20,
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)'
+      }}>
       <div
         onClick={onClose}
+        aria-label="Close dialog"
         style={{
           position: 'absolute',
           top: 0,
@@ -7864,7 +8973,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             : 'inset 0 1px 0 rgba(255,255,255,0.9)')
         }}>
           <div>
-            <h3 style={{
+            <h3 id="settings-modal-title" style={{
               fontSize: 26,
               fontWeight: 600,
               fontFamily: theme.fontDisplay,
@@ -7886,6 +8995,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
           </div>
           <button
             onClick={onClose}
+            aria-label="Close"
             style={{
               background: theme.metallicGradient || theme.hoverBg,
               border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
@@ -8017,23 +9127,56 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 pointerEvents: 'none'
               }} />
 
+              {/* Premium Avatar */}
               <div style={{
-                width: 52,
-                height: 52,
+                width: 54,
+                height: 54,
                 borderRadius: 16,
-                background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
+                background: `linear-gradient(145deg, ${theme.accent}15, ${theme.accent}08)`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                color: '#fff',
-                fontWeight: 700,
-                fontSize: 20,
-                boxShadow: `0 6px 20px ${theme.accent}40, inset 0 1px 0 rgba(255,255,255,0.2)`,
-                border: `2px solid ${theme.premiumGlassBorder || 'rgba(255,255,255,0.2)'}`,
+                padding: 3,
+                boxShadow: `0 0 0 1px ${theme.accent}20`,
                 position: 'relative',
                 zIndex: 1
               }}>
-                {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                <div style={{
+                  width: '100%',
+                  height: '100%',
+                  borderRadius: 13,
+                  background: theme.metallicAccent || `linear-gradient(145deg, ${theme.accent}, ${theme.accentHover})`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: 700,
+                  fontSize: 20,
+                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  letterSpacing: '-0.02em',
+                  boxShadow: `
+                    0 8px 24px ${theme.accent}50,
+                    0 4px 8px ${theme.accent}30,
+                    inset 0 2px 4px rgba(255,255,255,0.25),
+                    inset 0 -1px 2px rgba(0,0,0,0.1)
+                  `,
+                  textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}>
+                  {/* Shine effect */}
+                  <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '50%',
+                    background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 100%)',
+                    borderRadius: '13px 13px 50% 50%',
+                    pointerEvents: 'none'
+                  }} />
+                  {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
               </div>
               <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
                 <div style={{
@@ -8266,16 +9409,24 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             }}>
               {activeTab === 'appearance' ? 'Display' :
                activeTab === 'interface' ? 'Interface' :
+               activeTab === 'sharing' ? 'Family Sharing' :
+               activeTab === 'subscription' ? 'Your Plan' :
                'Features'}
             </div>
 
-            {/* Settings Items - Compact List */}
+            {/* Sharing Tab Content */}
+            {activeTab === 'sharing' ? (
+              <SharingContent theme={theme} user={user} />
+            ) : activeTab === 'subscription' ? (
+              <SubscriptionContent theme={theme} user={user} />
+            ) : (
+            /* Settings Items - Compact List */
             <div style={{
               display: 'flex',
               flexDirection: 'column',
-              gap: 6
+              gap: 8
             }}>
-              {settingsGroups[activeTab].map(({ key, label, desc, icon }) => (
+              {settingsGroups[activeTab]?.map(({ key, label, desc, icon }) => (
                 <div
                   key={key}
                   onClick={() => handleToggle(key)}
@@ -8283,55 +9434,52 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '12px 14px',
-                    borderRadius: 10,
+                    padding: '14px 16px',
+                    borderRadius: 12,
                     cursor: 'pointer',
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
                     background: config[key]
-                      ? (theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'))
-                      : (theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)'),
-                    border: `1px solid ${config[key] ? (theme.accent + '40') : (theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)')}`,
+                      ? (theme.premiumGlass || `${theme.accent}08`)
+                      : (theme.premiumGlass || `${theme.accent}04`),
+                    border: `1px solid ${config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.accent + '15')}`,
                     backdropFilter: 'blur(10px)',
                     WebkitBackdropFilter: 'blur(10px)',
                     boxShadow: config[key]
-                      ? `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`
+                      ? `0 2px 8px ${theme.accent}15`
                       : 'none'
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.premiumGlass || theme.hoverBg;
-                    e.currentTarget.style.borderColor = theme.accent + '60';
-                    e.currentTarget.style.transform = 'translateX(3px)';
-                    e.currentTarget.style.boxShadow = `0 4px 12px ${theme.accent}20, inset 0 1px 0 rgba(255,255,255,0.08)`;
+                    e.currentTarget.style.background = theme.premiumGlass || `${theme.accent}10`;
+                    e.currentTarget.style.borderColor = theme.accent + '40';
+                    e.currentTarget.style.boxShadow = `0 4px 12px ${theme.accent}20`;
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.background = config[key]
-                      ? (theme.premiumGlass || (theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)'))
-                      : (theme.id === 'dark' ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)');
-                    e.currentTarget.style.borderColor = config[key] ? (theme.accent + '40') : (theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)');
-                    e.currentTarget.style.transform = 'translateX(0)';
+                      ? (theme.premiumGlass || `${theme.accent}08`)
+                      : (theme.premiumGlass || `${theme.accent}04`);
+                    e.currentTarget.style.borderColor = config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.accent + '15');
                     e.currentTarget.style.boxShadow = config[key]
-                      ? `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`
+                      ? `0 2px 8px ${theme.accent}15`
                       : 'none';
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     {/* Icon Container */}
                     <div style={{
-                      width: 38,
-                      height: 38,
+                      width: 40,
+                      height: 40,
                       borderRadius: 10,
                       background: config[key]
-                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)`)
-                        : (theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)')),
+                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`)
+                        : `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      color: config[key] ? '#FFFFFF' : theme.textSec,
+                      color: config[key] ? '#FFFFFF' : theme.accent,
                       flexShrink: 0,
-                      border: `1.5px solid ${config[key] ? (theme.accent + '50') : (theme.premiumGlassBorder || theme.liquidBorder)}`,
                       boxShadow: config[key]
-                        ? `0 3px 10px ${theme.accent}30, inset 0 1px 0 rgba(255,255,255,0.2)`
-                        : (theme.metallicShadow || (theme.id === 'dark' ? 'inset 0 1px 0 rgba(255,255,255,0.05)' : 'inset 0 1px 0 rgba(255,255,255,0.6)'))
+                        ? `0 4px 12px ${theme.accent}40`
+                        : `0 2px 6px ${theme.accent}15`
                     }}>
                       {icon}
                     </div>
@@ -8365,6 +9513,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 </div>
               ))}
             </div>
+            )}
           </div>
         </div>
 
@@ -8426,7 +9575,11 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
 }
 function TrashModal({ events, theme, onClose, onRestore, onDelete }) {
 return (
-<div style={{
+<div
+role="dialog"
+aria-modal="true"
+aria-labelledby="trash-modal-title"
+style={{
 position: 'fixed',
 top: 0,
 left: 0,
@@ -8436,12 +9589,13 @@ background: 'rgba(0, 0, 0, 0.5)',
 display: 'flex',
 alignItems: 'center',
 justifyContent: 'center',
-zIndex: 1000,
+zIndex: 1100, // Secondary modal layer - above base modals
 padding: 16,
 backdropFilter: 'blur(3px)'
 }}>
 <div
 onClick={onClose}
+aria-label="Close dialog"
 style={{
 position: 'absolute',
 top: 0,
@@ -8471,7 +9625,7 @@ bottom: 0
       alignItems: 'center'
     }}>
       <div>
-        <h3 style={{
+        <h3 id="trash-modal-title" style={{
           fontSize: 24,
           fontWeight: 600,
           fontFamily: theme.fontDisplay,
@@ -8490,6 +9644,7 @@ bottom: 0
       </div>
       <button
         onClick={onClose}
+        aria-label="Close"
         style={{
           background: 'transparent',
           border: 'none',
@@ -8732,7 +9887,7 @@ background: 'rgba(0, 0, 0, 0.5)',
 display: 'flex',
 alignItems: 'center',
 justifyContent: 'center',
-zIndex: 1000,
+zIndex: 1100, // Secondary modal layer - above base modals
 padding: 16,
 backdropFilter: 'blur(3px)'
 }}>
@@ -9276,7 +10431,6 @@ function MetricsView({ theme, accentColor, user }) {
 
     setSaving(true);
     setSaveError(null);
-    console.log('[MetricsView] Saving metric:', newMetric);
 
     try {
       const metricData = {
@@ -9287,25 +10441,18 @@ function MetricsView({ theme, accentColor, user }) {
         workouts_count: newMetric.workouts ? parseInt(newMetric.workouts) : null
       };
 
-      console.log('[MetricsView] Prepared data:', metricData);
-
       const { data, error } = await supabase
         .from('life_metrics')
         .upsert(metricData, { onConflict: 'user_id,date' })
         .select();
 
-      console.log('[MetricsView] Supabase response:', { data, error });
-
       if (error) {
-        console.error('[MetricsView] Supabase error:', error);
         throw error;
       }
 
       if (!data || data.length === 0) {
         throw new Error('No data returned from database');
       }
-
-      console.log('[MetricsView] Successfully saved metric');
 
       // Update local state
       setMetrics(prev => {
@@ -9384,9 +10531,8 @@ function MetricsView({ theme, accentColor, user }) {
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      maxWidth: 1400,
-      margin: '0 auto',
-      padding: '20px',
+      width: '100%',
+      padding: '20px 24px',
       display: 'flex',
       flexDirection: 'column',
       gap: 16
@@ -10012,9 +11158,8 @@ function LifeView({ theme, config, accentColor }) {
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      maxWidth: 1400,
-      margin: '0 auto',
-      padding: '20px',
+      width: '100%',
+      padding: '20px 24px',
       display: 'flex',
       flexDirection: 'column',
       gap: 16

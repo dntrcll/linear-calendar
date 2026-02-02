@@ -306,7 +306,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%',
         height: '100%',
-        maxWidth: 1400,
+        maxWidth: 'calc(100vw - 240px)',
         display: 'flex',
         flexDirection: 'column',
         background: theme.premiumGlass || theme.liquidGlass,
