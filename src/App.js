@@ -1535,12 +1535,17 @@ function TimelineOS() {
           borderRight: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
           display: "flex",
           flexDirection: "column",
-          padding: "20px",
+          padding: 0,
           overflow: "hidden",
           boxShadow: theme.premiumShadow || (config.darkMode
             ? 'inset -1px 0 0 rgba(255,255,255,0.03)'
             : 'none')
         }}>
+          {/* Fixed Header Section */}
+          <div style={{
+            padding: "20px 20px 0 20px",
+            flexShrink: 0
+          }}>
           {/* Premium Header with Logo */}
           <div style={{ marginBottom: 20 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -1635,7 +1640,20 @@ function TimelineOS() {
               </div>
             )}
           </div>
+          </div>
 
+          {/* Scrollable Content Area */}
+          <div
+            className="sidebar-scroll"
+            style={{
+              flex: 1,
+              overflowY: "auto",
+              overflowX: "hidden",
+              padding: "0 20px",
+              scrollbarWidth: "thin",
+              scrollbarColor: `${theme.border} transparent`
+            }}
+          >
           {/* Focus Mode Banner - Shows when not in normal mode */}
           {config.focusMode !== 'normal' && (
             <div style={{
@@ -2213,9 +2231,14 @@ function TimelineOS() {
               </button>
             </div>
           </div>
+          </div>
 
+          {/* Fixed Footer Section */}
           <div style={{
-            marginTop: "auto",
+            padding: "0 20px 20px 20px",
+            flexShrink: 0
+          }}>
+          <div style={{
             paddingTop: 16,
             borderTop: `1px solid ${theme.border}`,
             display: "flex",
@@ -2272,6 +2295,7 @@ function TimelineOS() {
             >
               <ICONS.Settings width={12} height={12} /> Settings
             </button>
+          </div>
           </div>
         </aside>
       )}

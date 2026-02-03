@@ -113,6 +113,40 @@ button:active, a:active {
   background: rgba(128, 128, 128, 0.5);
 }
 
+/* Elegant thin sidebar scrollbar */
+.sidebar-scroll {
+  scrollbar-width: thin;
+  scrollbar-gutter: stable;
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 8px 0;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.2);
+  border-radius: 2px;
+  transition: background 0.2s ease;
+}
+
+.sidebar-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(128, 128, 128, 0.4);
+}
+
+/* Auto-hide scrollbar when not hovering */
+.sidebar-scroll:not(:hover)::-webkit-scrollbar-thumb {
+  background: transparent;
+}
+
+.sidebar-scroll:hover::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.2);
+}
+
 /* Premium glass panel effect */
 .glass-panel {
   background: rgba(255, 255, 255, 0.65);
