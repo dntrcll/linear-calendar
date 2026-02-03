@@ -668,7 +668,12 @@ function TimelineOS() {
     return getCurrentTags().map(t => t.tagId);
   });
   
-  const [quote, setQuote] = useState({ text: MOTIVATIONAL_QUOTES[0], author: null });
+  const [quote, setQuote] = useState(() => {
+    const firstQuote = MOTIVATIONAL_QUOTES[0];
+    return typeof firstQuote === 'string'
+      ? { text: firstQuote, author: null }
+      : { text: firstQuote.text, author: firstQuote.author };
+  });
   const [modalOpen, setModalOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [trashOpen, setTrashOpen] = useState(false);
@@ -901,20 +906,14 @@ function TimelineOS() {
     return () => style.remove();
   }, []);
   
-  // Fetch quote from live API
-  const fetchLiveQuote = useCallback(async () => {
-    try {
-      // Try ZenQuotes API (via proxy to avoid CORS)
-      const response = await fetch('https://api.quotable.io/random?tags=inspirational|motivational|success|wisdom');
-      if (response.ok) {
-        const data = await response.json();
-        setQuote({ text: data.content, author: data.author });
-        return;
-      }
-    } catch (e) {
-      // Fallback to local quotes if API fails
-      const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+  // Use curated local quotes (365+ from world's greatest minds)
+  const fetchLiveQuote = useCallback(() => {
+    const randomQuote = MOTIVATIONAL_QUOTES[Math.floor(Math.random() * MOTIVATIONAL_QUOTES.length)];
+    // Handle both old format (string) and new format (object with text/author)
+    if (typeof randomQuote === 'string') {
       setQuote({ text: randomQuote, author: null });
+    } else {
+      setQuote({ text: randomQuote.text, author: randomQuote.author });
     }
   }, []);
 
