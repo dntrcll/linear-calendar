@@ -949,12 +949,13 @@ function TimelineOS() {
     setLoading(true);
 
     // Set a maximum time for loading - only affects loading indicator, not data
+    // Increased to 20s to allow for Supabase cold starts
     const loadTimeout = setTimeout(() => {
       if (isCurrentRequest()) {
         console.warn('Loading timeout - showing app with current data');
         setLoading(false);
       }
-    }, 8000);
+    }, 20000);
 
     try {
       // Load events from Supabase
@@ -962,7 +963,7 @@ function TimelineOS() {
       const eventsPromise = loadEvents(u.uid);
       const eventsResult = await Promise.race([
         eventsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 5000))
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 15000))
       ]);
       const eventsEndTime = performance.now();
 
@@ -988,7 +989,7 @@ function TimelineOS() {
       const tagsPromise = loadTags(u.uid);
       const tagsResult = await Promise.race([
         tagsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 5000))
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 15000))
       ]);
       const tagsEndTime = performance.now();
 
