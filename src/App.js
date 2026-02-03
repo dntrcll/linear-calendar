@@ -997,7 +997,9 @@ function TimelineOS() {
 
       if (tagsResult.error) {
         console.error("Error loading tags:", tagsResult.error);
-        setTags({ personal: [], family: [] });
+        // Use DEFAULT_TAGS as fallback so UI still works
+        setTags(DEFAULT_TAGS);
+        // Note: Events won't save to DB without proper tags, but UI will be functional
       } else {
 
         // If no tags exist, initialize with defaults
@@ -7859,7 +7861,12 @@ function EventEditor({ event, currentDate, theme, config, tags, onSave, onDelete
 
           {/* Category - Compact chips */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Category</label>
+            <label style={{ fontSize: 10, color: theme.textMuted, marginBottom: 6, display: 'block', fontWeight: 600, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif", letterSpacing: '0.04em', textTransform: 'uppercase' }}>Category {errors.category && <span style={{ color: '#EF4444', marginLeft: 4 }}>*</span>}</label>
+            {(!tags || tags.length === 0) ? (
+              <div style={{ padding: '10px 12px', background: isDark ? 'rgba(239,68,68,0.1)' : '#FEF2F2', border: '1px solid #EF4444', borderRadius: 8, fontSize: 12, color: '#EF4444' }}>
+                No categories available. Please reload the page or check your connection.
+              </div>
+            ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
               {tags.map(tag => {
                 const IconComponent = getTagIcon(tag, ICONS);
@@ -7891,6 +7898,7 @@ function EventEditor({ event, currentDate, theme, config, tags, onSave, onDelete
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Optional fields toggle */}
