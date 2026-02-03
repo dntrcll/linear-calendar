@@ -5683,14 +5683,16 @@ height: "100%",
 display: "flex",
 flexDirection: "column",
 gap: 6,
-overflow: "hidden",
-padding: '0 4px'
+overflowX: "auto",
+overflowY: "auto",
+padding: '0 4px',
+WebkitOverflowScrolling: 'touch'
 }}>
 {/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
 <div className="year-progress-bar" style={{
-width: "100%",
-maxWidth: 1160,
+width: "fit-content",
+minWidth: 1150,
 margin: "0 auto",
 padding: '8px 14px',
 background: config.darkMode
@@ -5797,8 +5799,8 @@ lineHeight: 1
 )}
 
 <div className="year-calendar-grid" style={{
-width: "100%",
-maxWidth: 1160,
+width: "fit-content",
+minWidth: 1150,
 margin: "0 auto",
 display: "flex",
 flexDirection: "column",
