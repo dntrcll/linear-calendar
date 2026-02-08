@@ -98,6 +98,15 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     loadData();
   }, [user?.uid, currentYear, currentMonth]);
 
+  // Cleanup hoverTimeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeout) {
+        clearTimeout(hoverTimeout);
+      }
+    };
+  }, [hoverTimeout]);
+
   const reloadData = async () => {
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setDays(result.days);

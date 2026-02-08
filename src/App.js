@@ -735,6 +735,7 @@ function TimelineOS() {
   const [floatingTimerVisible, setFloatingTimerVisible] = useState(false);
   const [customizingTimer, setCustomizingTimer] = useState(null);
   const timerIntervalsRef = useRef({});
+  const notificationTimeoutsRef = useRef(new Set());
 
   // Centralized Goals State (persists across views)
   const [goals, setGoals] = useState(() => {
@@ -1478,11 +1479,21 @@ function TimelineOS() {
   const notify = (message, type = "info") => {
     const id = Date.now();
     setNotifications(prev => [...prev, { id, message, type }]);
-    
-    setTimeout(() => {
+
+    const timeoutId = setTimeout(() => {
       setNotifications(prev => prev.filter(n => n.id !== id));
+      notificationTimeoutsRef.current.delete(timeoutId);
     }, 3000);
+    notificationTimeoutsRef.current.add(timeoutId);
   };
+
+  // Cleanup notification timeouts on unmount
+  useEffect(() => {
+    const timeouts = notificationTimeoutsRef.current;
+    return () => {
+      timeouts.forEach(id => clearTimeout(id));
+    };
+  }, []);
   
   if (loading && user) {
     return (
