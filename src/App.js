@@ -8086,16 +8086,27 @@ function EventEditor({ event, currentDate, theme, config, tags, onSave, onDelete
 }
 // Subscription/Billing Content Component
 function SubscriptionContent({ theme, user }) {
-  const [subscription, setSubscription] = React.useState(() => {
-    return localSubscriptionManager.getLocalSubscription() || {
-      plan: 'free',
-      status: 'active',
-      trialActive: false,
-      features: SUBSCRIPTION_PLANS.FREE.features
-    };
+  const [subscription, setSubscription] = React.useState({
+    plan: 'free',
+    status: 'active',
+    trialActive: false,
+    features: SUBSCRIPTION_PLANS.FREE.features
   });
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [billingPeriod, setBillingPeriod] = React.useState('monthly');
+
+  // Load subscription from Supabase on mount
+  React.useEffect(() => {
+    if (user?.id) {
+      getSubscriptionStatus(user.id).then(status => {
+        setSubscription(status);
+      }).catch(() => {
+        // Fallback to localStorage
+        const local = localSubscriptionManager.getLocalSubscription();
+        if (local) setSubscription(local);
+      });
+    }
+  }, [user?.id]);
 
   const isPro = subscription.plan === 'pro' && (subscription.status === 'active' || subscription.trialActive);
   const trialDays = subscription.trialEndsAt ? getTrialDaysRemaining(subscription.trialEndsAt) : 0;
@@ -8104,33 +8115,93 @@ function SubscriptionContent({ theme, user }) {
   const cardBg = theme.premiumGlass || theme.liquidGlass || `${theme.accent}08`;
   const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
 
-  const handleStartTrial = () => {
+  const handleStartTrial = async () => {
+    if (!user?.id) return;
     setIsProcessing(true);
-    setTimeout(() => {
+    try {
+      const { error } = await startFreeTrial(user.id);
+      if (error) throw error;
+      const status = await getSubscriptionStatus(user.id);
+      setSubscription(status);
+    } catch (err) {
+      console.error('Trial start failed:', err);
+      // Fallback to local demo
       const newSub = localSubscriptionManager.startTrialDemo();
       setSubscription(newSub);
-      setIsProcessing(false);
-    }, 1000);
+    }
+    setIsProcessing(false);
   };
 
-  const handleUpgrade = () => {
+  const handleUpgrade = async () => {
     setIsProcessing(true);
-    // In production, this would redirect to Stripe Checkout
-    setTimeout(() => {
-      const newSub = localSubscriptionManager.activateProDemo();
-      setSubscription(newSub);
-      setIsProcessing(false);
-    }, 1500);
+    try {
+      const priceId = billingPeriod === 'yearly'
+        ? (process.env.REACT_APP_STRIPE_PRO_YEARLY_PRICE_ID || SUBSCRIPTION_PLANS.PRO.yearlyPriceId)
+        : (process.env.REACT_APP_STRIPE_PRO_PRICE_ID || SUBSCRIPTION_PLANS.PRO.priceId);
+
+      const response = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: user?.id,
+          userEmail: user?.email,
+          priceId,
+          isYearly: billingPeriod === 'yearly',
+        }),
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data.error || 'Failed to create checkout session');
+    } catch (err) {
+      console.error('Checkout error:', err);
+      alert('Unable to start checkout. Please try again.');
+    }
+    setIsProcessing(false);
   };
 
-  const handleDowngrade = () => {
+  const handleManageSubscription = async () => {
     setIsProcessing(true);
-    setTimeout(() => {
-      const newSub = localSubscriptionManager.resetToFree();
-      setSubscription(newSub);
-      setIsProcessing(false);
-    }, 500);
+    try {
+      const response = await fetch('/api/create-portal-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userEmail: user?.email }),
+      });
+
+      const data = await response.json();
+      if (data.url) {
+        window.location.href = data.url;
+        return;
+      }
+      throw new Error(data.error || 'Failed to open billing portal');
+    } catch (err) {
+      console.error('Portal error:', err);
+      alert('Unable to open billing portal. Please try again.');
+    }
+    setIsProcessing(false);
   };
+
+  const handleDowngrade = async () => {
+    // Redirect to Stripe portal for cancellation
+    handleManageSubscription();
+  };
+
+  // Check for payment success on mount
+  React.useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success' && user?.id) {
+      // Refresh subscription status from Supabase
+      getSubscriptionStatus(user.id).then(status => {
+        setSubscription(status);
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname);
+      });
+    }
+  }, [user?.id]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -8413,7 +8484,7 @@ function SubscriptionContent({ theme, user }) {
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
             <button
-              onClick={() => alert('This would open the Stripe Customer Portal')}
+              onClick={handleManageSubscription}
               style={{
                 flex: 1,
                 padding: '10px 14px',
