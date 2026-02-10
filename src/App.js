@@ -8093,10 +8093,9 @@ function SubscriptionContent({ theme, user }) {
   // Load subscription from Supabase on mount
   React.useEffect(() => {
     if (user?.uid) {
-      getSubscriptionStatus(user.id).then(status => {
+      getSubscriptionStatus(user.uid).then(status => {
         setSubscription(status);
       }).catch(() => {
-        // Fallback to localStorage
         const local = localSubscriptionManager.getLocalSubscription();
         if (local) setSubscription(local);
       });
@@ -8104,23 +8103,34 @@ function SubscriptionContent({ theme, user }) {
   }, [user?.uid]);
 
   const isPro = subscription.plan === 'pro' && (subscription.status === 'active' || subscription.trialActive);
+  const isTrial = subscription.trialActive;
   const trialDays = subscription.trialEndsAt ? getTrialDaysRemaining(subscription.trialEndsAt) : 0;
+  const [showConfetti, setShowConfetti] = React.useState(false);
 
   // Use theme-consistent styling
   const cardBg = theme.premiumGlass || theme.liquidGlass || `${theme.accent}08`;
   const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
+  const isDark = theme.id === 'dark' || theme.id === 'midnight' || theme.id === 'forest';
+  const font = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
+
+  // Renewal date formatting
+  const renewalDate = subscription.currentPeriodEnd
+    ? new Date(subscription.currentPeriodEnd).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
+  const trialEndDate = subscription.trialEndsAt
+    ? new Date(subscription.trialEndsAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    : null;
 
   const handleStartTrial = async () => {
     if (!user?.uid) return;
     setIsProcessing(true);
     try {
-      const { error } = await startFreeTrial(user.id);
+      const { error } = await startFreeTrial(user.uid);
       if (error) throw error;
-      const status = await getSubscriptionStatus(user.id);
+      const status = await getSubscriptionStatus(user.uid);
       setSubscription(status);
     } catch (err) {
       console.error('Trial start failed:', err);
-      // Fallback to local demo
       const newSub = localSubscriptionManager.startTrialDemo();
       setSubscription(newSub);
     }
@@ -8181,144 +8191,277 @@ function SubscriptionContent({ theme, user }) {
   };
 
   const handleDowngrade = async () => {
-    // Redirect to Stripe portal for cancellation
     handleManageSubscription();
   };
 
-  // Check for payment success on mount
+  // Check for payment success on mount — show confetti
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') === 'success' && user?.uid) {
-      // Refresh subscription status from Supabase
-      getSubscriptionStatus(user.id).then(status => {
+      setShowConfetti(true);
+      getSubscriptionStatus(user.uid).then(status => {
         setSubscription(status);
-        // Clean up URL
         window.history.replaceState({}, '', window.location.pathname);
       });
+      setTimeout(() => setShowConfetti(false), 5000);
     }
   }, [user?.uid]);
 
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-      {/* Current Plan Status */}
+  // Confetti renderer
+  const renderConfetti = () => {
+    if (!showConfetti) return null;
+    const colors = [theme.accent, '#22c55e', '#3b82f6', '#a855f7', '#eab308', '#ef4444', '#06b6d4'];
+    const pieces = [];
+    for (let i = 0; i < 60; i++) {
+      const color = colors[i % colors.length];
+      const left = Math.random() * 100;
+      const delay = Math.random() * 2;
+      const duration = 2 + Math.random() * 2;
+      const size = 6 + Math.random() * 8;
+      const rotation = Math.random() * 360;
+      pieces.push(
+        <div key={i} style={{
+          position: 'absolute',
+          left: `${left}%`,
+          top: -20,
+          width: size,
+          height: size * (Math.random() > 0.5 ? 1 : 0.6),
+          background: color,
+          borderRadius: Math.random() > 0.5 ? '50%' : '2px',
+          transform: `rotate(${rotation}deg)`,
+          animation: `confettiFall ${duration}s ease-in ${delay}s forwards`,
+          opacity: 0.9,
+          zIndex: 999,
+        }} />
+      );
+    }
+    return (
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 999 }}>
+        <style>{`
+          @keyframes confettiFall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(500px) rotate(720deg); opacity: 0; }
+          }
+        `}</style>
+        {pieces}
+      </div>
+    );
+  };
+
+  // Trial countdown bar
+  const renderTrialCountdown = () => {
+    if (!isTrial) return null;
+    const totalDays = TRIAL_CONFIG.durationDays;
+    const elapsed = totalDays - trialDays;
+    const progress = Math.min((elapsed / totalDays) * 100, 100);
+    return (
       <div style={{
-        padding: '18px 20px',
+        padding: '16px 18px',
+        borderRadius: 14,
+        background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}05)`,
+        border: `1.5px solid ${theme.accent}30`,
+        backdropFilter: 'blur(10px)',
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
+            </svg>
+            <span style={{ fontSize: 13, fontWeight: 700, color: theme.text, fontFamily: font }}>
+              Trial: {trialDays} day{trialDays !== 1 ? 's' : ''} left
+            </span>
+          </div>
+          <span style={{ fontSize: 11, color: theme.textSec, fontFamily: font }}>
+            Ends {trialEndDate}
+          </span>
+        </div>
+        <div style={{
+          height: 6,
+          borderRadius: 3,
+          background: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+          overflow: 'hidden',
+        }}>
+          <div style={{
+            height: '100%',
+            width: `${100 - progress}%`,
+            borderRadius: 3,
+            background: trialDays <= 3
+              ? 'linear-gradient(90deg, #ef4444, #f97316)'
+              : `linear-gradient(90deg, ${theme.accent}, ${theme.accentHover || theme.accent})`,
+            transition: 'width 0.5s ease',
+          }} />
+        </div>
+        {trialDays <= 3 && (
+          <div style={{ fontSize: 11, color: '#ef4444', fontFamily: font, marginTop: 8, fontWeight: 600 }}>
+            Your trial is ending soon — upgrade to keep Pro features
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'relative' }}>
+      {renderConfetti()}
+
+      {/* ═══ ACTIVE PLAN STATUS CARD ═══ */}
+      <div style={{
+        padding: '20px',
         borderRadius: 14,
         background: isPro
-          ? `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`
+          ? `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}06)`
           : cardBg,
         border: `1.5px solid ${isPro ? theme.accent + '50' : cardBorder}`,
         backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <div style={{
-              width: 42,
-              height: 42,
-              borderRadius: 10,
+              width: 44,
+              height: 44,
+              borderRadius: 12,
               background: isPro
-                ? theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`
-                : `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`,
+                ? theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover || theme.accent})`
+                : isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              boxShadow: isPro ? `0 4px 12px ${theme.accent}40` : 'none',
-              border: `1px solid ${theme.accent}30`
+              boxShadow: isPro ? `0 4px 16px ${theme.accent}40` : 'none',
+              border: `1px solid ${isPro ? theme.accent + '50' : (isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)')}`,
             }}>
               {isPro ? (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
                 </svg>
               ) : (
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSec} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 6v6l4 2"/>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={theme.textSec} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>
                 </svg>
               )}
             </div>
             <div>
-              <div style={{
-                fontSize: 15,
-                fontWeight: 700,
-                color: theme.text,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-              }}>
-                {subscription.trialActive ? 'Pro Trial' : isPro ? 'Pro Plan' : 'Free Plan'}
+              <div style={{ fontSize: 16, fontWeight: 700, color: theme.text, fontFamily: font }}>
+                {isTrial ? 'Pro Trial' : isPro ? 'Pro Plan' : 'Free Plan'}
               </div>
-              <div style={{
-                fontSize: 11,
-                color: theme.textSec,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-              }}>
-                {subscription.trialActive
-                  ? `${trialDays} days remaining`
-                  : isPro ? 'All features unlocked' : 'Basic features'}
+              <div style={{ fontSize: 12, color: theme.textSec, fontFamily: font, marginTop: 2 }}>
+                {isTrial
+                  ? `${trialDays} day${trialDays !== 1 ? 's' : ''} remaining`
+                  : isPro
+                    ? (renewalDate ? `Renews ${renewalDate}` : 'All features unlocked')
+                    : 'Limited features'}
               </div>
             </div>
           </div>
-          {isPro && (
-            <div style={{
-              padding: '4px 10px',
-              borderRadius: 20,
-              background: theme.accent,
-              color: '#fff',
-              fontSize: 10,
-              fontWeight: 700,
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em'
-            }}>
-              Active
-            </div>
-          )}
+          <div style={{
+            padding: '5px 12px',
+            borderRadius: 20,
+            background: isPro ? theme.accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
+            color: isPro ? '#fff' : theme.textSec,
+            fontSize: 10,
+            fontWeight: 700,
+            textTransform: 'uppercase',
+            letterSpacing: '0.08em',
+            fontFamily: font,
+          }}>
+            {isTrial ? 'Trial' : isPro ? 'Active' : 'Basic'}
+          </div>
         </div>
+      </div>
 
-        {/* Trial/Upgrade CTA */}
-        {!isPro && !subscription.trialActive && (
+      {/* ═══ TRIAL COUNTDOWN ═══ */}
+      {renderTrialCountdown()}
+
+      {/* ═══ PLAN COMPARISON (for free users) ═══ */}
+      {!isPro && !isTrial && (
+        <>
+          {/* Start Trial CTA */}
           <button
             onClick={handleStartTrial}
             disabled={isProcessing}
             style={{
               width: '100%',
-              padding: '12px 16px',
-              marginTop: 8,
-              background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
-              color: '#fff',
-              border: 'none',
-              borderRadius: 10,
-              fontSize: 13,
+              padding: '14px 16px',
+              background: 'transparent',
+              color: theme.accent,
+              border: `2px dashed ${theme.accent}50`,
+              borderRadius: 12,
+              fontSize: 14,
               fontWeight: 600,
-              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontFamily: font,
               cursor: isProcessing ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               gap: 8,
-              boxShadow: `0 4px 16px ${theme.accent}40`,
-              opacity: isProcessing ? 0.7 : 1
+              opacity: isProcessing ? 0.7 : 1,
             }}
           >
-            {isProcessing ? 'Starting...' : `Start ${TRIAL_CONFIG.durationDays}-Day Free Trial`}
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+            {isProcessing ? 'Starting trial...' : `Try Pro free for ${TRIAL_CONFIG.durationDays} days`}
           </button>
-        )}
-      </div>
 
-      {/* Pricing Cards */}
-      {!isPro && (
-        <>
-          {/* Billing Period Toggle */}
+          {/* Feature Comparison Table */}
+          <div style={{
+            borderRadius: 14,
+            overflow: 'hidden',
+            border: `1px solid ${cardBorder}`,
+            backdropFilter: 'blur(10px)',
+          }}>
+            {/* Table Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 70px 70px',
+              padding: '12px 16px',
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+              borderBottom: `1px solid ${cardBorder}`,
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: theme.textSec, fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Feature</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: theme.textSec, fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Free</span>
+              <span style={{ fontSize: 11, fontWeight: 700, color: theme.accent, fontFamily: font, textTransform: 'uppercase', letterSpacing: '0.05em', textAlign: 'center' }}>Pro</span>
+            </div>
+
+            {/* Feature Rows */}
+            {Object.entries(FEATURE_DESCRIPTIONS).map(([key, feat], i) => (
+              <div key={key} style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 70px 70px',
+                padding: '10px 16px',
+                background: i % 2 === 0 ? 'transparent' : (isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)'),
+                borderBottom: i < Object.keys(FEATURE_DESCRIPTIONS).length - 1 ? `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)'}` : 'none',
+              }}>
+                <span style={{ fontSize: 12, color: theme.text, fontFamily: font }}>{feat.label}</span>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {feat.freeValue === true ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.textSec} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : feat.freeValue === false ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={isDark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.15)'} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  ) : (
+                    <span style={{ fontSize: 11, color: theme.textSec, fontFamily: font }}>{feat.freeValue}</span>
+                  )}
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {feat.proValue === true ? (
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                  ) : (
+                    <span style={{ fontSize: 11, color: theme.accent, fontWeight: 600, fontFamily: font }}>{feat.proValue}</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Billing Toggle */}
           <div style={{
             display: 'flex',
-            justifyContent: 'center',
             gap: 4,
             padding: 4,
             background: cardBg,
             border: `1px solid ${cardBorder}`,
             borderRadius: 12,
-            marginBottom: 4,
             backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)'
           }}>
             {['monthly', 'yearly'].map(period => (
               <button
@@ -8336,11 +8479,10 @@ function SubscriptionContent({ theme, user }) {
                   borderRadius: 10,
                   fontSize: 12,
                   fontWeight: 600,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                  fontFamily: font,
                   color: billingPeriod === period ? theme.accent : theme.textSec,
                   cursor: 'pointer',
                   transition: 'all 0.2s',
-                  boxShadow: billingPeriod === period ? `0 2px 8px ${theme.accent}20` : 'none'
                 }}
               >
                 {period === 'monthly' ? 'Monthly' : 'Yearly (Save 17%)'}
@@ -8348,70 +8490,43 @@ function SubscriptionContent({ theme, user }) {
             ))}
           </div>
 
-          {/* Pro Plan Card */}
+          {/* Upgrade Card */}
           <div style={{
-            padding: '20px',
+            padding: '22px 20px',
             borderRadius: 14,
-            background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}06)`,
-            border: `2px solid ${theme.accent}50`,
+            background: `linear-gradient(135deg, ${theme.accent}12, ${theme.accent}04)`,
+            border: `2px solid ${theme.accent}40`,
             backdropFilter: 'blur(10px)',
-            WebkitBackdropFilter: 'blur(10px)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-              <div>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                 <div style={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  color: theme.text,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  marginBottom: 2
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover || theme.accent})`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 4px 12px ${theme.accent}40`,
                 }}>
-                  Timeline Pro
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                  </svg>
                 </div>
-                <div style={{
-                  fontSize: 11,
-                  color: theme.textSec,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-                }}>
-                  For power users
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 700, color: theme.text, fontFamily: font }}>Timeline Pro</div>
+                  <div style={{ fontSize: 11, color: theme.textSec, fontFamily: font }}>Everything, unlimited</div>
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{
-                  fontSize: 28,
-                  fontWeight: 700,
-                  color: theme.accent,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  lineHeight: 1
-                }}>
+                <div style={{ fontSize: 26, fontWeight: 800, color: theme.accent, fontFamily: font, lineHeight: 1 }}>
                   ${billingPeriod === 'monthly' ? '9.99' : '99.99'}
                 </div>
-                <div style={{
-                  fontSize: 11,
-                  color: theme.textSec,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-                }}>
+                <div style={{ fontSize: 11, color: theme.textSec, fontFamily: font }}>
                   /{billingPeriod === 'monthly' ? 'month' : 'year'}
                 </div>
               </div>
-            </div>
-
-            {/* Feature List */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16 }}>
-              {Object.entries(FEATURE_DESCRIPTIONS).slice(0, 6).map(([key, feat]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12"/>
-                  </svg>
-                  <span style={{
-                    fontSize: 12,
-                    color: theme.text,
-                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-                  }}>
-                    {feat.proValue === true ? feat.label : `${feat.proValue} ${feat.label}`}
-                  </span>
-                </div>
-              ))}
             </div>
 
             <button
@@ -8420,13 +8535,13 @@ function SubscriptionContent({ theme, user }) {
               style={{
                 width: '100%',
                 padding: '14px 20px',
-                background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+                background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover || theme.accent})`,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 10,
                 fontSize: 14,
-                fontWeight: 600,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                fontFamily: font,
                 cursor: isProcessing ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s',
                 display: 'flex',
@@ -8434,7 +8549,7 @@ function SubscriptionContent({ theme, user }) {
                 justifyContent: 'center',
                 gap: 8,
                 boxShadow: `0 6px 24px ${theme.accent}50`,
-                opacity: isProcessing ? 0.7 : 1
+                opacity: isProcessing ? 0.7 : 1,
               }}
             >
               {isProcessing ? (
@@ -8447,7 +8562,7 @@ function SubscriptionContent({ theme, user }) {
               ) : (
                 <>
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/>
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
                   </svg>
                   Upgrade to Pro
                 </>
@@ -8457,26 +8572,44 @@ function SubscriptionContent({ theme, user }) {
         </>
       )}
 
-      {/* Manage Subscription (for Pro users) */}
-      {isPro && (
+      {/* ═══ PRO USER: Manage Subscription ═══ */}
+      {isPro && !isTrial && (
         <div style={{
-          padding: '14px 16px',
-          borderRadius: 12,
+          padding: '16px 18px',
+          borderRadius: 14,
           background: cardBg,
           border: `1px solid ${cardBorder}`,
           backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)'
         }}>
           <div style={{
             fontSize: 10,
-            fontWeight: 600,
+            fontWeight: 700,
             color: theme.accent,
-            marginBottom: 10,
+            marginBottom: 12,
             textTransform: 'uppercase',
-            letterSpacing: '0.05em'
+            letterSpacing: '0.08em',
+            fontFamily: font,
           }}>
             Manage Subscription
           </div>
+          {renewalDate && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              marginBottom: 14,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+            }}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={theme.textSec} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+              </svg>
+              <span style={{ fontSize: 12, color: theme.textSec, fontFamily: font }}>
+                {subscription.cancelAtPeriodEnd ? 'Access until' : 'Next renewal'}: <strong style={{ color: theme.text }}>{renewalDate}</strong>
+              </span>
+            </div>
+          )}
           <div style={{ display: 'flex', gap: 8 }}>
             <button
               onClick={handleManageSubscription}
@@ -8486,15 +8619,15 @@ function SubscriptionContent({ theme, user }) {
                 background: `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`,
                 color: theme.text,
                 border: `1px solid ${theme.accent}30`,
-                borderRadius: 8,
+                borderRadius: 10,
                 fontSize: 12,
-                fontWeight: 500,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 600,
+                fontFamily: font,
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
               }}
             >
-              Update Payment
+              Manage Billing
             </button>
             <button
               onClick={handleDowngrade}
@@ -8503,12 +8636,12 @@ function SubscriptionContent({ theme, user }) {
                 background: cardBg,
                 color: theme.textSec,
                 border: `1px solid ${cardBorder}`,
-                borderRadius: 8,
+                borderRadius: 10,
                 fontSize: 12,
                 fontWeight: 500,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontFamily: font,
                 cursor: 'pointer',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
               }}
             >
               Cancel
@@ -8517,16 +8650,81 @@ function SubscriptionContent({ theme, user }) {
         </div>
       )}
 
+      {/* ═══ TRIAL USER: Upgrade prompt ═══ */}
+      {isTrial && (
+        <>
+          {/* Billing Toggle */}
+          <div style={{
+            display: 'flex',
+            gap: 4,
+            padding: 4,
+            background: cardBg,
+            border: `1px solid ${cardBorder}`,
+            borderRadius: 12,
+          }}>
+            {['monthly', 'yearly'].map(period => (
+              <button
+                key={period}
+                onClick={() => setBillingPeriod(period)}
+                style={{
+                  flex: 1,
+                  padding: '10px 16px',
+                  background: billingPeriod === period ? `linear-gradient(135deg, ${theme.accent}25, ${theme.accent}15)` : 'transparent',
+                  border: billingPeriod === period ? `1.5px solid ${theme.accent}50` : '1.5px solid transparent',
+                  borderRadius: 10,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  fontFamily: font,
+                  color: billingPeriod === period ? theme.accent : theme.textSec,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {period === 'monthly' ? 'Monthly' : 'Yearly (Save 17%)'}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={handleUpgrade}
+            disabled={isProcessing}
+            style={{
+              width: '100%',
+              padding: '14px 20px',
+              background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover || theme.accent})`,
+              color: '#fff',
+              border: 'none',
+              borderRadius: 12,
+              fontSize: 14,
+              fontWeight: 700,
+              fontFamily: font,
+              cursor: isProcessing ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+              boxShadow: `0 6px 24px ${theme.accent}50`,
+              opacity: isProcessing ? 0.7 : 1,
+            }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+            </svg>
+            Upgrade — ${billingPeriod === 'monthly' ? '9.99/mo' : '99.99/yr'}
+          </button>
+        </>
+      )}
+
       {/* Security Badge */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: 8,
-        padding: '10px 0',
+        padding: '8px 0',
         fontSize: 10,
         color: theme.textSec,
-        fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+        fontFamily: font,
       }}>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
