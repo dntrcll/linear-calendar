@@ -1,9 +1,11 @@
 {
-  "name": "Timeline OS",
+  "name": "Timeline Solutions",
   "short_name": "Timeline",
   "description": "Your intelligent calendar for time management and productivity",
+  "start_url": "https://timeline.solutions",
   "theme_color": "#F97316",
   "background_color": "#09090B",
+  "display": "standalone",
   "icons": [
     {
       "src": "favicon.svg",

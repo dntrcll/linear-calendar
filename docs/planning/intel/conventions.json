@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "updated": 1770115575239,
+  "naming": {
+    "exports": {
+      "dominant": "camelCase",
+      "count": 43,
+      "percentage": 72
+    }
+  },
+  "directories": {
+    "types": {
+      "purpose": "TypeScript types",
+      "files": 1
+    },
+    "utils": {
+      "purpose": "Utility functions",
+      "files": 1
+    },
+    "services": {
+      "purpose": "Service layer",
+      "files": 6
+    },
+    "components": {
+      "purpose": "UI components",
+      "files": 8
+    },
+    "tests": {
+      "purpose": "Test files",
+      "files": 1
+    },
+    "constants": {
+      "purpose": "Constants",
+      "files": 2
+    }
+  },
+  "suffixes": {}
+}

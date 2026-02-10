@@ -43,6 +43,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [visibleHabits, setVisibleHabits] = useState({});
   const [hoveredHabit, setHoveredHabit] = useState(null);
   const [hoverTimeout, setHoverTimeout] = useState(null);
+  const [selectedHabit, setSelectedHabit] = useState(null);
 
   const [editingHabit, setEditingHabit] = useState(null);
   const [editingHabitName, setEditingHabitName] = useState('');
@@ -230,13 +231,16 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   const handleHabitHover = (habitId) => {
     if (hoverTimeout) clearTimeout(hoverTimeout);
-    setHoveredHabit(habitId);
+    if (hoveredHabit !== habitId) {
+      setHoveredHabit(habitId);
+    }
   };
 
   const handleHabitLeave = () => {
+    if (hoverTimeout) clearTimeout(hoverTimeout);
     const timeout = setTimeout(() => {
       setHoveredHabit(null);
-    }, 500); // 500ms delay before hiding
+    }, 300);
     setHoverTimeout(timeout);
   };
 
@@ -776,10 +780,204 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             overflow: 'hidden'
           }}>
             {/* Habit Grid */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0 }}>
+            {/* Selected Habit Action Bar */}
+            {selectedHabit && !editingHabit && (() => {
+              const habit = habits.find(h => h.id === selectedHabit);
+              const habitIndex = habits.findIndex(h => h.id === selectedHabit);
+              if (!habit) return null;
+              const isFirst = habitIndex === 0;
+              const isLast = habitIndex === habits.length - 1;
+              const habitColor = habit.habit_type === 'build' ? '#10b981' : '#ef4444';
+
+              const ActionBtn = ({ onClick, disabled, title: btnTitle, hoverBg, hoverColor, children }) => (
+                <button
+                  onClick={onClick}
+                  disabled={disabled}
+                  title={btnTitle}
+                  style={{
+                    height: 30,
+                    padding: '0 10px',
+                    background: 'transparent',
+                    border: `1px solid transparent`,
+                    borderRadius: 7,
+                    color: disabled
+                      ? (config.darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')
+                      : (config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)'),
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 5,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    fontFamily: theme.fontFamily,
+                    transition: 'all 0.12s ease',
+                    opacity: disabled ? 0.4 : 1
+                  }}
+                  onMouseEnter={e => {
+                    if (!disabled) {
+                      e.currentTarget.style.background = hoverBg || (config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)');
+                      e.currentTarget.style.borderColor = config.darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
+                      if (hoverColor) e.currentTarget.style.color = hoverColor;
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    e.currentTarget.style.background = 'transparent';
+                    e.currentTarget.style.borderColor = 'transparent';
+                    e.currentTarget.style.color = disabled
+                      ? (config.darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)')
+                      : (config.darkMode ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)');
+                  }}
+                >
+                  {children}
+                </button>
+              );
+
+              return (
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '8px 12px',
+                  background: config.darkMode
+                    ? 'rgba(255,255,255,0.03)'
+                    : 'rgba(0,0,0,0.02)',
+                  border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)'}`,
+                  borderRadius: '10px 10px 0 0',
+                  borderBottom: 'none'
+                }}>
+                  {/* Habit name badge */}
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    padding: '3px 10px',
+                    background: `${habitColor}10`,
+                    border: `1px solid ${habitColor}25`,
+                    borderRadius: 6
+                  }}>
+                    <div style={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      background: habitColor
+                    }} />
+                    <span style={{
+                      fontSize: 11,
+                      fontWeight: 600,
+                      color: habitColor,
+                      fontFamily: theme.fontFamily,
+                      letterSpacing: '0.02em',
+                      textTransform: 'uppercase'
+                    }}>
+                      {habit.name}
+                    </span>
+                  </div>
+
+                  {/* Divider */}
+                  <div style={{
+                    width: 1,
+                    height: 18,
+                    background: config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    borderRadius: 1
+                  }} />
+
+                  {/* Actions */}
+                  <ActionBtn
+                    onClick={() => handleMoveHabit(selectedHabit, 'up')}
+                    disabled={isFirst}
+                    title="Move left"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M15 18l-6-6 6-6"/>
+                    </svg>
+                    <span>Left</span>
+                  </ActionBtn>
+                  <ActionBtn
+                    onClick={() => handleMoveHabit(selectedHabit, 'down')}
+                    disabled={isLast}
+                    title="Move right"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M9 18l6-6-6-6"/>
+                    </svg>
+                    <span>Right</span>
+                  </ActionBtn>
+
+                  <div style={{
+                    width: 1,
+                    height: 18,
+                    background: config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
+                    borderRadius: 1
+                  }} />
+
+                  <ActionBtn
+                    onClick={() => { handleEditHabit(habit); }}
+                    title="Rename"
+                    hoverBg={`${accentColor}12`}
+                    hoverColor={accentColor}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                      <path d="m15 5 4 4"/>
+                    </svg>
+                    <span>Rename</span>
+                  </ActionBtn>
+                  <ActionBtn
+                    onClick={() => { handleDeleteHabit(selectedHabit); setSelectedHabit(null); }}
+                    title="Delete"
+                    hoverBg={config.darkMode ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'}
+                    hoverColor="#ef4444"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M3 6h18"/>
+                      <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                      <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                    </svg>
+                    <span>Delete</span>
+                  </ActionBtn>
+
+                  {/* Spacer + Close */}
+                  <div style={{ flex: 1 }} />
+                  <button
+                    onClick={() => setSelectedHabit(null)}
+                    style={{
+                      width: 24,
+                      height: 24,
+                      padding: 0,
+                      background: 'transparent',
+                      border: 'none',
+                      borderRadius: 6,
+                      color: config.darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      transition: 'all 0.12s ease'
+                    }}
+                    onMouseEnter={e => {
+                      e.currentTarget.style.background = config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+                      e.currentTarget.style.color = theme.text;
+                    }}
+                    onMouseLeave={e => {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = config.darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.3)';
+                    }}
+                    title="Deselect"
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="18" y1="6" x2="6" y2="18"/>
+                      <line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                  </button>
+                </div>
+              );
+            })()}
             <div style={{
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
-              borderRadius: 10,
+              borderRadius: selectedHabit && !editingHabit ? '0 0 10px 10px' : 10,
               overflow: 'auto',
               maxHeight: isMobile ? '60vh' : undefined
             }}>
@@ -882,13 +1080,20 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                       {habits.map((habit, index) => (
                         <th
                           key={habit.id}
-                          onMouseEnter={() => handleHabitHover(habit.id)}
-                          onMouseLeave={handleHabitLeave}
+                          onClick={() => {
+                            if (!editingHabit) {
+                              setSelectedHabit(selectedHabit === habit.id ? null : habit.id);
+                            }
+                          }}
                           style={{
                             position: 'sticky',
                             top: 0,
-                            background: config.darkMode ? '#0f172a' : '#ffffff',
-                            borderBottom: `2px solid ${theme.border}`,
+                            background: selectedHabit === habit.id
+                              ? (config.darkMode ? 'rgba(30, 40, 60, 1)' : 'rgba(240, 245, 255, 1)')
+                              : (config.darkMode ? '#0f172a' : '#ffffff'),
+                            borderBottom: selectedHabit === habit.id
+                              ? `2px solid ${accentColor}60`
+                              : `2px solid ${theme.border}`,
                             padding: '16px 14px',
                             fontSize: 10,
                             fontWeight: 700,
@@ -900,7 +1105,9 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             fontFamily: theme.fontFamily,
                             letterSpacing: '0.04em',
                             textTransform: 'uppercase',
-                            cursor: 'default'
+                            cursor: 'pointer',
+                            transition: 'background 0.15s ease, border-color 0.15s ease',
+                            userSelect: 'none'
                           }}
                         >
                           {editingHabit === habit.id ? (
@@ -915,56 +1122,87 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 value={editingHabitName}
                                 onChange={(e) => setEditingHabitName(e.target.value)}
                                 onKeyDown={(e) => {
-                                  if (e.key === 'Enter') handleSaveHabitName();
-                                  if (e.key === 'Escape') handleCancelEditHabit();
+                                  if (e.key === 'Enter') { handleSaveHabitName(); setSelectedHabit(null); }
+                                  if (e.key === 'Escape') { handleCancelEditHabit(); setSelectedHabit(null); }
                                 }}
+                                onClick={e => e.stopPropagation()}
                                 autoFocus
                                 style={{
-                                  padding: '4px 8px',
-                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)',
-                                  border: `1px solid ${accentColor}`,
-                                  borderRadius: 4,
+                                  padding: '5px 8px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                                  border: `1.5px solid ${accentColor}`,
+                                  borderRadius: 6,
                                   color: theme.text,
                                   fontSize: 10,
                                   fontWeight: 700,
                                   fontFamily: theme.fontFamily,
                                   textAlign: 'center',
                                   outline: 'none',
-                                  width: '100%'
+                                  width: '100%',
+                                  boxShadow: `0 0 0 3px ${accentColor}12`
                                 }}
                               />
-                              <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+                              <div style={{ display: 'flex', gap: 3, justifyContent: 'center' }}>
                                 <button
-                                  onClick={handleSaveHabitName}
+                                  onClick={(e) => { e.stopPropagation(); handleSaveHabitName(); setSelectedHabit(null); }}
                                   style={{
-                                    padding: '3px 8px',
-                                    background: config.darkMode ? `${accentColor}20` : `${accentColor}15`,
-                                    border: `1px solid ${accentColor}`,
-                                    borderRadius: 4,
+                                    width: 28,
+                                    height: 26,
+                                    padding: 0,
+                                    background: `${accentColor}15`,
+                                    border: `1px solid ${accentColor}30`,
+                                    borderRadius: 6,
                                     color: accentColor,
-                                    fontSize: 9,
-                                    fontWeight: 600,
                                     cursor: 'pointer',
-                                    fontFamily: theme.fontFamily
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s ease'
                                   }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = `${accentColor}25`;
+                                    e.currentTarget.style.borderColor = accentColor;
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = `${accentColor}15`;
+                                    e.currentTarget.style.borderColor = `${accentColor}30`;
+                                  }}
+                                  title="Save"
                                 >
-                                  ✓
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
                                 </button>
                                 <button
-                                  onClick={handleCancelEditHabit}
+                                  onClick={(e) => { e.stopPropagation(); handleCancelEditHabit(); setSelectedHabit(null); }}
                                   style={{
-                                    padding: '3px 8px',
-                                    background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                                    border: `1px solid ${theme.border}`,
-                                    borderRadius: 4,
+                                    width: 28,
+                                    height: 26,
+                                    padding: 0,
+                                    background: config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
+                                    border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)'}`,
+                                    borderRadius: 6,
                                     color: theme.textSec,
-                                    fontSize: 9,
-                                    fontWeight: 600,
                                     cursor: 'pointer',
-                                    fontFamily: theme.fontFamily
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    transition: 'all 0.15s ease'
                                   }}
+                                  onMouseEnter={e => {
+                                    e.currentTarget.style.background = config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+                                    e.currentTarget.style.color = theme.text;
+                                  }}
+                                  onMouseLeave={e => {
+                                    e.currentTarget.style.background = config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+                                    e.currentTarget.style.color = theme.textSec;
+                                  }}
+                                  title="Cancel"
                                 >
-                                  ×
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                    <line x1="18" y1="6" x2="6" y2="18"/>
+                                    <line x1="6" y1="6" x2="18" y2="18"/>
+                                  </svg>
                                 </button>
                               </div>
                             </div>
@@ -976,110 +1214,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                               width: '100%'
                             }}>
                               {habit.name}
-                            </div>
-                          )}
-
-                          {/* Hover Controls - Premium Style */}
-                          {hoveredHabit === habit.id && !editingHabit && (
-                            <div
-                              onMouseEnter={() => handleHabitHover(habit.id)}
-                              onMouseLeave={handleHabitLeave}
-                              style={{
-                                position: 'absolute',
-                                top: '100%',
-                                left: '50%',
-                                transform: 'translateX(-50%)',
-                                marginTop: 8,
-                                background: config.darkMode ? '#1e293b' : '#fff',
-                                border: `1.5px solid ${theme.border}`,
-                                borderRadius: 12,
-                                padding: 10,
-                                display: 'flex',
-                                gap: 8,
-                                boxShadow: config.darkMode
-                                  ? '0 12px 32px rgba(0,0,0,0.5)'
-                                  : '0 12px 32px rgba(0,0,0,0.15)',
-                                zIndex: 100
-                              }}
-                            >
-                              <button
-                                onClick={() => handleMoveHabit(habit.id, 'up')}
-                                disabled={index === 0}
-                                style={{
-                                  padding: '6px 10px',
-                                  background: index === 0
-                                    ? 'transparent'
-                                    : config.darkMode ? `${accentColor}15` : `${accentColor}10`,
-                                  border: `1.5px solid ${index === 0 ? theme.border : accentColor}`,
-                                  borderRadius: 6,
-                                  color: index === 0 ? theme.textMuted : accentColor,
-                                  cursor: index === 0 ? 'not-allowed' : 'pointer',
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  fontFamily: theme.fontFamily,
-                                  transition: 'all 0.15s'
-                                }}
-                                title="Move up"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => handleMoveHabit(habit.id, 'down')}
-                                disabled={index === habits.length - 1}
-                                style={{
-                                  padding: '6px 10px',
-                                  background: index === habits.length - 1
-                                    ? 'transparent'
-                                    : config.darkMode ? `${accentColor}15` : `${accentColor}10`,
-                                  border: `1.5px solid ${index === habits.length - 1 ? theme.border : accentColor}`,
-                                  borderRadius: 6,
-                                  color: index === habits.length - 1 ? theme.textMuted : accentColor,
-                                  cursor: index === habits.length - 1 ? 'not-allowed' : 'pointer',
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  fontFamily: theme.fontFamily,
-                                  transition: 'all 0.15s'
-                                }}
-                                title="Move down"
-                              >
-                                ↓
-                              </button>
-                              <button
-                                onClick={() => handleEditHabit(habit)}
-                                style={{
-                                  padding: '6px 10px',
-                                  background: config.darkMode ? `${accentColor}15` : `${accentColor}10`,
-                                  border: `1.5px solid ${accentColor}`,
-                                  borderRadius: 6,
-                                  color: accentColor,
-                                  cursor: 'pointer',
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  fontFamily: theme.fontFamily,
-                                  transition: 'all 0.15s'
-                                }}
-                                title="Edit name"
-                              >
-                                ✎
-                              </button>
-                              <button
-                                onClick={() => handleDeleteHabit(habit.id)}
-                                style={{
-                                  padding: '6px 10px',
-                                  background: config.darkMode ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.1)',
-                                  border: '1.5px solid #ef4444',
-                                  borderRadius: 6,
-                                  color: '#ef4444',
-                                  cursor: 'pointer',
-                                  fontSize: 13,
-                                  fontWeight: 700,
-                                  fontFamily: theme.fontFamily,
-                                  transition: 'all 0.15s'
-                                }}
-                                title="Delete habit"
-                              >
-                                ×
-                              </button>
                             </div>
                           )}
                         </th>
@@ -1311,6 +1445,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                   </tbody>
                 </table>
               )}
+            </div>
             </div>
 
             {/* Habit Trends Chart - Premium Vertical */}

@@ -88,10 +88,10 @@ export default function PrivacyPolicy() {
         {/* Introduction */}
         <div style={sectionStyle}>
           <p style={paragraphStyle}>
-            Timeline.OS ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
+            Timeline Solutions ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application.
           </p>
           <p style={paragraphStyle}>
-            By using Timeline.OS, you agree to the collection and use of information in accordance with this policy.
+            By using Timeline Solutions, you agree to the collection and use of information in accordance with this policy.
           </p>
         </div>
 
@@ -101,7 +101,7 @@ export default function PrivacyPolicy() {
 
           <h3 style={subHeadingStyle}>1.1 Information You Provide</h3>
           <p style={paragraphStyle}>
-            When you use Timeline.OS, we collect information that you provide directly:
+            When you use Timeline Solutions, we collect information that you provide directly:
           </p>
           <ul style={listStyle}>
             <li>Account information (email address, name) via Google OAuth</li>
@@ -128,7 +128,7 @@ export default function PrivacyPolicy() {
             We use the information we collect to:
           </p>
           <ul style={listStyle}>
-            <li>Provide, maintain, and improve Timeline.OS</li>
+            <li>Provide, maintain, and improve Timeline Solutions</li>
             <li>Authenticate your account and prevent fraud</li>
             <li>Store and sync your calendar data across devices</li>
             <li>Respond to your comments, questions, and requests</li>
@@ -219,7 +219,7 @@ export default function PrivacyPolicy() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>8. Children's Privacy</h2>
           <p style={paragraphStyle}>
-            Timeline.OS is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us with personal information, please contact us.
+            Timeline Solutions is not intended for users under the age of 13. We do not knowingly collect personal information from children under 13. If you become aware that a child has provided us with personal information, please contact us.
           </p>
         </div>
 
@@ -259,8 +259,8 @@ export default function PrivacyPolicy() {
               color: theme.textSec,
               margin: 0
             }}>
-              <strong>Email:</strong> privacy@timeline.app<br/>
-              <strong>Website:</strong> https://timeline-os.vercel.app
+              <strong>Email:</strong> privacy@timeline.solutions<br/>
+              <strong>Website:</strong> https://timeline.solutions
             </p>
           </div>
         </div>
@@ -281,7 +281,7 @@ export default function PrivacyPolicy() {
             alignItems: 'center',
             gap: '8px'
           }}>
-            ← Back to Timeline.OS
+            ← Back to Timeline Solutions
           </a>
         </div>
       </div>

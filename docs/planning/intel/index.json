@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "updated": 1770115575238,
+  "files": {
+    "/Users/apple/Desktop/linear-calendar/src/types/metrics.js": {
+      "exports": [],
+      "imports": [],
+      "indexed": 1769395808096
+    },
+    "/Users/apple/Desktop/linear-calendar/src/utils/metricsCalculations.js": {
+      "exports": [
+        "calculateProductivityScore",
+        "transformToHeatmapBins",
+        "calculateFocusTime",
+        "calculateContextSwitches",
+        "calculateGoalCompletionRate"
+      ],
+      "imports": [],
+      "indexed": 1769395843013
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/metricsService.js": {
+      "exports": [
+        "loadMetrics",
+        "insertMetric",
+        "updateMetric",
+        "deleteMetric"
+      ],
+      "imports": [
+        "../supabaseClient"
+      ],
+      "indexed": 1769399448453
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/charts/LineChartWidget.js": {
+      "exports": [
+        "LineChartWidget"
+      ],
+      "imports": [
+        "recharts"
+      ],
+      "indexed": 1769939522721
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/charts/BarChartWidget.js": {
+      "exports": [
+        "BarChartWidget"
+      ],
+      "imports": [
+        "recharts"
+      ],
+      "indexed": 1769939537019
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/charts/AreaChartWidget.js": {
+      "exports": [
+        "AreaChartWidget"
+      ],
+      "imports": [
+        "recharts"
+      ],
+      "indexed": 1769939551154
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/charts/HeatmapWidget.js": {
+      "exports": [
+        "HeatmapWidget"
+      ],
+      "imports": [
+        "@visx/heatmap",
+        "@visx/scale"
+      ],
+      "indexed": 1769396038580
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/charts/index.js": {
+      "exports": [
+        "LineChartWidget",
+        "BarChartWidget",
+        "AreaChartWidget",
+        "HeatmapWidget"
+      ],
+      "imports": [
+        "react"
+      ],
+      "indexed": 1769396067624
+    },
+    "/Users/apple/Desktop/linear-calendar/tests/metricsCalculations.test.js": {
+      "exports": [],
+      "imports": [
+        "../src/utils/metricsCalculations"
+      ],
+      "indexed": 1769396087722
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/InsightsDashboard.js": {
+      "exports": [
+        "InsightsDashboard"
+      ],
+      "imports": [
+        "react",
+        "./charts",
+        "../utils/metricsCalculations",
+        "../constants/icons"
+      ],
+      "indexed": 1769954587306
+    },
+    "/Users/apple/Desktop/linear-calendar/src/App.js": {
+      "exports": [
+        "default",
+        "App"
+      ],
+      "imports": [
+        "react-router-dom",
+        "./pages/PrivacyPolicy",
+        "./pages/TermsOfService",
+        "./constants",
+        "./utils",
+        "./services/authService",
+        "./services/eventService",
+        "./services/tagService",
+        "./services/subscriptionService",
+        "./services/userPreferencesService",
+        "./supabaseClient",
+        "./utils/instrumentation",
+        "./components/InsightsDashboard",
+        "./components/MetricsTab",
+        "./components/TelemetryPage",
+        "./constants/icons",
+        "./components/LinearCalendar.css",
+        "./App.css"
+      ],
+      "indexed": 1770115575238
+    },
+    "/Users/apple/Desktop/linear-calendar/src/constants/icons.js": {
+      "exports": [
+        "default",
+        "ICONS"
+      ],
+      "imports": [],
+      "indexed": 1769429021651
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/MetricsTab.js": {
+      "exports": [
+        "MetricsTab"
+      ],
+      "imports": [
+        "../services/metricsService",
+        "../services/productivityMetricsService",
+        "../constants/icons"
+      ],
+      "indexed": 1769982121880
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/productivityMetricsService.js": {
+      "exports": [
+        "calculateAndSaveProductivityMetrics",
+        "calculateProductivityMetricsRange"
+      ],
+      "imports": [
+        "../supabaseClient",
+        "../utils/metricsCalculations"
+      ],
+      "indexed": 1769428824072
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/telemetryService.js": {
+      "exports": [
+        "loadMonthTelemetry",
+        "toggleHabitCompletion",
+        "updateDayTelemetry",
+        "updateMonthSummary",
+        "createHabit",
+        "updateHabit",
+        "archiveHabit"
+      ],
+      "imports": [
+        "../supabaseClient"
+      ],
+      "indexed": 1769431171943
+    },
+    "/Users/apple/Desktop/linear-calendar/src/components/TelemetryPage.js": {
+      "exports": [
+        "TelemetryPage"
+      ],
+      "imports": [
+        "../services/telemetryService",
+        "../supabaseClient",
+        "../constants/icons",
+        "recharts"
+      ],
+      "indexed": 1769499553367
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/eventService.js": {
+      "exports": [
+        "loadEvents",
+        "createEvent",
+        "updateEvent",
+        "deleteEvent",
+        "permanentlyDeleteEvent",
+        "restoreEvent",
+        "generateRecurringInstances",
+        "createRecurringInstances"
+      ],
+      "imports": [
+        "../supabaseClient"
+      ],
+      "indexed": 1769924384099
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/authService.js": {
+      "exports": [
+        "signInWithGoogle",
+        "signOut",
+        "signInWithEmail",
+        "signUpWithEmail",
+        "signInWithPassword",
+        "onAuthStateChange"
+      ],
+      "imports": [
+        "../supabaseClient"
+      ],
+      "indexed": 1769995474198
+    },
+    "/Users/apple/Desktop/linear-calendar/src/services/subscriptionService.js": {
+      "exports": [
+        "SUBSCRIPTION_PLANS",
+        "TRIAL_CONFIG",
+        "FEATURE_DESCRIPTIONS",
+        "getSubscriptionStatus",
+        "startFreeTrial",
+        "createCheckoutSession",
+        "createPortalSession",
+        "canUseFeature",
+        "hasReachedLimit",
+        "getRemainingUsage",
+        "getTrialDaysRemaining",
+        "cancelSubscription",
+        "localSubscriptionManager"
+      ],
+      "imports": [
+        "../supabaseClient"
+      ],
+      "indexed": 1770002187451
+    },
+    "/Users/apple/Desktop/linear-calendar/src/constants/quotes.js": {
+      "exports": [
+        "MOTIVATIONAL_QUOTES",
+        "getRandomQuote"
+      ],
+      "imports": [],
+      "indexed": 1770115073457
+    }
+  }
+}

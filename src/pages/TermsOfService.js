@@ -88,10 +88,10 @@ export default function TermsOfService() {
         {/* Introduction */}
         <div style={sectionStyle}>
           <p style={paragraphStyle}>
-            Welcome to Timeline.OS. These Terms of Service ("Terms") govern your access to and use of our application. By accessing or using Timeline.OS, you agree to be bound by these Terms.
+            Welcome to Timeline Solutions. These Terms of Service ("Terms") govern your access to and use of our application. By accessing or using Timeline Solutions, you agree to be bound by these Terms.
           </p>
           <p style={paragraphStyle}>
-            Please read these Terms carefully before using our service. If you do not agree to these Terms, you may not use Timeline.OS.
+            Please read these Terms carefully before using our service. If you do not agree to these Terms, you may not use Timeline Solutions.
           </p>
         </div>
 
@@ -99,7 +99,7 @@ export default function TermsOfService() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>1. Acceptance of Terms</h2>
           <p style={paragraphStyle}>
-            By creating an account, accessing, or using Timeline.OS, you agree to:
+            By creating an account, accessing, or using Timeline Solutions, you agree to:
           </p>
           <ul style={listStyle}>
             <li>Comply with these Terms of Service</li>
@@ -113,7 +113,7 @@ export default function TermsOfService() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>2. Description of Service</h2>
           <p style={paragraphStyle}>
-            Timeline.OS is a calendar and timeline management application that helps you organize events, track goals, and manage your schedule. The service includes:
+            Timeline Solutions is a calendar and timeline management application that helps you organize events, track goals, and manage your schedule. The service includes:
           </p>
           <ul style={listStyle}>
             <li>Event creation and management</li>
@@ -134,7 +134,7 @@ export default function TermsOfService() {
 
           <h3 style={subHeadingStyle}>3.1 Account Creation</h3>
           <p style={paragraphStyle}>
-            To use Timeline.OS, you must create an account using Google OAuth. You agree to:
+            To use Timeline Solutions, you must create an account using Google OAuth. You agree to:
           </p>
           <ul style={listStyle}>
             <li>Provide accurate and complete information</li>
@@ -155,7 +155,7 @@ export default function TermsOfService() {
 
           <h3 style={subHeadingStyle}>4.1 Your Content</h3>
           <p style={paragraphStyle}>
-            You retain all rights to the content you create in Timeline.OS (events, notes, metrics, etc.). By using our service, you grant us a license to store, process, and display your content solely for the purpose of providing the service.
+            You retain all rights to the content you create in Timeline Solutions (events, notes, metrics, etc.). By using our service, you grant us a license to store, process, and display your content solely for the purpose of providing the service.
           </p>
 
           <h3 style={subHeadingStyle}>4.2 Content Responsibility</h3>
@@ -200,12 +200,12 @@ export default function TermsOfService() {
 
           <h3 style={subHeadingStyle}>6.1 Our Property</h3>
           <p style={paragraphStyle}>
-            Timeline.OS, including its design, features, code, and branding, is owned by us and protected by intellectual property laws. You may not copy, modify, or create derivative works without our permission.
+            Timeline Solutions, including its design, features, code, and branding, is owned by us and protected by intellectual property laws. You may not copy, modify, or create derivative works without our permission.
           </p>
 
           <h3 style={subHeadingStyle}>6.2 Trademarks</h3>
           <p style={paragraphStyle}>
-            "Timeline.OS" and our logo are our trademarks. You may not use them without our written consent.
+            "Timeline Solutions" and our logo are our trademarks. You may not use them without our written consent.
           </p>
         </div>
 
@@ -213,7 +213,7 @@ export default function TermsOfService() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>7. Pricing and Payment</h2>
           <p style={paragraphStyle}>
-            Timeline.OS is currently offered free of charge. We reserve the right to introduce paid features or subscriptions in the future with advance notice to users.
+            Timeline Solutions is currently offered free of charge. We reserve the right to introduce paid features or subscriptions in the future with advance notice to users.
           </p>
           <p style={paragraphStyle}>
             If we introduce paid features:
@@ -230,7 +230,7 @@ export default function TermsOfService() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>8. Disclaimers and Warranties</h2>
           <p style={paragraphStyle}>
-            <strong>Timeline.OS is provided "AS IS" and "AS AVAILABLE" without warranties of any kind.</strong>
+            <strong>Timeline Solutions is provided "AS IS" and "AS AVAILABLE" without warranties of any kind.</strong>
           </p>
           <p style={paragraphStyle}>
             We do not guarantee that:
@@ -282,7 +282,7 @@ export default function TermsOfService() {
         <div style={sectionStyle}>
           <h2 style={headingStyle}>11. Third-Party Services</h2>
           <p style={paragraphStyle}>
-            Timeline.OS integrates with third-party services (Google OAuth, Supabase, etc.). Your use of these services is subject to their respective terms and privacy policies. We are not responsible for third-party services.
+            Timeline Solutions integrates with third-party services (Google OAuth, Supabase, etc.). Your use of these services is subject to their respective terms and privacy policies. We are not responsible for third-party services.
           </p>
         </div>
 
@@ -298,7 +298,7 @@ export default function TermsOfService() {
             <li>Sending an email notification (for significant changes)</li>
           </ul>
           <p style={paragraphStyle}>
-            Your continued use of Timeline.OS after changes become effective constitutes acceptance of the updated Terms.
+            Your continued use of Timeline Solutions after changes become effective constitutes acceptance of the updated Terms.
           </p>
         </div>
 
@@ -335,8 +335,8 @@ export default function TermsOfService() {
               color: theme.textSec,
               margin: 0
             }}>
-              <strong>Email:</strong> legal@timeline.app<br/>
-              <strong>Website:</strong> https://timeline-os.vercel.app
+              <strong>Email:</strong> legal@timeline.solutions<br/>
+              <strong>Website:</strong> https://timeline.solutions
             </p>
           </div>
         </div>
@@ -363,7 +363,7 @@ export default function TermsOfService() {
             color: theme.textSec,
             margin: 0
           }}>
-            By using Timeline.OS, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
+            By using Timeline Solutions, you acknowledge that you have read, understood, and agree to be bound by these Terms of Service.
           </p>
         </div>
 
@@ -383,7 +383,7 @@ export default function TermsOfService() {
             alignItems: 'center',
             gap: '8px'
           }}>
-            ← Back to Timeline.OS
+            ← Back to Timeline Solutions
           </a>
         </div>
       </div>

@@ -144,10 +144,10 @@ class ErrorBoundary extends React.Component {
 }
 
 const APP_META = {
-  name: "Timeline OS",
+  name: "Timeline Solutions",
   version: "1.0.0",
   quoteInterval: 14400000,
-  author: "Timeline Systems",
+  author: "Timeline Solutions",
   motto: "Time is the luxury you cannot buy."
 };
 
@@ -425,6 +425,17 @@ const CSS = `
     to {
       opacity: 1;
       transform: translateX(0);
+    }
+  }
+
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateX(-50%) translateY(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
     }
   }
 
@@ -1385,6 +1396,31 @@ function TimelineOS() {
     } catch (error) {
       console.error("Error deleting event:", error);
       notify("Failed to delete event", "error");
+    }
+  };
+
+  const bulkDeleteRecurringEvents = async (options = {}) => {
+    if (!user) return;
+    const { onlyNoExpiry = false } = options;
+    const recurring = events.filter(e => {
+      if (!e.recurrencePattern || e.recurrencePattern === 'none') return false;
+      if (onlyNoExpiry && e.recurrenceEndDate) return false;
+      return true;
+    });
+    if (recurring.length === 0) {
+      notify('No recurring events found', 'info');
+      return;
+    }
+    if (!window.confirm(`Delete ${recurring.length} recurring event${recurring.length > 1 ? 's' : ''}? This cannot be undone.`)) return;
+    try {
+      for (const event of recurring) {
+        await deleteEvent(event.id, user.uid);
+      }
+      await loadData(user);
+      notify(`Deleted ${recurring.length} recurring event${recurring.length > 1 ? 's' : ''}`, 'info');
+    } catch (error) {
+      console.error('Error bulk deleting recurring events:', error);
+      notify('Failed to delete some events', 'error');
     }
   };
 
@@ -2703,6 +2739,9 @@ function TimelineOS() {
           theme={theme}
           onClose={() => setSettingsOpen(false)}
           user={user}
+          events={events}
+          bulkDeleteRecurringEvents={bulkDeleteRecurringEvents}
+          softDeleteEvent={softDeleteEvent}
           handleLogout={async () => {
             try {
               await supabaseSignOut();
@@ -8712,7 +8751,8 @@ function SharingContent({ theme, user }) {
   );
 }
 
-function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }) {
+function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, events = [], bulkDeleteRecurringEvents, softDeleteEvent }) {
+  const isDark = theme.id === 'dark' || theme.id === 'midnight' || theme.id === 'forest';
   const [activeTab, setActiveTab] = React.useState('appearance');
 
   const handleToggle = (key) => {
@@ -8728,14 +8768,14 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
         height: 24,
         background: value
           ? `linear-gradient(135deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`
-          : theme.id === 'dark' ? '#2A2A30' : '#E2E8F0',
+          : isDark ? '#2A2A30' : '#E2E8F0',
         borderRadius: 12,
         position: 'relative',
         cursor: 'pointer',
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         boxShadow: value
           ? `0 2px 8px ${theme.accent}40, inset 0 1px 1px rgba(255,255,255,0.2)`
-          : `inset 0 1px 3px rgba(0,0,0,${theme.id === 'dark' ? '0.3' : '0.1'})`
+          : `inset 0 1px 3px rgba(0,0,0,${isDark ? '0.3' : '0.1'})`
       }}
     >
       <div style={{
@@ -8768,7 +8808,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'appearance',
       label: 'Appearance',
       icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <circle cx="12" cy="12" r="5"/>
           <line x1="12" y1="1" x2="12" y2="3"/>
           <line x1="12" y1="21" x2="12" y2="23"/>
@@ -8785,7 +8825,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'interface',
       label: 'Interface',
       icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
           <line x1="3" y1="9" x2="21" y2="9"/>
           <line x1="9" y1="21" x2="9" y2="9"/>
@@ -8796,8 +8836,19 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'features',
       label: 'Features',
       icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      )
+    },
+    {
+      id: 'data',
+      label: 'Data',
+      icon: (
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
         </svg>
       )
     },
@@ -8805,7 +8856,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'sharing',
       label: 'Sharing',
       icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
           <circle cx="9" cy="7" r="4"/>
           <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -8817,7 +8868,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       id: 'subscription',
       label: 'Pro',
       icon: (
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
         </svg>
       )
@@ -8962,7 +9013,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
         left: 0,
         right: 0,
         bottom: 0,
-        background: theme.id === 'dark' ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
+        background: isDark ? 'rgba(0, 0, 0, 0.75)' : 'rgba(0, 0, 0, 0.5)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -8985,37 +9036,36 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
       <div
         className="scale-enter"
         style={{
-        background: theme.premiumGlass || theme.liquidGlass,
-        backdropFilter: theme.glassBlur || 'blur(32px)',
-        WebkitBackdropFilter: theme.glassBlur || 'blur(32px)',
-        borderRadius: 20,
+        background: isDark
+          ? 'rgba(22, 22, 26, 0.94)'
+          : 'rgba(255, 255, 255, 0.92)',
+        backdropFilter: 'blur(40px) saturate(1.8)',
+        WebkitBackdropFilter: 'blur(40px) saturate(1.8)',
+        borderRadius: 18,
         width: '100%',
-        maxWidth: 520,
-        maxHeight: '92vh',
+        maxWidth: 660,
+        height: '80vh',
         overflow: 'hidden',
-        boxShadow: theme.premiumShadow || (theme.id === 'dark'
-          ? '0 24px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.08), inset 0 1px 0 rgba(255,255,255,0.05)'
-          : '0 24px 48px rgba(0,0,0,0.18), 0 0 0 1px rgba(255,255,255,0.5), inset 0 1px 0 rgba(255,255,255,0.9)'),
-        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+        boxShadow: isDark
+          ? '0 25px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.08)'
+          : '0 25px 60px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)',
+        border: isDark
+          ? '1px solid rgba(255,255,255,0.1)'
+          : '1px solid rgba(0,0,0,0.06)',
         position: 'relative',
         display: 'flex',
         flexDirection: 'column'
       }}>
-        {/* Header with Premium Glass Effect */}
+        {/* Header */}
         <div style={{
-          padding: '24px 28px',
-          borderBottom: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+          padding: '20px 24px',
+          borderBottom: isDark
+            ? '1px solid rgba(255,255,255,0.07)'
+            : '1px solid rgba(0,0,0,0.06)',
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          background: theme.metallicGradient || (theme.id === 'dark'
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-            : 'linear-gradient(135deg, rgba(255,255,255,0.8), rgba(255,255,255,0.5))'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: theme.metallicShadow || (theme.id === 'dark'
-            ? 'inset 0 1px 0 rgba(255,255,255,0.05)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9)')
+          flexShrink: 0
         }}>
           <div>
             <h3 id="settings-modal-title" style={{
@@ -9042,186 +9092,148 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             onClick={onClose}
             aria-label="Close"
             style={{
-              background: theme.metallicGradient || theme.hoverBg,
-              border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-              color: theme.textSec,
+              background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+              border: 'none',
+              color: theme.textMuted,
               cursor: 'pointer',
-              padding: 8,
+              padding: 7,
               borderRadius: 8,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              transition: 'all 0.2s',
-              boxShadow: theme.metallicShadow || 'none'
+              transition: 'all 0.15s'
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.background = theme.metallicGradientHover || theme.activeBg;
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)';
               e.currentTarget.style.color = theme.text;
-              e.currentTarget.style.transform = 'scale(1.05)';
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.background = theme.metallicGradient || theme.hoverBg;
-              e.currentTarget.style.color = theme.textSec;
-              e.currentTarget.style.transform = 'scale(1)';
+              e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.color = theme.textMuted;
             }}
           >
-            <ICONS.Close width={16} height={16} />
+            <ICONS.Close width={15} height={15} />
           </button>
         </div>
 
-        {/* Tabs with Premium Glass Effect */}
+        {/* Body: Sidebar + Content */}
         <div style={{
           display: 'flex',
-          padding: '16px 28px',
-          gap: 8,
-          borderBottom: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          background: theme.premiumGlass || (theme.id === 'dark'
-            ? 'rgba(255,255,255,0.02)'
-            : 'rgba(0,0,0,0.01)'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)'
-        }}>
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              style={{
-                flex: 1,
-                padding: '12px 14px',
-                background: activeTab === tab.id
-                  ? (theme.chromeGradient || `linear-gradient(135deg, ${theme.accent}15, ${theme.accent}08)`)
-                  : 'transparent',
-                border: activeTab === tab.id
-                  ? `1px solid ${theme.premiumGlassBorder || theme.accent + '40'}`
-                  : '1px solid transparent',
-                borderRadius: 10,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                color: activeTab === tab.id ? theme.accent : theme.textMuted,
-                backdropFilter: activeTab === tab.id ? 'blur(20px)' : 'none',
-                WebkitBackdropFilter: activeTab === tab.id ? 'blur(20px)' : 'none',
-                boxShadow: activeTab === tab.id ? (theme.metallicShadow || `0 2px 8px ${theme.accent}15, inset 0 1px 0 rgba(255,255,255,0.05)`) : 'none'
-              }}
-              onMouseEnter={e => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.background = theme.metallicGradient || theme.hoverBg;
-                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.liquidBorder;
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                }
-              }}
-              onMouseLeave={e => {
-                if (activeTab !== tab.id) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'transparent';
-                  e.currentTarget.style.transform = 'translateY(0)';
-                }
-              }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                {tab.icon}
-              </span>
-              <span style={{
-                fontSize: 12,
-                fontWeight: 600,
-                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                letterSpacing: '0.01em'
-              }}>{tab.label}</span>
-            </button>
-          ))}
-        </div>
-
-        {/* Content */}
-        <div style={{
           flex: 1,
-          overflow: 'auto',
-          padding: '16px 24px'
+          overflow: 'hidden'
         }}>
-          {/* User Card - Enhanced Premium Design */}
+          {/* Vertical Sidebar Tabs */}
+          <div style={{
+            width: 150,
+            flexShrink: 0,
+            padding: '12px 8px',
+            borderRight: isDark
+              ? '1px solid rgba(255,255,255,0.07)'
+              : '1px solid rgba(0,0,0,0.06)',
+            background: isDark ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.025)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            {tabs.map(tab => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  style={{
+                    padding: '8px 10px',
+                    background: isActive
+                      ? (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)')
+                      : 'transparent',
+                    border: 'none',
+                    borderRadius: 8,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 9,
+                    transition: 'all 0.15s ease',
+                    color: isActive ? theme.text : theme.textMuted,
+                    width: '100%',
+                    textAlign: 'left',
+                    position: 'relative'
+                  }}
+                  onMouseEnter={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)';
+                      e.currentTarget.style.color = theme.text;
+                    }
+                  }}
+                  onMouseLeave={e => {
+                    if (!isActive) {
+                      e.currentTarget.style.background = 'transparent';
+                      e.currentTarget.style.color = theme.textMuted;
+                    }
+                  }}
+                >
+                  {isActive && <div style={{
+                    position: 'absolute',
+                    left: 0,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    width: 3,
+                    height: 16,
+                    borderRadius: 2,
+                    background: theme.accent
+                  }} />}
+                  <span style={{ display: 'flex', alignItems: 'center', flexShrink: 0, opacity: isActive ? 1 : 0.6 }}>
+                    {tab.icon}
+                  </span>
+                  <span style={{
+                    fontSize: 12,
+                    fontWeight: isActive ? 600 : 500,
+                    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                    letterSpacing: '0.01em',
+                    whiteSpace: 'nowrap'
+                  }}>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Content */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '16px 24px'
+          }}>
+          {/* User Card */}
           {user && activeTab === 'appearance' && (
             <div style={{
-              padding: 18,
-              background: theme.premiumGlass || (config.darkMode ? 'rgba(255,255,255,0.04)' : theme.sidebar),
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              borderRadius: 16,
+              padding: 16,
+              background: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.025)',
+              borderRadius: 12,
               marginBottom: 16,
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              border: `1px solid ${theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border)}`,
-              boxShadow: theme.premiumShadow || (config.darkMode
-                ? '0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05)'
-                : '0 4px 16px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.6)'),
+              border: isDark
+                ? '1px solid rgba(255,255,255,0.06)'
+                : '1px solid rgba(0,0,0,0.05)',
               position: 'relative',
               overflow: 'hidden'
             }}>
-              {/* Background gradient overlay */}
+              {/* Avatar */}
               <div style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                right: 0,
-                height: '50%',
-                background: config.darkMode
-                  ? 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%)'
-                  : 'linear-gradient(180deg, rgba(255,255,255,0.6) 0%, transparent 100%)',
-                pointerEvents: 'none'
-              }} />
-
-              {/* Premium Avatar */}
-              <div style={{
-                width: 54,
-                height: 54,
-                borderRadius: 16,
-                background: `linear-gradient(145deg, ${theme.accent}15, ${theme.accent}08)`,
+                width: 44,
+                height: 44,
+                borderRadius: 12,
+                background: `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: 3,
-                boxShadow: `0 0 0 1px ${theme.accent}20`,
-                position: 'relative',
-                zIndex: 1
+                color: '#fff',
+                fontWeight: 700,
+                fontSize: 17,
+                fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+                flexShrink: 0
               }}>
-                <div style={{
-                  width: '100%',
-                  height: '100%',
-                  borderRadius: 13,
-                  background: theme.metallicAccent || `linear-gradient(145deg, ${theme.accent}, ${theme.accentHover})`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontWeight: 700,
-                  fontSize: 20,
-                  fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  letterSpacing: '-0.02em',
-                  boxShadow: `
-                    0 8px 24px ${theme.accent}50,
-                    0 4px 8px ${theme.accent}30,
-                    inset 0 2px 4px rgba(255,255,255,0.25),
-                    inset 0 -1px 2px rgba(0,0,0,0.1)
-                  `,
-                  textShadow: '0 1px 2px rgba(0,0,0,0.2)',
-                  position: 'relative',
-                  overflow: 'hidden'
-                }}>
-                  {/* Shine effect */}
-                  <div style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '50%',
-                    background: 'linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 100%)',
-                    borderRadius: '13px 13px 50% 50%',
-                    pointerEvents: 'none'
-                  }} />
-                  {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
-                </div>
+                {user.displayName?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
               </div>
               <div style={{ flex: 1, position: 'relative', zIndex: 1 }}>
                 <div style={{
@@ -9247,40 +9259,29 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               <button
                 onClick={handleLogout}
                 style={{
-                  padding: '10px 16px',
-                  background: theme.metallicGradient || 'transparent',
-                  border: `1px solid ${theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border)}`,
-                  borderRadius: 10,
-                  color: theme.text,
+                  padding: '8px 14px',
+                  background: 'transparent',
+                  border: isDark
+                    ? '1px solid rgba(255,255,255,0.12)'
+                    : '1px solid rgba(0,0,0,0.1)',
+                  borderRadius: 8,
+                  color: theme.textSec,
                   fontSize: 11,
-                  fontWeight: 700,
+                  fontWeight: 600,
                   fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-                  letterSpacing: '0.03em',
+                  letterSpacing: '0.02em',
                   textTransform: 'uppercase',
                   cursor: 'pointer',
-                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                  backdropFilter: 'blur(10px)',
-                  boxShadow: theme.metallicShadow || (config.darkMode
-                    ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-                    : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)'),
-                  position: 'relative',
-                  zIndex: 1
+                  transition: 'all 0.15s',
+                  flexShrink: 0
                 }}
                 onMouseEnter={e => {
-                  e.currentTarget.style.background = theme.metallicGradientHover || theme.hoverBg;
-                  e.currentTarget.style.borderColor = theme.accent;
-                  e.currentTarget.style.transform = 'translateY(-1px)';
-                  e.currentTarget.style.boxShadow = config.darkMode
-                    ? `0 4px 12px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08), 0 0 0 2px ${theme.accent}20`
-                    : `0 4px 12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9), 0 0 0 2px ${theme.accent}20`;
+                  e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+                  e.currentTarget.style.color = theme.text;
                 }}
                 onMouseLeave={e => {
-                  e.currentTarget.style.background = theme.metallicGradient || 'transparent';
-                  e.currentTarget.style.borderColor = theme.premiumGlassBorder || (config.darkMode ? theme.subtleBorder : theme.border);
-                  e.currentTarget.style.transform = 'translateY(0)';
-                  e.currentTarget.style.boxShadow = theme.metallicShadow || (config.darkMode
-                    ? '0 2px 8px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.05)'
-                    : '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8)');
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.color = theme.textSec;
                 }}
               >
                 Sign Out
@@ -9313,7 +9314,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                         backdropFilter: 'blur(10px)',
                         border: isSelected
                           ? `1.5px solid ${themeOption.accent}`
-                          : `1px solid ${theme.liquidBorder}`,
+                          : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
                         borderRadius: 8,
                         cursor: 'pointer',
                         transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -9338,7 +9339,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                           ? `0 4px 12px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
                           : 'none';
                         if (!isSelected) {
-                          e.currentTarget.style.borderColor = theme.liquidBorder;
+                          e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
                         }
                       }}
                     >
@@ -9456,6 +9457,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                activeTab === 'interface' ? 'Interface' :
                activeTab === 'sharing' ? 'Family Sharing' :
                activeTab === 'subscription' ? 'Your Plan' :
+               activeTab === 'data' ? 'Data Management' :
                'Features'}
             </div>
 
@@ -9464,6 +9466,253 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
               <SharingContent theme={theme} user={user} />
             ) : activeTab === 'subscription' ? (
               <SubscriptionContent theme={theme} user={user} />
+            ) : activeTab === 'data' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {(() => {
+                  const recurringEvents = events.filter(e => e.recurrencePattern && e.recurrencePattern !== 'none');
+                  const noExpiryEvents = recurringEvents.filter(e => !e.recurrenceEndDate);
+                  const patternLabels = { daily: 'Daily', weekly: 'Weekly', monthly: 'Monthly', yearly: 'Yearly' };
+                  const pastEvents = events.filter(e => new Date(e.end) < new Date());
+                  const thisWeekEvents = events.filter(e => {
+                    const d = new Date(e.start);
+                    const now = new Date();
+                    const weekStart = new Date(now); weekStart.setDate(now.getDate() - now.getDay());
+                    const weekEnd = new Date(weekStart); weekEnd.setDate(weekStart.getDate() + 7);
+                    return d >= weekStart && d < weekEnd;
+                  });
+                  const categories = {};
+                  events.forEach(e => { const c = e.category || 'Uncategorized'; categories[c] = (categories[c] || 0) + 1; });
+                  const sortedCats = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+                  const topCat = sortedCats[0];
+
+                  return (
+                    <>
+                      {/* Stats grid */}
+                      <div style={{
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr 1fr',
+                        gap: 8
+                      }}>
+                        {[
+                          { val: events.length, label: 'Total', color: theme.text },
+                          { val: thisWeekEvents.length, label: 'This Week', color: theme.accent },
+                          { val: pastEvents.length, label: 'Past', color: theme.textSec },
+                          { val: recurringEvents.length, label: 'Recurring', color: theme.accent },
+                          { val: noExpiryEvents.length, label: 'No Expiry', color: noExpiryEvents.length > 0 ? '#F59E0B' : theme.textSec },
+                          { val: topCat ? topCat[1] : 0, label: topCat ? topCat[0] : '—', color: theme.textSec }
+                        ].map((stat, i) => (
+                          <div key={i} style={{
+                            padding: '10px 8px',
+                            borderRadius: 8,
+                            background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`,
+                            textAlign: 'center'
+                          }}>
+                            <div style={{ fontSize: 18, fontWeight: 700, color: stat.color, lineHeight: 1.2 }}>{stat.val}</div>
+                            <div style={{ fontSize: 9, color: theme.textMuted, fontWeight: 500, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{stat.label}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Category breakdown */}
+                      {sortedCats.length > 1 && (
+                        <div style={{
+                          padding: '12px',
+                          borderRadius: 10,
+                          background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)',
+                          border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`
+                        }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                            Categories
+                          </div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                            {sortedCats.slice(0, 5).map(([cat, count]) => (
+                              <div key={cat} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <div style={{ flex: 1, fontSize: 11, color: theme.text, fontWeight: 500 }}>{cat}</div>
+                                <div style={{
+                                  height: 4,
+                                  borderRadius: 2,
+                                  background: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)',
+                                  width: 80,
+                                  overflow: 'hidden'
+                                }}>
+                                  <div style={{
+                                    height: '100%',
+                                    borderRadius: 2,
+                                    background: theme.accent,
+                                    width: `${Math.round((count / events.length) * 100)}%`,
+                                    transition: 'width 0.3s'
+                                  }} />
+                                </div>
+                                <div style={{ fontSize: 10, color: theme.textMuted, fontWeight: 600, width: 24, textAlign: 'right' }}>{count}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recurring events section */}
+                      <div>
+                        <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8, paddingLeft: 2 }}>
+                          Recurring Events {recurringEvents.length > 0 && `(${recurringEvents.length})`}
+                        </div>
+                        {recurringEvents.length > 0 ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+                            {recurringEvents.map(event => (
+                              <div key={event.id} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                padding: '8px 10px',
+                                borderRadius: 8,
+                                background: isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.015)',
+                                border: `1px solid ${isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
+                                gap: 8,
+                                transition: 'background 0.1s'
+                              }}
+                                onMouseEnter={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.03)'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.015)'; }}
+                              >
+                                <div style={{
+                                  width: 4,
+                                  height: 28,
+                                  borderRadius: 2,
+                                  background: event.color || theme.accent,
+                                  flexShrink: 0
+                                }} />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: theme.text,
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    lineHeight: 1.3
+                                  }}>
+                                    {event.title || 'Untitled'}
+                                  </div>
+                                  <div style={{ fontSize: 10, color: theme.textMuted, lineHeight: 1.3 }}>
+                                    {patternLabels[event.recurrencePattern] || event.recurrencePattern}
+                                    {event.category ? ` · ${event.category}` : ''}
+                                    {event.recurrenceEndDate ? ` · ends ${new Date(event.recurrenceEndDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}` : ''}
+                                  </div>
+                                </div>
+                                {!event.recurrenceEndDate && (
+                                  <span style={{
+                                    fontSize: 8,
+                                    fontWeight: 700,
+                                    color: '#F59E0B',
+                                    background: '#F59E0B15',
+                                    padding: '2px 5px',
+                                    borderRadius: 3,
+                                    flexShrink: 0,
+                                    letterSpacing: '0.04em'
+                                  }}>
+                                    NO END
+                                  </span>
+                                )}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); softDeleteEvent(event.id); }}
+                                  style={{
+                                    background: 'transparent',
+                                    border: 'none',
+                                    color: theme.textMuted,
+                                    cursor: 'pointer',
+                                    padding: 4,
+                                    borderRadius: 4,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    transition: 'all 0.1s',
+                                    opacity: 0.5
+                                  }}
+                                  onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.background = isDark ? 'rgba(239,68,68,0.1)' : 'rgba(239,68,68,0.08)'; }}
+                                  onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.color = theme.textMuted; e.currentTarget.style.background = 'transparent'; }}
+                                  title="Delete event"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{
+                            textAlign: 'center',
+                            padding: '20px 16px',
+                            color: theme.textMuted,
+                            fontSize: 11,
+                            borderRadius: 8,
+                            background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                            border: `1px solid ${isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)'}`
+                          }}>
+                            No recurring events
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Bulk actions */}
+                      {recurringEvents.length > 0 && (
+                        <div style={{
+                          padding: '10px 12px',
+                          borderRadius: 8,
+                          background: isDark ? 'rgba(239,68,68,0.06)' : 'rgba(239,68,68,0.03)',
+                          border: `1px solid ${isDark ? 'rgba(239,68,68,0.12)' : 'rgba(239,68,68,0.08)'}`
+                        }}>
+                          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 8 }}>
+                            Bulk Actions
+                          </div>
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            {noExpiryEvents.length > 0 && (
+                              <button
+                                onClick={() => bulkDeleteRecurringEvents({ onlyNoExpiry: true })}
+                                style={{
+                                  flex: 1,
+                                  padding: '8px 10px',
+                                  borderRadius: 7,
+                                  border: '1px solid #F59E0B30',
+                                  background: '#F59E0B0A',
+                                  color: '#F59E0B',
+                                  fontSize: 11,
+                                  fontWeight: 600,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.15s'
+                                }}
+                                onMouseEnter={e => { e.currentTarget.style.background = '#F59E0B18'; }}
+                                onMouseLeave={e => { e.currentTarget.style.background = '#F59E0B0A'; }}
+                              >
+                                Delete no-end ({noExpiryEvents.length})
+                              </button>
+                            )}
+                            <button
+                              onClick={() => bulkDeleteRecurringEvents()}
+                              style={{
+                                flex: 1,
+                                padding: '8px 10px',
+                                borderRadius: 7,
+                                border: '1px solid #EF444430',
+                                background: '#EF44440A',
+                                color: '#EF4444',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                cursor: 'pointer',
+                                transition: 'all 0.15s'
+                              }}
+                              onMouseEnter={e => { e.currentTarget.style.background = '#EF444418'; }}
+                              onMouseLeave={e => { e.currentTarget.style.background = '#EF44440A'; }}
+                            >
+                              Delete all recurring ({recurringEvents.length})
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             ) : (
             /* Settings Items - Compact List */
             <div style={{
@@ -9479,52 +9728,40 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '14px 16px',
-                    borderRadius: 12,
+                    padding: '12px 14px',
+                    borderRadius: 10,
                     cursor: 'pointer',
-                    transition: 'background 0.2s, border-color 0.2s, box-shadow 0.2s',
+                    transition: 'background 0.15s',
                     background: config[key]
-                      ? (theme.premiumGlass || `${theme.accent}08`)
-                      : (theme.premiumGlass || `${theme.accent}04`),
-                    border: `1px solid ${config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.accent + '15')}`,
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    boxShadow: config[key]
-                      ? `0 2px 8px ${theme.accent}15`
-                      : 'none'
+                      ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.035)')
+                      : 'transparent',
+                    border: isDark
+                      ? `1px solid ${config[key] ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.04)'}`
+                      : `1px solid ${config[key] ? 'rgba(0,0,0,0.06)' : 'rgba(0,0,0,0.03)'}`
                   }}
                   onMouseEnter={e => {
-                    e.currentTarget.style.background = theme.premiumGlass || `${theme.accent}10`;
-                    e.currentTarget.style.borderColor = theme.accent + '40';
-                    e.currentTarget.style.boxShadow = `0 4px 12px ${theme.accent}20`;
+                    e.currentTarget.style.background = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.04)';
                   }}
                   onMouseLeave={e => {
                     e.currentTarget.style.background = config[key]
-                      ? (theme.premiumGlass || `${theme.accent}08`)
-                      : (theme.premiumGlass || `${theme.accent}04`);
-                    e.currentTarget.style.borderColor = config[key] ? (theme.accent + '30') : (theme.premiumGlassBorder || theme.accent + '15');
-                    e.currentTarget.style.boxShadow = config[key]
-                      ? `0 2px 8px ${theme.accent}15`
-                      : 'none';
+                      ? (isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.035)')
+                      : 'transparent';
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1 }}>
                     {/* Icon Container */}
                     <div style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: 10,
+                      width: 36,
+                      height: 36,
+                      borderRadius: 9,
                       background: config[key]
-                        ? (theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`)
-                        : `linear-gradient(135deg, ${theme.accent}20, ${theme.accent}10)`,
+                        ? `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`
+                        : `${theme.accent}15`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       color: config[key] ? '#FFFFFF' : theme.accent,
-                      flexShrink: 0,
-                      boxShadow: config[key]
-                        ? `0 4px 12px ${theme.accent}40`
-                        : `0 2px 6px ${theme.accent}15`
+                      flexShrink: 0
                     }}>
                       {icon}
                     </div>
@@ -9560,20 +9797,16 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
             </div>
             )}
           </div>
+          </div>
         </div>
 
-        {/* Footer with Premium Metallic Effect */}
+        {/* Footer */}
         <div style={{
-          padding: '18px 28px',
-          borderTop: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
-          background: theme.metallicGradient || (theme.id === 'dark'
-            ? 'linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,255,255,0.03))'
-            : 'linear-gradient(135deg, rgba(0,0,0,0.06), rgba(0,0,0,0.03))'),
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          boxShadow: theme.metallicShadow || (theme.id === 'dark'
-            ? 'inset 0 1px 0 rgba(255,255,255,0.08)'
-            : 'inset 0 1px 0 rgba(255,255,255,0.9)')
+          padding: '14px 24px',
+          borderTop: isDark
+            ? '1px solid rgba(255,255,255,0.07)'
+            : '1px solid rgba(0,0,0,0.06)',
+          flexShrink: 0
         }}>
           <div style={{
             display: 'flex',
@@ -9589,7 +9822,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout }
                 letterSpacing: '0.01em',
                 marginBottom: 2
               }}>
-                Timeline OS
+                Timeline Solutions
               </div>
               <div style={{
                 fontSize: 11,
@@ -10008,23 +10241,41 @@ bottom: 0
     <div style={{ display: 'flex' }}>
       {/* Left: Existing tags */}
       <div style={{
-        flex: '0 0 200px',
+        flex: '0 0 220px',
         padding: '12px',
         borderRight: `1px solid ${theme.border}`,
-        maxHeight: 320,
+        maxHeight: 360,
         overflowY: 'auto'
       }}>
-        <h4 style={{
-          fontSize: 11,
-          fontWeight: 600,
-          color: theme.textSec,
-          marginBottom: 12,
-          textTransform: 'uppercase',
-          letterSpacing: 1.2,
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: 12
         }}>
-          Existing ({contextTags.length})
-        </h4>
+          <h4 style={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: theme.textSec,
+            textTransform: 'uppercase',
+            letterSpacing: 1.2,
+            margin: 0,
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+          }}>
+            Existing
+          </h4>
+          <span style={{
+            fontSize: 10,
+            fontWeight: 600,
+            color: theme.accent,
+            background: theme.accent + '15',
+            padding: '2px 8px',
+            borderRadius: 10,
+            fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+          }}>
+            {contextTags.length}
+          </span>
+        </div>
 
         {contextTags.length === 0 ? (
           <div style={{
@@ -10036,76 +10287,150 @@ bottom: 0
             No tags yet
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {contextTags.map(tag => {
               const IconComponent = getTagIcon(tag, ICONS);
               return (
                 <div
                   key={tag.id}
                   style={{
-                    padding: '6px 8px',
-                    background: tag.color + '10',
-                    border: `1px solid ${tag.color}25`,
-                    borderRadius: 6,
+                    padding: '7px 10px',
+                    background: editingTag?.id === tag.id
+                      ? `${tag.color}18`
+                      : `${tag.color}08`,
+                    border: `1px solid ${editingTag?.id === tag.id ? tag.color + '40' : tag.color + '15'}`,
+                    borderRadius: 8,
                     display: 'flex',
                     alignItems: 'center',
-                    gap: 6
+                    gap: 8,
+                    transition: 'all 0.2s ease',
+                    cursor: 'default'
+                  }}
+                  onMouseEnter={e => {
+                    e.currentTarget.style.background = `${tag.color}14`;
+                    e.currentTarget.style.borderColor = `${tag.color}30`;
+                    e.currentTarget.querySelectorAll('.tag-action-btn').forEach(btn => btn.style.opacity = '1');
+                  }}
+                  onMouseLeave={e => {
+                    if (editingTag?.id !== tag.id) {
+                      e.currentTarget.style.background = `${tag.color}08`;
+                      e.currentTarget.style.borderColor = `${tag.color}15`;
+                    }
+                    e.currentTarget.querySelectorAll('.tag-action-btn').forEach(btn => btn.style.opacity = '0.5');
                   }}
                 >
+                  {/* Color indicator bar */}
+                  <div style={{
+                    width: 3,
+                    height: 20,
+                    borderRadius: 2,
+                    background: tag.color,
+                    flexShrink: 0,
+                    opacity: 0.8
+                  }} />
+
                   {IconComponent ? (
-                    <IconComponent width={10} height={10} style={{ color: tag.color, flexShrink: 0 }} />
+                    <IconComponent width={13} height={13} style={{ color: tag.color, flexShrink: 0 }} />
                   ) : (
                     <div style={{
-                      width: 8,
-                      height: 8,
+                      width: 10,
+                      height: 10,
                       borderRadius: '50%',
                       background: tag.color,
-                      flexShrink: 0
+                      flexShrink: 0,
+                      boxShadow: `0 0 0 2px ${tag.color}25`
                     }} />
                   )}
 
                   <span style={{
                     flex: 1,
-                    fontSize: 10,
+                    fontSize: 11,
                     fontWeight: 600,
                     color: theme.text,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap'
+                    whiteSpace: 'nowrap',
+                    letterSpacing: '0.01em'
                   }}>
                     {tag.name}
                   </span>
 
-                  <button
-                    onClick={() => handleEditTag(tag)}
-                    style={{
-                      padding: '2px 5px',
-                      background: 'transparent',
-                      border: `1px solid ${theme.border}`,
-                      borderRadius: 3,
-                      color: theme.textMuted,
-                      fontSize: 8,
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDeleteTag(tag)}
-                    style={{
-                      padding: '2px 5px',
-                      background: 'transparent',
-                      border: `1px solid ${theme.indicator}40`,
-                      borderRadius: 3,
-                      color: theme.indicator,
-                      fontSize: 8,
-                      fontWeight: 600,
-                      cursor: 'pointer'
-                    }}
-                  >
-                    ×
-                  </button>
+                  {/* Action buttons */}
+                  <div style={{ display: 'flex', gap: 2, flexShrink: 0 }}>
+                    <button
+                      className="tag-action-btn"
+                      onClick={() => handleEditTag(tag)}
+                      title="Edit tag"
+                      style={{
+                        width: 24,
+                        height: 24,
+                        padding: 0,
+                        background: 'transparent',
+                        border: `1px solid transparent`,
+                        borderRadius: 6,
+                        color: theme.textMuted,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.5,
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = theme.accent + '18';
+                        e.currentTarget.style.borderColor = theme.accent + '30';
+                        e.currentTarget.style.color = theme.accent;
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.color = theme.textMuted;
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+                        <path d="m15 5 4 4"/>
+                      </svg>
+                    </button>
+                    <button
+                      className="tag-action-btn"
+                      onClick={() => handleDeleteTag(tag)}
+                      title="Delete tag"
+                      style={{
+                        width: 24,
+                        height: 24,
+                        padding: 0,
+                        background: 'transparent',
+                        border: `1px solid transparent`,
+                        borderRadius: 6,
+                        color: theme.textMuted,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        opacity: 0.5,
+                        transition: 'all 0.15s ease'
+                      }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.background = (theme.indicator || '#ef4444') + '15';
+                        e.currentTarget.style.borderColor = (theme.indicator || '#ef4444') + '30';
+                        e.currentTarget.style.color = theme.indicator || '#ef4444';
+                        e.currentTarget.style.opacity = '1';
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.background = 'transparent';
+                        e.currentTarget.style.borderColor = 'transparent';
+                        e.currentTarget.style.color = theme.textMuted;
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 6h18"/>
+                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>
+                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               );
             })}
