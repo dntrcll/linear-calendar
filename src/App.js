@@ -8194,15 +8194,36 @@ function SubscriptionContent({ theme, user }) {
     handleManageSubscription();
   };
 
-  // Check for payment success on mount — show confetti
+  // Check for payment success on mount — verify with Stripe and show confetti
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get('payment') === 'success' && user?.uid) {
+      const sessionId = params.get('session_id');
       setShowConfetti(true);
-      getSubscriptionStatus(user.uid).then(status => {
-        setSubscription(status);
+
+      const verifyAndSync = async () => {
+        try {
+          if (sessionId) {
+            const res = await fetch('/api/verify-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ sessionId, userId: user.uid }),
+            });
+            const data = await res.json();
+            if (data.success) {
+              const status = await getSubscriptionStatus(user.uid);
+              setSubscription(status);
+            }
+          } else {
+            const status = await getSubscriptionStatus(user.uid);
+            setSubscription(status);
+          }
+        } catch (err) {
+          console.error('Payment verification failed:', err);
+        }
         window.history.replaceState({}, '', window.location.pathname);
-      });
+      };
+      verifyAndSync();
       setTimeout(() => setShowConfetti(false), 5000);
     }
   }, [user?.uid]);

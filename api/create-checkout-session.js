@@ -40,7 +40,7 @@ module.exports = async (req, res) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.origin || 'https://timeline.solutions'}/?payment=success`,
+      success_url: `${req.headers.origin || 'https://timeline.solutions'}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${req.headers.origin || 'https://timeline.solutions'}/?payment=cancelled`,
       metadata: {
         supabase_user_id: userId,
