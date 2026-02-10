@@ -1103,16 +1103,20 @@ function TimelineOS() {
 
     const setupAuth = async () => {
       try {
-        // Clean up URL after OAuth callback (removes ugly tokens from address bar)
-        if (window.location.hash && window.location.hash.includes('access_token')) {
-          window.history.replaceState({}, document.title, window.location.pathname);
+        // If URL has OAuth tokens, let Supabase process them first
+        const hasOAuthCallback = window.location.hash && window.location.hash.includes('access_token');
+        if (hasOAuthCallback) {
+          // Let Supabase exchange the hash tokens for a session
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
-
-        // Add a small delay to allow OAuth callback to be processed
-        await new Promise(resolve => setTimeout(resolve, 100));
 
         // First check if there's an existing session
         const { data: { session } } = await supabase.auth.getSession();
+
+        // Clean up URL after session is established (removes ugly tokens from address bar)
+        if (hasOAuthCallback) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
 
         if (session?.user) {
           setUser({
@@ -3901,15 +3905,6 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
             </svg>
             <span>Encrypted</span>
-          </div>
-          <span style={{ opacity: 0.3 }}>•</span>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
-              <line x1="1" y1="10" x2="23" y2="10"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-            <span>No credit card</span>
           </div>
         </div>
 
@@ -8097,7 +8092,7 @@ function SubscriptionContent({ theme, user }) {
 
   // Load subscription from Supabase on mount
   React.useEffect(() => {
-    if (user?.id) {
+    if (user?.uid) {
       getSubscriptionStatus(user.id).then(status => {
         setSubscription(status);
       }).catch(() => {
@@ -8106,7 +8101,7 @@ function SubscriptionContent({ theme, user }) {
         if (local) setSubscription(local);
       });
     }
-  }, [user?.id]);
+  }, [user?.uid]);
 
   const isPro = subscription.plan === 'pro' && (subscription.status === 'active' || subscription.trialActive);
   const trialDays = subscription.trialEndsAt ? getTrialDaysRemaining(subscription.trialEndsAt) : 0;
@@ -8116,7 +8111,7 @@ function SubscriptionContent({ theme, user }) {
   const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
 
   const handleStartTrial = async () => {
-    if (!user?.id) return;
+    if (!user?.uid) return;
     setIsProcessing(true);
     try {
       const { error } = await startFreeTrial(user.id);
@@ -8143,7 +8138,7 @@ function SubscriptionContent({ theme, user }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user?.id,
+          userId: user?.uid,
           userEmail: user?.email,
           priceId,
           isYearly: billingPeriod === 'yearly',
@@ -8193,7 +8188,7 @@ function SubscriptionContent({ theme, user }) {
   // Check for payment success on mount
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('payment') === 'success' && user?.id) {
+    if (params.get('payment') === 'success' && user?.uid) {
       // Refresh subscription status from Supabase
       getSubscriptionStatus(user.id).then(status => {
         setSubscription(status);
@@ -8201,7 +8196,7 @@ function SubscriptionContent({ theme, user }) {
         window.history.replaceState({}, '', window.location.pathname);
       });
     }
-  }, [user?.id]);
+  }, [user?.uid]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -8552,7 +8547,7 @@ function SharingContent({ theme, user }) {
   const generateInviteLink = () => {
     setIsGenerating(true);
     // Generate a unique invite code based on user ID and timestamp
-    const inviteCode = btoa(`${user?.id || 'guest'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`).replace(/=/g, '');
+    const inviteCode = btoa(`${user?.uid || 'guest'}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`).replace(/=/g, '');
     const link = `${window.location.origin}/invite/${inviteCode}`;
     setTimeout(() => {
       setInviteLink(link);
