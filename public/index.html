@@ -40,6 +40,22 @@
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    <!-- Static footer for Google crawler (hidden when React loads) -->
+    <div id="static-footer" style="position:fixed;bottom:0;left:0;right:0;text-align:center;padding:12px;font-size:12px;font-family:sans-serif;color:#888;background:#0a0a0b;">
+      <a href="/privacy" style="color:#888;text-decoration:none;">Privacy Policy</a>
+      <span style="margin:0 8px;opacity:0.3;">•</span>
+      <a href="/terms" style="color:#888;text-decoration:none;">Terms of Service</a>
+    </div>
+    <script>
+      // Hide static footer once React renders
+      var checkRoot = setInterval(function() {
+        if (document.getElementById('root') && document.getElementById('root').children.length > 0) {
+          var sf = document.getElementById('static-footer');
+          if (sf) sf.style.display = 'none';
+          clearInterval(checkRoot);
+        }
+      }, 200);
+    </script>
     <script>
       // Clean up any old service workers from previous PWA attempts
       if ('serviceWorker' in navigator) {
