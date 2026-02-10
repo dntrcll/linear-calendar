@@ -8081,23 +8081,30 @@ function EventEditor({ event, currentDate, theme, config, tags, onSave, onDelete
 }
 // Subscription/Billing Content Component
 function SubscriptionContent({ theme, user }) {
-  const [subscription, setSubscription] = React.useState({
-    plan: 'free',
-    status: 'active',
-    trialActive: false,
-    features: SUBSCRIPTION_PLANS.FREE.features
+  const [subscription, setSubscription] = React.useState(() => {
+    // Check localStorage first for cached subscription (set after successful payment)
+    const cached = localSubscriptionManager.getLocalSubscription();
+    if (cached && cached.plan === 'pro') return cached;
+    return {
+      plan: 'free',
+      status: 'active',
+      trialActive: false,
+      features: SUBSCRIPTION_PLANS.FREE.features
+    };
   });
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [billingPeriod, setBillingPeriod] = React.useState('monthly');
 
-  // Load subscription from Supabase on mount
+  // Load subscription from Supabase on mount (if available, overrides cache)
   React.useEffect(() => {
     if (user?.uid) {
       getSubscriptionStatus(user.uid).then(status => {
-        setSubscription(status);
+        if (status && status.plan) {
+          setSubscription(status);
+          localSubscriptionManager.setLocalSubscription(status);
+        }
       }).catch(() => {
-        const local = localSubscriptionManager.getLocalSubscription();
-        if (local) setSubscription(local);
+        // Supabase read failed — keep cached/default state
       });
     }
   }, [user?.uid]);
@@ -8211,12 +8218,18 @@ function SubscriptionContent({ theme, user }) {
             });
             const data = await res.json();
             if (data.success) {
-              const status = await getSubscriptionStatus(user.uid);
-              setSubscription(status);
+              // Use the verified data directly — don't depend on Supabase read
+              const proSub = {
+                plan: 'pro',
+                status: 'active',
+                trialActive: false,
+                currentPeriodEnd: data.currentPeriodEnd,
+                features: SUBSCRIPTION_PLANS.PRO.features,
+              };
+              setSubscription(proSub);
+              // Also cache locally
+              localSubscriptionManager.setLocalSubscription(proSub);
             }
-          } else {
-            const status = await getSubscriptionStatus(user.uid);
-            setSubscription(status);
           }
         } catch (err) {
           console.error('Payment verification failed:', err);
