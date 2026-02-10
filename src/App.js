@@ -144,7 +144,7 @@ class ErrorBoundary extends React.Component {
 }
 
 const APP_META = {
-  name: "Timeline Solutions",
+  name: "Timeline OS",
   version: "1.0.0",
   quoteInterval: 14400000,
   author: "Timeline Solutions",
@@ -9822,7 +9822,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                 letterSpacing: '0.01em',
                 marginBottom: 2
               }}>
-                Timeline Solutions
+                Timeline OS
               </div>
               <div style={{
                 fontSize: 11,
