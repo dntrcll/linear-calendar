@@ -1123,7 +1123,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               ) : (
                 <table style={{
                   width: '100%',
-                  minWidth: Math.max(1000, 750 + habits.length * 130),
+                  minWidth: Math.max(900, 650 + habits.length * 100),
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                   fontSize: 12,
@@ -1137,7 +1137,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         left: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1146,7 +1146,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '80px'
+                        width: '70px',
+                        boxShadow: '2px 0 4px rgba(0,0,0,0.04)'
                       }}>
                         Day
                       </th>
@@ -1155,7 +1156,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1164,16 +1165,16 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '80px'
+                        width: '55px'
                       }}>
-                        Mood
+                        Vibe
                       </th>
                       <th style={{
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1182,7 +1183,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '90px'
+                        width: '65px'
                       }}>
                         Sleep
                       </th>
@@ -1191,7 +1192,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1200,16 +1201,16 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '80px'
+                        width: '65px'
                       }}>
-                        Mood /10
+                        Mood
                       </th>
                       <th style={{
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1218,16 +1219,16 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '80px'
+                        width: '65px'
                       }}>
-                        Energy /10
+                        Energy
                       </th>
                       <th style={{
                         position: 'sticky',
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
@@ -1236,7 +1237,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         fontFamily: theme.fontFamily,
                         letterSpacing: '0.08em',
                         textTransform: 'uppercase',
-                        width: '90px'
+                        width: '65px'
                       }}>
                         Workout
                       </th>
@@ -1245,12 +1246,12 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         top: 0,
                         background: config.darkMode ? '#0f172a' : '#ffffff',
                         borderBottom: `2px solid ${theme.border}`,
-                        padding: '16px 20px',
+                        padding: '10px 12px',
                         fontSize: 10,
                         fontWeight: 700,
                         color: theme.textMuted,
                         textAlign: 'left',
-                        minWidth: 240,
+                        minWidth: 160,
                         maxWidth: 400,
                         zIndex: 100,
                         fontFamily: theme.fontFamily,
@@ -1276,7 +1277,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             borderBottom: selectedHabit === habit.id
                               ? `2px solid ${accentColor}60`
                               : `2px solid ${theme.border}`,
-                            padding: '16px 14px',
+                            padding: '10px 12px',
                             fontSize: 10,
                             fontWeight: 700,
                             color: habit.habit_type === 'build' ? '#10b981' : '#ef4444',
@@ -1415,13 +1416,14 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             left: 0,
                             zIndex: 5,
                             background: config.darkMode ? '#0f172a' : '#ffffff',
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
                             fontSize: 13,
                             fontWeight: 600,
                             color: theme.textSec,
                             fontFamily: theme.fontFamily,
-                            width: '80px'
+                            width: '70px',
+                            boxShadow: '2px 0 4px rgba(0,0,0,0.04)'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <span style={{ fontWeight: 700 }}>{dayNum}</span>
@@ -1434,11 +1436,11 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             </div>
                           </td>
                           <td style={{
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
                             textAlign: 'center',
                             position: 'relative',
-                            width: '80px'
+                            width: '55px'
                           }}>
                             {editingMood === dayNum ? (
                               <div style={{
@@ -1486,10 +1488,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             </span>
                           </td>
                           <td style={{
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
                             textAlign: 'center',
-                            width: '90px'
+                            width: '65px'
                           }}>
                             {editingSleep === dayNum ? (
                               <input
@@ -1535,10 +1537,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           </td>
                           {/* Mood Score */}
                           <td style={{
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
                             textAlign: 'center',
-                            width: '80px'
+                            width: '65px'
                           }}>
                             {editingMoodScore === dayNum ? (
                               <input
@@ -1583,10 +1585,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           </td>
                           {/* Energy */}
                           <td style={{
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
                             textAlign: 'center',
-                            width: '80px'
+                            width: '65px'
                           }}>
                             {editingEnergy === dayNum ? (
                               <input
@@ -1633,10 +1635,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                           <td
                             onClick={() => handleWorkoutToggle(dayNum)}
                             style={{
-                              padding: '14px 20px',
+                              padding: '8px 12px',
                               borderBottom: `1px solid ${theme.border}`,
                               textAlign: 'center',
-                              width: '90px',
+                              width: '65px',
                               cursor: 'pointer',
                               fontSize: 18,
                               fontWeight: 700,
@@ -1648,9 +1650,9 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                             {getWorkoutForDay(dayNum) ? '✓' : '·'}
                           </td>
                           <td style={{
-                            padding: '14px 20px',
+                            padding: '8px 12px',
                             borderBottom: `1px solid ${theme.border}`,
-                            minWidth: 240,
+                            minWidth: 160,
                             maxWidth: 400
                           }}>
                             {editingMemorable === dayNum ? (
@@ -1718,7 +1720,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                               key={habit.id}
                               onClick={() => handleToggle(dayNum, habit.id)}
                               style={{
-                                padding: '14px',
+                                padding: '8px 12px',
                                 borderBottom: `1px solid ${theme.border}`,
                                 textAlign: 'center',
                                 cursor: 'pointer',

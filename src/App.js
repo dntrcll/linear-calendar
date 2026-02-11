@@ -1160,12 +1160,15 @@ function TimelineOS() {
         const elapsed = Date.now() - lastLoadTimeRef.current;
         if (elapsed > 60000) {
           lastLoadTimeRef.current = Date.now();
-          // Silently reload without showing loading state
+          // Silently reload without showing loading state (with timeout for stale connections)
           (async () => {
             try {
-              const [eventsResult, tagsResult] = await Promise.all([
-                loadEvents(user.uid),
-                loadTags(user.uid)
+              const [eventsResult, tagsResult] = await Promise.race([
+                Promise.all([
+                  loadEvents(user.uid),
+                  loadTags(user.uid)
+                ]),
+                new Promise((resolve) => setTimeout(() => resolve([{ data: null, error: 'timeout' }, { data: null, error: 'timeout' }]), 8000))
               ]);
               if (!eventsResult.error && eventsResult.data) {
                 setEvents(eventsResult.data.filter(e => !e.deleted));
@@ -5905,7 +5908,7 @@ flexShrink: 0
                 textAlign: "center",
                 fontSize: CELL_SIZE < 20 ? 8 : 10,
                 fontWeight: 500,
-                color: isWeekendHeader ? '#F97316' : theme.textMuted,
+                color: isWeekendHeader ? theme.weekendText : theme.textMuted,
                 padding: "2px 0",
                 fontFamily: 'SF Mono, Menlo, Monaco, monospace',
                 letterSpacing: '0.01em'
@@ -6005,7 +6008,7 @@ flexShrink: 0
                       : hasEvents
                       ? theme.text
                       : isWeekend
-                      ? '#F97316'
+                      ? theme.weekendText
                       : theme.textMuted
                   }}
                 >
@@ -6097,8 +6100,8 @@ flexShrink: 0
       <div style={{
         width: gridTotalWidth,
         maxWidth: '100%',
-        marginTop: 8,
-        padding: '12px 14px',
+        marginTop: 6,
+        padding: '10px 12px',
         background: config.darkMode
           ? 'rgba(255,255,255,0.02)'
           : 'rgba(0,0,0,0.015)',
@@ -6106,36 +6109,48 @@ flexShrink: 0
         borderRadius: 10,
         flexShrink: 0
       }}>
-        {/* Section Header */}
+        {/* Section Header + Stat Pills */}
         <div style={{
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 8
+          display: 'flex', alignItems: 'center', gap: 6,
+          marginBottom: 6, flexWrap: 'wrap'
         }}>
           <span style={{
             fontSize: 10, fontWeight: 600, color: theme.textMuted,
-            letterSpacing: '0.08em', textTransform: 'uppercase'
+            letterSpacing: '0.08em', textTransform: 'uppercase',
+            marginRight: 4
           }}>
             {year} Insights
           </span>
-          {upcomingEvents > 0 && (
-            <div style={{
+          {[
+            { label: 'Events', value: totalYearEvents, color: accentColor },
+            { label: 'Peak', value: busiestMonth },
+            { label: 'Day', value: busiestDayName },
+            { label: 'Active', value: uniqueDays },
+            { label: 'Upcoming', value: upcomingEvents, color: accentColor },
+            { label: 'Avg/Mo', value: avgEventsPerMonth }
+          ].map((stat, i) => (
+            <div key={i} style={{
               display: 'flex', alignItems: 'center', gap: 4,
-              padding: '3px 8px', background: `${accentColor}08`,
-              borderRadius: 5, border: `1px solid ${accentColor}15`
+              padding: '2px 7px',
+              background: config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.6)',
+              borderRadius: 4,
+              border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'}`
             }}>
-              <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: accentColor }}>
-                {upcomingEvents}
+              <span style={{ fontSize: 8, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.03em', textTransform: 'uppercase' }}>
+                {stat.label}
               </span>
-              <span style={{ fontSize: 9, color: theme.textMuted }}>upcoming</span>
+              <span style={{ fontSize: 10, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: stat.color || theme.text, letterSpacing: '-0.02em' }}>
+                {stat.value}
+              </span>
             </div>
-          )}
+          ))}
         </div>
 
-        {/* Two-column layout on wide, stacked on narrow */}
+        {/* Three-column layout on wide, stacked on narrow */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr',
-          gap: 8
+          gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr 1fr',
+          gap: 6
         }}>
           {/* Monthly Activity Chart */}
           <div style={{
@@ -6219,81 +6234,49 @@ flexShrink: 0
               </div>
             )}
           </div>
-        </div>
 
-        {/* Stats Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(6, 1fr)',
-          gap: 6,
-          marginTop: 8
-        }}>
-          {[
-            { label: 'Total Events', value: totalYearEvents, color: accentColor },
-            { label: 'Peak Month', value: busiestMonth, color: theme.text },
-            { label: 'Busiest Day', value: busiestDayName, color: theme.text },
-            { label: 'Active Days', value: uniqueDays, color: theme.textSec },
-            { label: 'Upcoming', value: upcomingEvents, color: accentColor },
-            { label: 'Avg/Month', value: avgEventsPerMonth, color: theme.textSec }
-          ].map((stat, i) => (
-            <div key={i} style={{
-              padding: '6px 8px',
-              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-              borderRadius: 6,
-              border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
-            }}>
-              <div style={{ fontSize: 8, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 2 }}>
-                {stat.label}
-              </div>
-              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: stat.color, letterSpacing: '-0.02em' }}>
-                {stat.value}
-              </div>
+          {/* Day-of-Week Activity */}
+          <div style={{
+            padding: '8px 10px',
+            background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+            borderRadius: 8,
+            border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
+          }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Day-of-Week Activity
             </div>
-          ))}
-        </div>
-
-        {/* Weekly Heatmap */}
-        <div style={{
-          marginTop: 8,
-          padding: '6px 10px',
-          background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-          borderRadius: 8,
-          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
-        }}>
-          <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            Day-of-Week Activity
-          </div>
-          <div style={{ display: 'flex', gap: 4 }}>
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => {
-              const intensity = maxDayOfWeek > 0 ? dayOfWeekCounts[i] / maxDayOfWeek : 0;
-              const isBusiest = i === busiestDayIndex && dayOfWeekCounts[i] > 0;
-              return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                  <div style={{
-                    width: '100%', height: 18, borderRadius: 3,
-                    background: isBusiest ? accentColor
-                      : intensity > 0 ? `${accentColor}${Math.round(intensity * 60 + 15).toString(16).padStart(2, '0')}`
-                      : (config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    transition: 'background 0.3s ease'
-                  }}>
-                    <span style={{
-                      fontSize: 8, fontWeight: 600, fontFamily: 'SF Mono, monospace',
-                      color: isBusiest ? (config.darkMode ? '#000' : '#fff') : (intensity > 0.5 ? '#fff' : theme.textMuted)
+            <div style={{ display: 'flex', gap: 4 }}>
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => {
+                const intensity = maxDayOfWeek > 0 ? dayOfWeekCounts[i] / maxDayOfWeek : 0;
+                const isBusiest = i === busiestDayIndex && dayOfWeekCounts[i] > 0;
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
+                    <div style={{
+                      width: '100%', height: 14, borderRadius: 3,
+                      background: isBusiest ? accentColor
+                        : intensity > 0 ? `${accentColor}${Math.round(intensity * 60 + 15).toString(16).padStart(2, '0')}`
+                        : (config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      transition: 'background 0.3s ease'
                     }}>
-                      {dayOfWeekCounts[i] || ''}
+                      <span style={{
+                        fontSize: 8, fontWeight: 600, fontFamily: 'SF Mono, monospace',
+                        color: isBusiest ? (config.darkMode ? '#000' : '#fff') : (intensity > 0.5 ? '#fff' : theme.textMuted)
+                      }}>
+                        {dayOfWeekCounts[i] || ''}
+                      </span>
+                    </div>
+                    <span style={{
+                      fontSize: 8, fontWeight: isBusiest ? 700 : 500,
+                      color: isBusiest ? accentColor : theme.textMuted,
+                      fontFamily: 'SF Mono, monospace'
+                    }}>
+                      {day}
                     </span>
                   </div>
-                  <span style={{
-                    fontSize: 8, fontWeight: isBusiest ? 700 : 500,
-                    color: isBusiest ? accentColor : theme.textMuted,
-                    fontFamily: 'SF Mono, monospace'
-                  }}>
-                    {day}
-                  </span>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
