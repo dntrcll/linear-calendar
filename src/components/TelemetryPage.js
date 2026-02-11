@@ -386,13 +386,13 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   return (
     <div style={{
-      height: 'calc(100vh - 120px)',
+      height: 'calc(100vh - 92px)',
       overflow: 'auto',
       padding: '16px',
       fontFamily: theme.fontFamily
     }}>
       <div style={{
-        height: '100%',
+        minHeight: '100%',
         maxWidth: 1600,
         margin: '0 auto',
         display: 'flex',
@@ -776,9 +776,9 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             flex: 1,
             display: isMobile ? 'flex' : 'grid',
             flexDirection: isMobile ? 'column' : undefined,
-            gridTemplateColumns: isMobile ? undefined : (isTablet ? '1fr 350px' : '1fr 400px'),
+            gridTemplateColumns: isMobile ? undefined : (isTablet ? '1fr 280px' : '1fr minmax(300px, 380px)'),
             gap: 12,
-            overflow: 'hidden'
+            overflow: 'visible'
           }}>
             {/* Habit Grid */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0 }}>
@@ -981,6 +981,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               borderRadius: selectedHabit && !editingHabit ? '0 0 10px 10px' : 10,
               overflowX: 'auto',
               overflowY: 'auto',
+              flex: 1,
+              minHeight: 0,
               maxHeight: isMobile ? '60vh' : undefined,
               WebkitOverflowScrolling: 'touch'
             }}>
@@ -999,7 +1001,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               ) : (
                 <table style={{
                   width: '100%',
-                  minWidth: 600 + habits.length * 120,
+                  minWidth: Math.max(800, 500 + habits.length * 130),
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                   fontSize: 12,

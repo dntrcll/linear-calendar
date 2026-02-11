@@ -2552,7 +2552,7 @@ function TimelineOS() {
             style={{
               flex: 1,
               overflow: "auto",
-              padding: viewMode === 'year' ? "8px 12px" : "20px",
+              padding: viewMode === 'year' ? "10px 16px" : "20px",
               background: theme.bg
             }}
           >
@@ -5713,9 +5713,10 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-// Responsive cell size — fill available width exactly (sidebar + padding 24px + month label 32px + scrollbar buffer 16px)
-const contentWidth = windowWidth - (config.showSidebar && !isNarrow ? sidebarWidth : 0) - 24 - 32 - 16;
-const CELL_SIZE = Math.max(14, Math.min(32, Math.floor(contentWidth / 37)));
+// Responsive cell size — fill available width exactly
+const yearContentWidth = windowWidth - (config.showSidebar && !isNarrow ? sidebarWidth : 0) - 40;
+const CELL_SIZE = Math.max(16, Math.min(34, Math.floor((yearContentWidth - 40) / 37)));
+const gridTotalWidth = 40 + 37 * CELL_SIZE;
 
 // Calculate year progress
 const now = new Date();
@@ -5748,17 +5749,19 @@ width: "100%",
 height: "100%",
 display: "flex",
 flexDirection: "column",
-gap: 2,
+gap: 0,
 overflowX: "hidden",
 overflowY: "auto",
-padding: 0
+padding: '0 8px',
+alignItems: 'center'
 }}>
 {/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
 <div className="year-progress-bar" style={{
-width: "100%",
-margin: "0 auto",
-padding: '6px 12px',
+width: gridTotalWidth,
+maxWidth: '100%',
+padding: '8px 14px',
+marginBottom: 6,
 background: config.darkMode
   ? 'linear-gradient(135deg, #1a1a1d 0%, #18181b 100%)'
   : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
@@ -5863,13 +5866,11 @@ lineHeight: 1
 )}
 
 <div className="year-calendar-grid" style={{
-width: "100%",
-margin: "0 auto",
+width: gridTotalWidth,
+maxWidth: '100%',
 display: "flex",
 flexDirection: "column",
-gap: 0,
-flex: 1,
-minHeight: 0
+gap: 0
 }}>
 <div style={{
 position: "sticky",
@@ -5877,8 +5878,8 @@ top: 0,
 zIndex: 10,
 background: theme.bg,
 borderBottom: `1px solid ${theme.border}`,
-paddingBottom: 2,
-marginBottom: 2,
+paddingBottom: 4,
+marginBottom: 4,
 flexShrink: 0
 }}>
 <div style={{
@@ -5887,7 +5888,7 @@ alignItems: "center",
 gap: 0
 }}>
 <div style={{
-width: 32,
+width: 36,
 flexShrink: 0
 }} />
         <div style={{
@@ -5902,7 +5903,7 @@ flexShrink: 0
               style={{
                 width: CELL_SIZE,
                 textAlign: "center",
-                fontSize: CELL_SIZE < 22 ? 8 : 10,
+                fontSize: CELL_SIZE < 20 ? 8 : 10,
                 fontWeight: 500,
                 color: isWeekendHeader ? '#F97316' : theme.textMuted,
                 padding: "2px 0",
@@ -5932,12 +5933,12 @@ flexShrink: 0
           }}
         >
           <div style={{
-            width: 32,
+            width: 36,
             flexShrink: 0,
-            fontSize: 10,
-            fontWeight: 500,
+            fontSize: 11,
+            fontWeight: 600,
             color: accentColor,
-            paddingRight: 4,
+            paddingRight: 6,
             textAlign: "right",
             fontFamily: 'SF Mono, Menlo, Monaco, monospace',
             letterSpacing: '-0.01em'
@@ -5993,7 +5994,7 @@ flexShrink: 0
                     cursor: "pointer",
                     position: "relative",
                     transition: "opacity 0.15s",
-                    fontSize: CELL_SIZE < 22 ? 9 : 12,
+                    fontSize: CELL_SIZE < 20 ? 10 : 12,
                     fontWeight: 500,
                     fontFamily: 'SF Mono, Menlo, Monaco, monospace',
                     letterSpacing: '-0.01em',
@@ -6094,9 +6095,10 @@ flexShrink: 0
 
     return (
       <div style={{
-        width: "100%",
-        margin: "4px auto 0",
-        padding: '8px 10px',
+        width: gridTotalWidth,
+        maxWidth: '100%',
+        marginTop: 8,
+        padding: '12px 14px',
         background: config.darkMode
           ? 'rgba(255,255,255,0.02)'
           : 'rgba(0,0,0,0.015)',
@@ -6145,7 +6147,7 @@ flexShrink: 0
             <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Monthly Activity
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 48 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 56 }}>
               {eventsByMonth.map((count, i) => {
                 const h = maxEvents > 0 ? Math.max(3, (count / maxEvents) * 40) : 3;
                 const isBusiest = i === busiestMonthIndex && count > 0;
