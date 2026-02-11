@@ -2553,7 +2553,7 @@ function TimelineOS() {
             style={{
               flex: 1,
               overflow: "auto",
-              padding: "20px",
+              padding: viewMode === 'year' ? "8px 12px" : "20px",
               background: theme.bg
             }}
           >
@@ -5714,9 +5714,9 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-// Responsive cell size based on available width
-const availableWidth = windowWidth - (config.showSidebar && !isNarrow ? sidebarWidth : 0) - 56;
-const CELL_SIZE = Math.max(18, Math.min(30, Math.floor((availableWidth - 36) / 37)));
+// Responsive cell size — fill available width exactly (sidebar + padding 24px + month label 32px + scrollbar buffer 16px)
+const contentWidth = windowWidth - (config.showSidebar && !isNarrow ? sidebarWidth : 0) - 24 - 32 - 16;
+const CELL_SIZE = Math.max(14, Math.min(32, Math.floor(contentWidth / 37)));
 
 // Calculate year progress
 const now = new Date();
@@ -5749,19 +5749,16 @@ width: "100%",
 height: "100%",
 display: "flex",
 flexDirection: "column",
-gap: 6,
-overflowX: "auto",
-overflowY: "auto",
-padding: '0 4px',
-WebkitOverflowScrolling: 'touch'
+gap: 2,
+overflow: "hidden",
+padding: 0
 }}>
 {/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
 <div className="year-progress-bar" style={{
 width: "100%",
-maxWidth: 36 + 37 * CELL_SIZE,
 margin: "0 auto",
-padding: '8px 14px',
+padding: '6px 12px',
 background: config.darkMode
   ? 'linear-gradient(135deg, #1a1a1d 0%, #18181b 100%)'
   : 'linear-gradient(135deg, #ffffff 0%, #fafafa 100%)',
@@ -5772,11 +5769,10 @@ boxShadow: config.darkMode
   : 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -1px 0 rgba(0,0,0,0.04)',
 display: 'flex',
 alignItems: 'center',
-gap: 12,
+gap: 10,
 position: 'relative',
 overflow: 'hidden',
-flexShrink: 0,
-flexWrap: 'wrap'
+flexShrink: 0
 }}>
 
 {/* Left side - Text content */}
@@ -5785,7 +5781,7 @@ flexWrap: 'wrap'
 display: 'flex',
 alignItems: 'baseline',
 gap: 8,
-marginBottom: 4
+marginBottom: 3
 }}>
 <h3 style={{
 fontSize: 13,
@@ -5868,12 +5864,12 @@ lineHeight: 1
 
 <div className="year-calendar-grid" style={{
 width: "100%",
-maxWidth: 36 + 37 * CELL_SIZE,
 margin: "0 auto",
 display: "flex",
 flexDirection: "column",
 gap: 0,
-flexShrink: 0
+flex: 1,
+minHeight: 0
 }}>
 <div style={{
 position: "sticky",
@@ -5881,8 +5877,8 @@ top: 0,
 zIndex: 10,
 background: theme.bg,
 borderBottom: `1px solid ${theme.border}`,
-paddingBottom: 3,
-marginBottom: 3,
+paddingBottom: 2,
+marginBottom: 2,
 flexShrink: 0
 }}>
 <div style={{
@@ -5891,7 +5887,7 @@ alignItems: "center",
 gap: 0
 }}>
 <div style={{
-width: 36,
+width: 32,
 flexShrink: 0
 }} />
         <div style={{
@@ -5906,10 +5902,10 @@ flexShrink: 0
               style={{
                 width: CELL_SIZE,
                 textAlign: "center",
-                fontSize: 10,
+                fontSize: CELL_SIZE < 22 ? 8 : 10,
                 fontWeight: 500,
                 color: isWeekendHeader ? '#F97316' : theme.textMuted,
-                padding: "3px 0",
+                padding: "2px 0",
                 fontFamily: 'SF Mono, Menlo, Monaco, monospace',
                 letterSpacing: '0.01em'
               }}
@@ -5936,12 +5932,12 @@ flexShrink: 0
           }}
         >
           <div style={{
-            width: 36,
+            width: 32,
             flexShrink: 0,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: 500,
             color: accentColor,
-            paddingRight: 8,
+            paddingRight: 4,
             textAlign: "right",
             fontFamily: 'SF Mono, Menlo, Monaco, monospace',
             letterSpacing: '-0.01em'
@@ -5997,7 +5993,7 @@ flexShrink: 0
                     cursor: "pointer",
                     position: "relative",
                     transition: "opacity 0.15s",
-                    fontSize: 12,
+                    fontSize: CELL_SIZE < 22 ? 9 : 12,
                     fontWeight: 500,
                     fontFamily: 'SF Mono, Menlo, Monaco, monospace',
                     letterSpacing: '-0.01em',
@@ -6096,25 +6092,22 @@ flexShrink: 0
       .slice(0, 6);
     const maxCategoryCount = categoryBreakdown.length > 0 ? categoryBreakdown[0].count : 1;
 
-    const insightGridMaxWidth = 36 + 37 * CELL_SIZE;
-
     return (
       <div style={{
         width: "100%",
-        maxWidth: insightGridMaxWidth,
-        margin: "10px auto",
-        padding: '14px 16px',
+        margin: "4px auto 0",
+        padding: '8px 10px',
         background: config.darkMode
           ? 'rgba(255,255,255,0.02)'
           : 'rgba(0,0,0,0.015)',
         border: `1px solid ${theme.border}`,
-        borderRadius: 12,
+        borderRadius: 10,
         flexShrink: 0
       }}>
         {/* Section Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginBottom: 14
+          marginBottom: 8
         }}>
           <span style={{
             fontSize: 10, fontWeight: 600, color: theme.textMuted,
@@ -6140,32 +6133,32 @@ flexShrink: 0
         <div style={{
           display: 'grid',
           gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr',
-          gap: 14
+          gap: 8
         }}>
           {/* Monthly Activity Chart */}
           <div style={{
-            padding: '12px 14px',
+            padding: '8px 10px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-            borderRadius: 10,
+            borderRadius: 8,
             border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
           }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Monthly Activity
             </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height: 48 }}>
               {eventsByMonth.map((count, i) => {
-                const h = maxEvents > 0 ? Math.max(4, (count / maxEvents) * 72) : 4;
+                const h = maxEvents > 0 ? Math.max(3, (count / maxEvents) * 40) : 3;
                 const isBusiest = i === busiestMonthIndex && count > 0;
                 const isCurrent = i === now.getMonth() && year === now.getFullYear();
                 return (
-                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                     {count > 0 && (
-                      <span style={{ fontSize: 8, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: isBusiest ? accentColor : theme.textMuted }}>
+                      <span style={{ fontSize: 7, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: isBusiest ? accentColor : theme.textMuted }}>
                         {count}
                       </span>
                     )}
                     <div style={{
-                      width: '100%', maxWidth: 28, height: h, borderRadius: 3,
+                      width: '100%', maxWidth: 24, height: h, borderRadius: 2,
                       background: isBusiest ? accentColor
                         : isCurrent ? `${accentColor}aa`
                         : count > 0 ? (config.darkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)')
@@ -6176,10 +6169,10 @@ flexShrink: 0
                 );
               })}
             </div>
-            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+            <div style={{ display: 'flex', gap: 3, marginTop: 3 }}>
               {fullMonthNames.map((m, i) => (
                 <span key={i} style={{
-                  flex: 1, textAlign: 'center', fontSize: 8,
+                  flex: 1, textAlign: 'center', fontSize: 7,
                   fontFamily: 'SF Mono, monospace',
                   fontWeight: i === busiestMonthIndex ? 700 : 400,
                   color: i === busiestMonthIndex ? accentColor : theme.textMuted
@@ -6192,31 +6185,31 @@ flexShrink: 0
 
           {/* Category Breakdown */}
           <div style={{
-            padding: '12px 14px',
+            padding: '8px 10px',
             background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-            borderRadius: 10,
+            borderRadius: 8,
             border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
           }}>
-            <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 6, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
               Category Breakdown
             </div>
             {categoryBreakdown.length === 0 ? (
-              <div style={{ fontSize: 11, color: theme.textMuted, opacity: 0.5, padding: '20px 0', textAlign: 'center' }}>No events yet</div>
+              <div style={{ fontSize: 10, color: theme.textMuted, opacity: 0.5, padding: '10px 0', textAlign: 'center' }}>No events yet</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
                 {categoryBreakdown.map((cat, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <div style={{ width: 6, height: 6, borderRadius: 3, background: cat.color, flexShrink: 0 }} />
-                    <span style={{ fontSize: 11, color: theme.text, minWidth: 70, fontWeight: 500 }}>{cat.name}</span>
-                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ width: 5, height: 5, borderRadius: 3, background: cat.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, color: theme.text, minWidth: 60, fontWeight: 500 }}>{cat.name}</span>
+                    <div style={{ flex: 1, height: 4, borderRadius: 2, background: config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', overflow: 'hidden' }}>
                       <div style={{
                         width: `${(cat.count / maxCategoryCount) * 100}%`,
-                        height: '100%', borderRadius: 3,
+                        height: '100%', borderRadius: 2,
                         background: cat.color, opacity: 0.8,
                         transition: 'width 0.3s ease'
                       }} />
                     </div>
-                    <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: theme.textSec, minWidth: 24, textAlign: 'right' }}>
+                    <span style={{ fontSize: 9, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: theme.textSec, minWidth: 20, textAlign: 'right' }}>
                       {cat.count}
                     </span>
                   </div>
@@ -6229,9 +6222,9 @@ flexShrink: 0
         {/* Stats Grid */}
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
-          gap: 8,
-          marginTop: 12
+          gridTemplateColumns: 'repeat(6, 1fr)',
+          gap: 6,
+          marginTop: 8
         }}>
           {[
             { label: 'Total Events', value: totalYearEvents, color: accentColor },
@@ -6242,15 +6235,15 @@ flexShrink: 0
             { label: 'Avg/Month', value: avgEventsPerMonth, color: theme.textSec }
           ].map((stat, i) => (
             <div key={i} style={{
-              padding: '10px 12px',
+              padding: '6px 8px',
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-              borderRadius: 8,
+              borderRadius: 6,
               border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
             }}>
-              <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
+              <div style={{ fontSize: 8, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 2 }}>
                 {stat.label}
               </div>
-              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: stat.color, letterSpacing: '-0.02em' }}>
+              <div style={{ fontSize: 13, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: stat.color, letterSpacing: '-0.02em' }}>
                 {stat.value}
               </div>
             </div>
@@ -6259,23 +6252,23 @@ flexShrink: 0
 
         {/* Weekly Heatmap */}
         <div style={{
-          marginTop: 12,
-          padding: '10px 14px',
+          marginTop: 8,
+          padding: '6px 10px',
           background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-          borderRadius: 10,
+          borderRadius: 8,
           border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
         }}>
-          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+          <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, marginBottom: 5, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
             Day-of-Week Activity
           </div>
-          <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', gap: 4 }}>
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => {
               const intensity = maxDayOfWeek > 0 ? dayOfWeekCounts[i] / maxDayOfWeek : 0;
               const isBusiest = i === busiestDayIndex && dayOfWeekCounts[i] > 0;
               return (
-                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
                   <div style={{
-                    width: '100%', height: 24, borderRadius: 4,
+                    width: '100%', height: 18, borderRadius: 3,
                     background: isBusiest ? accentColor
                       : intensity > 0 ? `${accentColor}${Math.round(intensity * 60 + 15).toString(16).padStart(2, '0')}`
                       : (config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
@@ -6283,14 +6276,14 @@ flexShrink: 0
                     transition: 'background 0.3s ease'
                   }}>
                     <span style={{
-                      fontSize: 9, fontWeight: 600, fontFamily: 'SF Mono, monospace',
+                      fontSize: 8, fontWeight: 600, fontFamily: 'SF Mono, monospace',
                       color: isBusiest ? (config.darkMode ? '#000' : '#fff') : (intensity > 0.5 ? '#fff' : theme.textMuted)
                     }}>
                       {dayOfWeekCounts[i] || ''}
                     </span>
                   </div>
                   <span style={{
-                    fontSize: 9, fontWeight: isBusiest ? 700 : 500,
+                    fontSize: 8, fontWeight: isBusiest ? 700 : 500,
                     color: isBusiest ? accentColor : theme.textMuted,
                     fontFamily: 'SF Mono, monospace'
                   }}>
