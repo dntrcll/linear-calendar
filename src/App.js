@@ -2354,10 +2354,10 @@ function TimelineOS() {
           zIndex: 10
         }}>
           {/* Left Section - Date & Navigation */}
-          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", gap: isCompact ? 8 : 16, minWidth: 0 }}>
             {viewMode !== 'day' && (
               <h2 style={{
-                fontSize: isCompact ? 20 : 28,
+                fontSize: isCompact ? 18 : 28,
                 fontWeight: 600,
                 fontFamily: theme.fontDisplay,
                 letterSpacing: '-0.02em',
@@ -2472,12 +2472,11 @@ function TimelineOS() {
             </div>
           </div>
 
-          {/* Center Section - View Mode Tabs (Always Centered) */}
+          {/* Center Section - View Mode Tabs */}
           <div style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
+            ...(isCompact ? {} : { position: 'absolute', left: '50%', transform: 'translateX(-50%)' }),
             display: "flex",
+            flexShrink: 0,
             background: theme.premiumGlass || theme.borderLight,
             backdropFilter: 'blur(20px)',
             WebkitBackdropFilter: 'blur(20px)',
@@ -5750,7 +5749,8 @@ height: "100%",
 display: "flex",
 flexDirection: "column",
 gap: 2,
-overflow: "hidden",
+overflowX: "hidden",
+overflowY: "auto",
 padding: 0
 }}>
 {/* Year Progress Indicator - Ultra Premium Pill */}
@@ -6117,14 +6117,14 @@ flexShrink: 0
           </span>
           {upcomingEvents > 0 && (
             <div style={{
-              display: 'flex', alignItems: 'center', gap: 5,
-              padding: '4px 10px', background: `${accentColor}12`,
-              borderRadius: 6, border: `1px solid ${accentColor}20`
+              display: 'flex', alignItems: 'center', gap: 4,
+              padding: '3px 8px', background: `${accentColor}08`,
+              borderRadius: 5, border: `1px solid ${accentColor}15`
             }}>
-              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: accentColor }}>
+              <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: accentColor }}>
                 {upcomingEvents}
               </span>
-              <span style={{ fontSize: 10, color: theme.textSec }}>upcoming</span>
+              <span style={{ fontSize: 9, color: theme.textMuted }}>upcoming</span>
             </div>
           )}
         </div>

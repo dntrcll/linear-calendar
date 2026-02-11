@@ -387,7 +387,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   return (
     <div style={{
       height: 'calc(100vh - 120px)',
-      overflow: 'hidden',
+      overflow: 'auto',
       padding: '16px',
       fontFamily: theme.fontFamily
     }}>
@@ -397,7 +397,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
         margin: '0 auto',
         display: 'flex',
         flexDirection: 'column',
-        gap: 12
+        gap: 12,
+        minWidth: 0
       }}>
         {/* Header Row: Month Navigation + Stats */}
         <div style={{
@@ -978,8 +979,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
               borderRadius: selectedHabit && !editingHabit ? '0 0 10px 10px' : 10,
-              overflow: 'auto',
-              maxHeight: isMobile ? '60vh' : undefined
+              overflowX: 'auto',
+              overflowY: 'auto',
+              maxHeight: isMobile ? '60vh' : undefined,
+              WebkitOverflowScrolling: 'touch'
             }}>
               {habits.length === 0 ? (
                 <div style={{
@@ -996,6 +999,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               ) : (
                 <table style={{
                   width: '100%',
+                  minWidth: 600 + habits.length * 120,
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                   fontSize: 12,
