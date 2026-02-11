@@ -387,12 +387,12 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   return (
     <div style={{
       height: 'calc(100vh - 92px)',
-      overflow: 'auto',
+      overflow: 'hidden',
       padding: '16px',
       fontFamily: theme.fontFamily
     }}>
       <div style={{
-        minHeight: '100%',
+        height: '100%',
         maxWidth: 1600,
         margin: '0 auto',
         display: 'flex',
@@ -774,11 +774,11 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
         ) : (
           <div style={{
             flex: 1,
-            display: isMobile ? 'flex' : 'grid',
-            flexDirection: isMobile ? 'column' : undefined,
-            gridTemplateColumns: isMobile ? undefined : (isTablet ? '1fr 280px' : '1fr minmax(300px, 380px)'),
+            display: 'flex',
+            flexDirection: 'column',
             gap: 12,
-            overflow: 'visible'
+            minHeight: 0,
+            overflow: 'hidden'
           }}>
             {/* Habit Grid */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 0, minHeight: 0 }}>
@@ -983,7 +983,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               overflowY: 'auto',
               flex: 1,
               minHeight: 0,
-              maxHeight: isMobile ? '60vh' : undefined,
               WebkitOverflowScrolling: 'touch'
             }}>
               {habits.length === 0 ? (
@@ -1454,19 +1453,27 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
             </div>
             </div>
 
-            {/* Habit Trends Chart - Premium Vertical */}
+            {/* Habit Trends Chart - Horizontal Bottom Bar */}
             <div style={{
+              flexShrink: 0,
+              height: 200,
               background: config.darkMode ? 'rgba(255,255,255,0.02)' : '#fff',
               border: `1px solid ${theme.border}`,
               borderRadius: 10,
               overflow: 'hidden',
               display: 'flex',
-              flexDirection: 'column'
+              flexDirection: 'row'
             }}>
-              {/* Chart Header */}
+              {/* Title block */}
               <div style={{
-                padding: '14px 16px',
-                borderBottom: `1px solid ${theme.border}`,
+                width: 100,
+                flexShrink: 0,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '12px 8px',
+                borderRight: `1px solid ${theme.border}`,
                 background: config.darkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'
               }}>
                 <h3 style={{
@@ -1476,22 +1483,26 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                   margin: 0,
                   marginBottom: 4,
                   letterSpacing: '-0.01em',
-                  fontFamily: theme.fontFamily
+                  fontFamily: theme.fontFamily,
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)'
                 }}>
                   Habit Trends
                 </h3>
                 <p style={{
-                  fontSize: 10,
+                  fontSize: 9,
                   color: theme.textMuted,
                   margin: 0,
-                  fontFamily: theme.fontFamily
+                  fontFamily: theme.fontFamily,
+                  textAlign: 'center',
+                  marginTop: 8
                 }}>
-                  Track daily completion over the month
+                  7-day rolling
                 </p>
               </div>
 
               {/* Chart */}
-              <div style={{ flex: 1, minHeight: 200, padding: 12 }}>
+              <div style={{ flex: 1, padding: '8px 12px', minWidth: 0 }}>
                 <SmoothHabitChart
                   theme={theme}
                   config={config}
@@ -1504,63 +1515,64 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                 />
               </div>
 
-              {/* Legend with Toggle Controls */}
+              {/* Legend toggle buttons */}
               <div style={{
-                padding: '10px 14px',
-                borderTop: `1px solid ${theme.border}`,
-                background: config.darkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)'
+                width: 120,
+                flexShrink: 0,
+                padding: '8px',
+                borderLeft: `1px solid ${theme.border}`,
+                background: config.darkMode ? 'rgba(255,255,255,0.01)' : 'rgba(0,0,0,0.01)',
+                overflowY: 'auto',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 4
               }}>
-                <div style={{
-                  display: 'flex',
-                  flexWrap: 'wrap',
-                  gap: 6
-                }}>
-                  {habits.map((habit, index) => {
-                    const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
-                    const color = colors[index % colors.length];
-                    const isVisible = visibleHabits[habit.id];
+                {habits.map((habit, index) => {
+                  const colors = ['#3b82f6', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6', '#14b8a6', '#6366f1', '#a855f7', '#ef4444', '#06b6d4'];
+                  const color = colors[index % colors.length];
+                  const isVisible = visibleHabits[habit.id];
 
-                    return (
-                      <button
-                        key={habit.id}
-                        onClick={() => toggleHabitVisibility(habit.id)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 5,
-                          fontSize: 10,
-                          fontWeight: 600,
-                          color: isVisible ? theme.text : theme.textMuted,
-                          fontFamily: theme.fontFamily,
-                          background: isVisible ? `${color}10` : 'transparent',
-                          border: `1px solid ${isVisible ? color : theme.border}`,
-                          borderRadius: 6,
-                          padding: '4px 8px',
-                          cursor: 'pointer',
-                          transition: 'all 0.2s',
-                          lineHeight: 1.2
-                        }}
-                      >
-                        <div style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: '50%',
-                          background: color,
-                          flexShrink: 0,
-                          opacity: isVisible ? 1 : 0.3
-                        }} />
-                        <span style={{
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          maxWidth: 80
-                        }}>
-                          {habit.name}
-                        </span>
-                      </button>
-                    );
-                  })}
-                </div>
+                  return (
+                    <button
+                      key={habit.id}
+                      onClick={() => toggleHabitVisibility(habit.id)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        fontSize: 9,
+                        fontWeight: 600,
+                        color: isVisible ? theme.text : theme.textMuted,
+                        fontFamily: theme.fontFamily,
+                        background: isVisible ? `${color}10` : 'transparent',
+                        border: `1px solid ${isVisible ? color : theme.border}`,
+                        borderRadius: 5,
+                        padding: '3px 6px',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        lineHeight: 1.2,
+                        flexShrink: 0
+                      }}
+                    >
+                      <div style={{
+                        width: 6,
+                        height: 6,
+                        borderRadius: '50%',
+                        background: color,
+                        flexShrink: 0,
+                        opacity: isVisible ? 1 : 0.3
+                      }} />
+                      <span style={{
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: 1
+                      }}>
+                        {habit.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
