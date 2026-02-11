@@ -58,7 +58,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(0,0,0,0.04)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(200,200,200,0.3) 50%, rgba(255,255,255,0.8) 100%)",
-    weekendText: "#94A3B8"
+    weekendText: "#E8913A"
   },
   dark: {
     id: 'dark',
@@ -104,7 +104,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.5)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(100,100,100,0.1) 50%, rgba(255,255,255,0.15) 100%)",
-    weekendText: "#525264"
+    weekendText: "#7B7B94"
   },
   midnight: {
     id: 'midnight',
@@ -150,7 +150,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(96,165,250,0.15), inset 0 -1px 0 rgba(0,0,0,0.5)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(96,165,250,0.3) 0%, rgba(60,100,180,0.15) 50%, rgba(96,165,250,0.3) 100%)",
-    weekendText: "#4A5580"
+    weekendText: "#7B9FD4"
   },
   forest: {
     id: 'forest',
@@ -196,7 +196,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(74,222,128,0.15), inset 0 -1px 0 rgba(0,0,0,0.5)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(74,222,128,0.3) 0%, rgba(40,160,80,0.15) 50%, rgba(74,222,128,0.3) 100%)",
-    weekendText: "#4A7A6A"
+    weekendText: "#6BC4A0"
   },
   sunset: {
     id: 'sunset',
@@ -242,7 +242,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(249,115,22,0.1), 0 8px 24px rgba(249,115,22,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(249,115,22,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(249,115,22,0.3) 0%, rgba(220,100,20,0.15) 50%, rgba(249,115,22,0.3) 100%)",
-    weekendText: "#D97757"
+    weekendText: "#E8873A"
   },
   lavender: {
     id: 'lavender',
@@ -288,7 +288,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(168,85,247,0.1), 0 8px 24px rgba(168,85,247,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(168,85,247,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(168,85,247,0.3) 0%, rgba(140,70,200,0.15) 50%, rgba(168,85,247,0.3) 100%)",
-    weekendText: "#9B8EC4"
+    weekendText: "#B8A0E8"
   },
   barbie: {
     id: 'barbie',
@@ -334,7 +334,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(236,72,153,0.1), 0 8px 24px rgba(236,72,153,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(236,72,153,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(236,72,153,0.3) 0%, rgba(200,60,130,0.15) 50%, rgba(236,72,153,0.3) 100%)",
-    weekendText: "#C77BA8"
+    weekendText: "#E890C4"
   },
   arctic: {
     id: 'arctic',
@@ -380,7 +380,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(59,130,246,0.08), 0 8px 24px rgba(59,130,246,0.06), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(59,130,246,0.04)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(59,130,246,0.25) 0%, rgba(50,110,200,0.12) 50%, rgba(59,130,246,0.25) 100%)",
-    weekendText: "#8BA3B8"
+    weekendText: "#6A9BD4"
   },
   monochrome: {
     id: 'monochrome',
@@ -426,7 +426,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(0,0,0,0.08), 0 8px 24px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(0,0,0,0.06)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.15) 100%)",
-    weekendText: "#888888"
+    weekendText: "#9A9A9A"
   },
   golden: {
     id: 'golden',
@@ -471,7 +471,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(245,158,11,0.1), 0 8px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(245,158,11,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(220,140,10,0.15) 50%, rgba(245,158,11,0.3) 100%)",
-    weekendText: "#C49A4A"
+    weekendText: "#E0AD4A"
   },
   emerald: {
     id: 'emerald',
@@ -516,7 +516,7 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(20,184,166,0.1), 0 8px 24px rgba(20,184,166,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(20,184,166,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(20,184,166,0.3) 0%, rgba(15,150,140,0.15) 50%, rgba(20,184,166,0.3) 100%)",
-    weekendText: "#5A9E8F"
+    weekendText: "#3DCBB2"
   },
   rose: {
     id: 'rose',
@@ -561,6 +561,6 @@ export const THEMES = {
     metallicShadow: "0 2px 8px rgba(244,63,94,0.1), 0 8px 24px rgba(244,63,94,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(244,63,94,0.05)",
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(244,63,94,0.3) 0%, rgba(200,50,80,0.15) 50%, rgba(244,63,94,0.3) 100%)",
-    weekendText: "#C47A8A"
+    weekendText: "#E88A9C"
   }
 };

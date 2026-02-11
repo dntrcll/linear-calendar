@@ -943,16 +943,19 @@ function TimelineOS() {
     const requestId = ++loadRequestIdRef.current;
     const isCurrentRequest = () => loadRequestIdRef.current === requestId;
 
-    setLoading(true);
+    // Only show full-page spinner on initial load, never on subsequent reloads
+    if (!hasLoadedOnceRef.current) {
+      setLoading(true);
+    }
 
     // Set a maximum time for loading - only affects loading indicator, not data
-    // Increased to 20s to allow for Supabase cold starts
     const loadTimeout = setTimeout(() => {
       if (isCurrentRequest()) {
         console.warn('Loading timeout - showing app with current data');
         setLoading(false);
+        hasLoadedOnceRef.current = true;
       }
-    }, 20000);
+    }, 15000);
 
     try {
       // Load events from Supabase
@@ -1080,6 +1083,10 @@ function TimelineOS() {
         });
 
         setLoading(false);
+        hasLoadedOnceRef.current = true;
+      } else if (hasLoadedOnceRef.current) {
+        // Safety net: if a stale request finishes but app already loaded, ensure no spinner
+        setLoading(false);
       }
     }
   }, []);
@@ -1154,6 +1161,7 @@ function TimelineOS() {
   // Reload data when user returns to the app (only if away for >60s, no loading flash)
   const lastLoadTimeRef = useRef(Date.now());
   const loadRequestIdRef = useRef(0); // Track current load request to prevent race conditions
+  const hasLoadedOnceRef = useRef(false); // Once true, never show full-page spinner again
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible' && user) {
