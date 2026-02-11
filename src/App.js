@@ -552,35 +552,6 @@ const CSS = `
       font-size: 16px !important; /* Prevents iOS zoom on focus */
     }
 
-    /* Holidays grid responsive */
-    .holidays-grid {
-      grid-template-columns: repeat(3, 1fr) !important;
-    }
-    .holidays-grid .holiday-text {
-      font-size: 9px !important;
-    }
-    .holidays-grid .holiday-date {
-      font-size: 8px !important;
-    }
-    .holidays-grid .holiday-state {
-      font-size: 7px !important;
-    }
-  }
-
-  /* Small phone - 2 columns for holidays */
-  @media (max-width: 480px) {
-    .holidays-grid {
-      grid-template-columns: repeat(2, 1fr) !important;
-    }
-    .holidays-grid .holiday-text {
-      font-size: 9px !important;
-    }
-    .holidays-grid .holiday-date {
-      font-size: 8px !important;
-    }
-    .holidays-grid .holiday-state {
-      font-size: 7px !important;
-    }
   }
 
   /* Ultrawide displays - scale up year view */
@@ -593,9 +564,6 @@ const CSS = `
       padding: 12px 18px !important;
     }
     .year-calendar-grid {
-      max-width: 1400px !important;
-    }
-    .holidays-section {
       max-width: 1400px !important;
     }
   }
@@ -719,6 +687,24 @@ function TimelineOS() {
       focusMode: 'normal'
     };
   });
+
+  // Window size detection for responsive layout
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  useEffect(() => {
+    let timeout;
+    const handleResize = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => setWindowWidth(window.innerWidth), 100);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => {
+      clearTimeout(timeout);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+  const isCompact = windowWidth < 1200;
+  const isNarrow = windowWidth < 1000;
+  const sidebarWidth = isNarrow ? 0 : isCompact ? 280 : LAYOUT.SIDEBAR_WIDTH;
 
   // Premium Features State
   const [selectedEvents, setSelectedEvents] = useState([]);
@@ -1575,9 +1561,10 @@ function TimelineOS() {
       fontFamily: theme.fontFamily,
       overflow: "hidden"
     }}>
-      {config.showSidebar && (
+      {config.showSidebar && !isNarrow && (
         <aside style={{
-          width: LAYOUT.SIDEBAR_WIDTH,
+          width: sidebarWidth,
+          transition: 'width 0.3s ease',
           background: config.darkMode
             ? (theme.premiumGlass || `linear-gradient(135deg, ${theme.bg} 0%, ${theme.sidebar} 100%)`)
             : (theme.premiumGlass || theme.sidebar),
@@ -2356,7 +2343,7 @@ function TimelineOS() {
           height: LAYOUT.HEADER_HEIGHT,
           display: "flex",
           alignItems: "center",
-          padding: "0 24px",
+          padding: isCompact ? "0 14px" : "0 24px",
           borderBottom: `1px solid ${theme.premiumGlassBorder || theme.border}`,
           background: theme.premiumGlass || theme.liquidGlass,
           backdropFilter: theme.glassBlur || 'blur(32px)',
@@ -2370,7 +2357,7 @@ function TimelineOS() {
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 16, minWidth: 0 }}>
             {viewMode !== 'day' && (
               <h2 style={{
-                fontSize: 28,
+                fontSize: isCompact ? 20 : 28,
                 fontWeight: 600,
                 fontFamily: theme.fontDisplay,
                 letterSpacing: '-0.02em',
@@ -2508,12 +2495,12 @@ function TimelineOS() {
                   key={mode}
                   onClick={() => setViewMode(mode)}
                   style={{
-                    padding: "7px 16px",
+                    padding: isCompact ? "6px 10px" : "7px 16px",
                     borderRadius: 7,
                     border: "none",
                     background: viewMode === mode ? (theme.chromeGradient || theme.card) : "transparent",
                     color: viewMode === mode ? theme.text : theme.textSec,
-                    fontSize: 11,
+                    fontSize: isCompact ? 10 : 11,
                     fontWeight: 600,
                     fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
                     letterSpacing: '0.02em',
@@ -2645,6 +2632,10 @@ function TimelineOS() {
                 config={config}
                 tags={currentTags}
                 accentColor={accentColor}
+                windowWidth={windowWidth}
+                isCompact={isCompact}
+                isNarrow={isNarrow}
+                sidebarWidth={sidebarWidth}
                 onDayClick={(date) => {
                   setCurrentDate(date);
                   setViewMode('day');
@@ -5634,6 +5625,10 @@ accentColor,
 onDayClick,
 context,
 eventsOverlap,
+windowWidth,
+isCompact,
+isNarrow,
+sidebarWidth,
 // Timer props (for compact display)
 // timers,
 // toggleTimer,
@@ -5719,8 +5714,9 @@ for (let day = 1; day <= daysInMonth; day++) {
 
 return cells;
 }, [year, config.weekStartMon, today, eventsByDay]);
-// Responsive cell size - slightly larger to fill the width better
-const CELL_SIZE = 30;
+// Responsive cell size based on available width
+const availableWidth = windowWidth - (config.showSidebar && !isNarrow ? sidebarWidth : 0) - 56;
+const CELL_SIZE = Math.max(18, Math.min(30, Math.floor((availableWidth - 36) / 37)));
 
 // Calculate year progress
 const now = new Date();
@@ -5762,8 +5758,8 @@ WebkitOverflowScrolling: 'touch'
 {/* Year Progress Indicator - Ultra Premium Pill */}
 {isCurrentYear && (
 <div className="year-progress-bar" style={{
-width: "fit-content",
-minWidth: 1150,
+width: "100%",
+maxWidth: 36 + 37 * CELL_SIZE,
 margin: "0 auto",
 padding: '8px 14px',
 background: config.darkMode
@@ -5779,7 +5775,8 @@ alignItems: 'center',
 gap: 12,
 position: 'relative',
 overflow: 'hidden',
-flexShrink: 0
+flexShrink: 0,
+flexWrap: 'wrap'
 }}>
 
 {/* Left side - Text content */}
@@ -5870,8 +5867,8 @@ lineHeight: 1
 )}
 
 <div className="year-calendar-grid" style={{
-width: "fit-content",
-minWidth: 1150,
+width: "100%",
+maxWidth: 36 + 37 * CELL_SIZE,
 margin: "0 auto",
 display: "flex",
 flexDirection: "column",
@@ -6069,7 +6066,7 @@ flexShrink: 0
 
   </div>
 
-  {/* Year Insights - Clean Pill */}
+  {/* Year Insights - Expanded Analytics Panel */}
   {(() => {
     const maxEvents = Math.max(...eventsByMonth, 1);
     const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0];
@@ -6077,224 +6074,237 @@ flexShrink: 0
       dayOfWeekCounts[new Date(e.start).getDay()]++;
     });
     const busiestDayIndex = dayOfWeekCounts.indexOf(Math.max(...dayOfWeekCounts));
-    const busiestDayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][busiestDayIndex];
+    const busiestDayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][busiestDayIndex];
     const eventDates = yearEvents.map(e => new Date(e.start).toDateString());
     const uniqueDays = [...new Set(eventDates)].length;
-    const monthInitials = ['J', 'F', 'M', 'A', 'M', 'J', 'J', 'A', 'S', 'O', 'N', 'D'];
+    const fullMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const avgEventsPerMonth = totalYearEvents > 0 ? (totalYearEvents / 12).toFixed(1) : '0';
+    const maxDayOfWeek = Math.max(...dayOfWeekCounts, 1);
+
+    // Category breakdown
+    const categoryCount = {};
+    yearEvents.forEach(e => {
+      const cat = e.category || 'uncategorized';
+      categoryCount[cat] = (categoryCount[cat] || 0) + 1;
+    });
+    const categoryBreakdown = Object.entries(categoryCount)
+      .map(([cat, count]) => {
+        const tag = tags.find(t => t.tagId === cat);
+        return { name: tag?.name || cat, count, color: tag?.color || accentColor };
+      })
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 6);
+    const maxCategoryCount = categoryBreakdown.length > 0 ? categoryBreakdown[0].count : 1;
+
+    const insightGridMaxWidth = 36 + 37 * CELL_SIZE;
 
     return (
       <div style={{
         width: "100%",
-        maxWidth: 1160,
+        maxWidth: insightGridMaxWidth,
         margin: "10px auto",
-        padding: '10px 16px',
+        padding: '14px 16px',
         background: config.darkMode
           ? 'rgba(255,255,255,0.02)'
           : 'rgba(0,0,0,0.015)',
         border: `1px solid ${theme.border}`,
-        borderRadius: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
+        borderRadius: 12,
         flexShrink: 0
       }}>
-        {/* Monthly activity sparkline with labels */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-end',
-            gap: 3,
-            height: 28
+        {/* Section Header */}
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          marginBottom: 14
+        }}>
+          <span style={{
+            fontSize: 10, fontWeight: 600, color: theme.textMuted,
+            letterSpacing: '0.08em', textTransform: 'uppercase'
           }}>
-            {eventsByMonth.map((count, i) => {
-              const h = maxEvents > 0 ? Math.max(4, (count / maxEvents) * 26) : 4;
-              const isBusiest = i === busiestMonthIndex && count > 0;
-              const isCurrent = i === now.getMonth() && year === now.getFullYear();
+            {year} Insights
+          </span>
+          {upcomingEvents > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 5,
+              padding: '4px 10px', background: `${accentColor}12`,
+              borderRadius: 6, border: `1px solid ${accentColor}20`
+            }}>
+              <span style={{ fontSize: 11, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: accentColor }}>
+                {upcomingEvents}
+              </span>
+              <span style={{ fontSize: 10, color: theme.textSec }}>upcoming</span>
+            </div>
+          )}
+        </div>
+
+        {/* Two-column layout on wide, stacked on narrow */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: isCompact ? '1fr' : '1fr 1fr',
+          gap: 14
+        }}>
+          {/* Monthly Activity Chart */}
+          <div style={{
+            padding: '12px 14px',
+            background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+            borderRadius: 10,
+            border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Monthly Activity
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 4, height: 80 }}>
+              {eventsByMonth.map((count, i) => {
+                const h = maxEvents > 0 ? Math.max(4, (count / maxEvents) * 72) : 4;
+                const isBusiest = i === busiestMonthIndex && count > 0;
+                const isCurrent = i === now.getMonth() && year === now.getFullYear();
+                return (
+                  <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    {count > 0 && (
+                      <span style={{ fontSize: 8, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: isBusiest ? accentColor : theme.textMuted }}>
+                        {count}
+                      </span>
+                    )}
+                    <div style={{
+                      width: '100%', maxWidth: 28, height: h, borderRadius: 3,
+                      background: isBusiest ? accentColor
+                        : isCurrent ? `${accentColor}aa`
+                        : count > 0 ? (config.darkMode ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)')
+                        : (config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)'),
+                      transition: 'height 0.3s ease'
+                    }} />
+                  </div>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 4, marginTop: 6 }}>
+              {fullMonthNames.map((m, i) => (
+                <span key={i} style={{
+                  flex: 1, textAlign: 'center', fontSize: 8,
+                  fontFamily: 'SF Mono, monospace',
+                  fontWeight: i === busiestMonthIndex ? 700 : 400,
+                  color: i === busiestMonthIndex ? accentColor : theme.textMuted
+                }}>
+                  {m}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Category Breakdown */}
+          <div style={{
+            padding: '12px 14px',
+            background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+            borderRadius: 10,
+            border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
+          }}>
+            <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 10, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              Category Breakdown
+            </div>
+            {categoryBreakdown.length === 0 ? (
+              <div style={{ fontSize: 11, color: theme.textMuted, opacity: 0.5, padding: '20px 0', textAlign: 'center' }}>No events yet</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {categoryBreakdown.map((cat, i) => (
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: 3, background: cat.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: theme.text, minWidth: 70, fontWeight: 500 }}>{cat.name}</span>
+                    <div style={{ flex: 1, height: 6, borderRadius: 3, background: config.darkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)', overflow: 'hidden' }}>
+                      <div style={{
+                        width: `${(cat.count / maxCategoryCount) * 100}%`,
+                        height: '100%', borderRadius: 3,
+                        background: cat.color, opacity: 0.8,
+                        transition: 'width 0.3s ease'
+                      }} />
+                    </div>
+                    <span style={{ fontSize: 10, fontWeight: 600, fontFamily: 'SF Mono, monospace', color: theme.textSec, minWidth: 24, textAlign: 'right' }}>
+                      {cat.count}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Stats Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))',
+          gap: 8,
+          marginTop: 12
+        }}>
+          {[
+            { label: 'Total Events', value: totalYearEvents, color: accentColor },
+            { label: 'Peak Month', value: busiestMonth, color: theme.text },
+            { label: 'Busiest Day', value: busiestDayName, color: theme.text },
+            { label: 'Active Days', value: uniqueDays, color: theme.textSec },
+            { label: 'Upcoming', value: upcomingEvents, color: accentColor },
+            { label: 'Avg/Month', value: avgEventsPerMonth, color: theme.textSec }
+          ].map((stat, i) => (
+            <div key={i} style={{
+              padding: '10px 12px',
+              background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+              borderRadius: 8,
+              border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
+            }}>
+              <div style={{ fontSize: 9, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.04em', textTransform: 'uppercase', marginBottom: 4 }}>
+                {stat.label}
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 700, fontFamily: 'SF Mono, monospace', color: stat.color, letterSpacing: '-0.02em' }}>
+                {stat.value}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Weekly Heatmap */}
+        <div style={{
+          marginTop: 12,
+          padding: '10px 14px',
+          background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
+          borderRadius: 10,
+          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.04)'}`
+        }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, marginBottom: 8, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+            Day-of-Week Activity
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, i) => {
+              const intensity = maxDayOfWeek > 0 ? dayOfWeekCounts[i] / maxDayOfWeek : 0;
+              const isBusiest = i === busiestDayIndex && dayOfWeekCounts[i] > 0;
               return (
-                <div
-                  key={i}
-                  style={{
-                    width: 8,
-                    height: h,
+                <div key={i} style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                  <div style={{
+                    width: '100%', height: 24, borderRadius: 4,
                     background: isBusiest ? accentColor
-                      : isCurrent ? `${accentColor}aa`
-                      : count > 0 ? (config.darkMode ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)')
-                      : (config.darkMode ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'),
-                    borderRadius: 2
-                  }}
-                />
+                      : intensity > 0 ? `${accentColor}${Math.round(intensity * 60 + 15).toString(16).padStart(2, '0')}`
+                      : (config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'),
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'background 0.3s ease'
+                  }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 600, fontFamily: 'SF Mono, monospace',
+                      color: isBusiest ? (config.darkMode ? '#000' : '#fff') : (intensity > 0.5 ? '#fff' : theme.textMuted)
+                    }}>
+                      {dayOfWeekCounts[i] || ''}
+                    </span>
+                  </div>
+                  <span style={{
+                    fontSize: 9, fontWeight: isBusiest ? 700 : 500,
+                    color: isBusiest ? accentColor : theme.textMuted,
+                    fontFamily: 'SF Mono, monospace'
+                  }}>
+                    {day}
+                  </span>
+                </div>
               );
             })}
           </div>
-          <div style={{ display: 'flex', gap: 3 }}>
-            {monthInitials.map((m, i) => (
-              <span
-                key={i}
-                style={{
-                  width: 8,
-                  textAlign: 'center',
-                  fontSize: 7,
-                  fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-                  fontWeight: i === busiestMonthIndex ? 700 : 400,
-                  color: i === busiestMonthIndex ? accentColor
-                    : (i === now.getMonth() && year === now.getFullYear()) ? theme.text
-                    : theme.textMuted
-                }}
-              >
-                {m}
-              </span>
-            ))}
-          </div>
         </div>
-
-        {/* Divider */}
-        <div style={{ width: 1, height: 28, background: theme.border }} />
-
-        {/* Stats */}
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{
-            fontSize: 18,
-            fontWeight: 700,
-            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-            color: accentColor,
-            letterSpacing: '-0.03em'
-          }}>
-            {totalYearEvents}
-          </span>
-          <span style={{ fontSize: 10, color: theme.textMuted }}>events</span>
-        </div>
-
-        <div style={{ width: 1, height: 28, background: theme.border }} />
-
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-            color: theme.text
-          }}>
-            {busiestMonth}
-          </span>
-          <span style={{ fontSize: 10, color: theme.textMuted }}>peak</span>
-        </div>
-
-        <div style={{ width: 1, height: 28, background: theme.border }} />
-
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-            color: theme.text
-          }}>
-            {busiestDayName}
-          </span>
-          <span style={{ fontSize: 10, color: theme.textMuted }}>busiest</span>
-        </div>
-
-        <div style={{ width: 1, height: 28, background: theme.border }} />
-
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 5 }}>
-          <span style={{
-            fontSize: 13,
-            fontWeight: 600,
-            fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-            color: theme.textSec
-          }}>
-            {uniqueDays}
-          </span>
-          <span style={{ fontSize: 10, color: theme.textMuted }}>active days</span>
-        </div>
-
-        {/* Spacer */}
-        <div style={{ flex: 1 }} />
-
-        {/* Upcoming pill */}
-        {upcomingEvents > 0 && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 10px',
-            background: `${accentColor}12`,
-            borderRadius: 6,
-            border: `1px solid ${accentColor}20`
-          }}>
-            <span style={{
-              fontSize: 12,
-              fontWeight: 700,
-              fontFamily: 'SF Mono, Menlo, Monaco, monospace',
-              color: accentColor
-            }}>
-              {upcomingEvents}
-            </span>
-            <span style={{ fontSize: 10, color: theme.textSec }}>upcoming</span>
-          </div>
-        )}
       </div>
     );
   })()}
 
-  {/* Australian Public Holidays - Compact Premium Grid */}
-  <div className="holidays-section" style={{
-    width: "100%",
-    maxWidth: 1160,
-    margin: "8px auto 0",
-    padding: '10px 14px',
-    background: config.darkMode ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
-    border: `1px solid ${theme.border}`,
-    borderRadius: 10,
-    flexShrink: 0
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-      <span style={{ fontSize: 10, fontWeight: 600, color: theme.textMuted, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-        {year} Public Holidays
-      </span>
-      <span style={{ fontSize: 9, color: theme.textMuted, opacity: 0.6 }}>* regional</span>
-    </div>
-    <div className="holidays-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 6 }}>
-      {[
-        { month: 'Jan', holidays: [{ d: 1, n: "New Year's", s: 'ALL' }, { d: 26, n: 'Australia Day', s: 'ALL' }] },
-        { month: 'Feb', holidays: [{ d: 9, n: 'Regatta', s: 'TAS*' }] },
-        { month: 'Mar', holidays: [{ d: 2, n: 'Labour', s: 'WA' }, { d: 9, n: 'Labour', s: 'VIC' }, { d: 9, n: 'Canberra', s: 'ACT' }, { d: 9, n: 'Adelaide Cup', s: 'SA' }] },
-        { month: 'Apr', holidays: [{ d: 3, n: 'Good Fri', s: 'ALL' }, { d: 4, n: 'Easter Sat', s: 'ALL' }, { d: 6, n: 'Easter Mon', s: 'ALL' }, { d: 25, n: 'ANZAC', s: 'ALL' }] },
-        { month: 'May', holidays: [{ d: 4, n: 'Labour', s: 'QLD' }, { d: 4, n: 'May Day', s: 'NT' }] },
-        { month: 'Jun', holidays: [{ d: 1, n: 'WA Day', s: 'WA' }, { d: 1, n: 'Reconciliation', s: 'ACT' }, { d: 8, n: "King's Bday", s: 'NSW VIC' }] },
-        { month: 'Jul', holidays: [] },
-        { month: 'Aug', holidays: [{ d: 12, n: 'Ekka', s: 'QLD*' }] },
-        { month: 'Sep', holidays: [{ d: 28, n: "King's Bday", s: 'WA' }] },
-        { month: 'Oct', holidays: [{ d: 5, n: 'Labour', s: 'NSW ACT SA' }] },
-        { month: 'Nov', holidays: [{ d: 2, n: 'Recreation', s: 'TAS*' }, { d: 3, n: 'Melb Cup', s: 'VIC*' }] },
-        { month: 'Dec', holidays: [{ d: 25, n: 'Christmas', s: 'ALL' }, { d: 26, n: 'Boxing', s: 'ALL' }] },
-      ].map(({ month, holidays }) => (
-        <div key={month} style={{
-          padding: '6px 8px',
-          background: config.darkMode ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.5)',
-          borderRadius: 6,
-          border: `1px solid ${config.darkMode ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)'}`,
-        }}>
-          <div style={{ fontSize: 10, fontWeight: 700, color: accentColor, marginBottom: 3, fontFamily: theme.fontFamily }}>{month}</div>
-          {holidays.length === 0 ? (
-            <div className="holiday-text" style={{ fontSize: 10, color: theme.textMuted, opacity: 0.4 }}>—</div>
-          ) : holidays.map((h, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1, lineHeight: 1.3 }}>
-              <span className="holiday-date" style={{ fontSize: 9, color: theme.textMuted, fontFamily: 'SF Mono, monospace', minWidth: 14, opacity: 0.7 }}>{h.d}</span>
-              <span className="holiday-text" style={{ fontSize: 10, color: theme.text, fontWeight: 500, flex: 1 }}>{h.n}</span>
-              <span className="holiday-state" style={{
-                fontSize: 8,
-                padding: '1px 3px',
-                borderRadius: 2,
-                background: h.s === 'ALL' ? `${accentColor}15` : 'transparent',
-                color: h.s === 'ALL' ? accentColor : theme.textMuted,
-                fontWeight: 600,
-                opacity: h.s === 'ALL' ? 1 : 0.6
-              }}>{h.s}</span>
-            </div>
-          ))}
-        </div>
-      ))}
-    </div>
-  </div>
 
   {hoveredDay && (
     <div style={{

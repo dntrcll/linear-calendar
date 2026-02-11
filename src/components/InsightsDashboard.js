@@ -306,7 +306,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
       <div onClick={e => e.stopPropagation()} style={{
         width: '100%',
         height: '100%',
-        maxWidth: 'calc(100vw - 240px)',
+        maxWidth: 'calc(100vw - 80px)',
         display: 'flex',
         flexDirection: 'column',
         background: theme.premiumGlass || theme.liquidGlass,
@@ -374,7 +374,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
           {/* Today's Overview - Full Width */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
             gap: 10,
             flexShrink: 0
           }}>
@@ -417,7 +417,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
           {/* Charts Row - 2 equal charts */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
             gap: 12,
             flexShrink: 0
           }}>
@@ -461,7 +461,7 @@ export const InsightsDashboard = ({ events, goals, tags, theme, config, accentCo
           {/* Bottom Row - 3 equal panels */}
           <div style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
             gap: 12,
             flexShrink: 0
           }}>
