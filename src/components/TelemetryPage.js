@@ -39,6 +39,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [editingMemoText, setEditingMemoText] = useState('');
   const [editingSleep, setEditingSleep] = useState(null);
   const [editingSleepValue, setEditingSleepValue] = useState('');
+  const [editingMoodScore, setEditingMoodScore] = useState(null);
+  const [editingMoodScoreValue, setEditingMoodScoreValue] = useState('');
+  const [editingEnergy, setEditingEnergy] = useState(null);
+  const [editingEnergyValue, setEditingEnergyValue] = useState('');
 
   const [visibleHabits, setVisibleHabits] = useState({});
   const [hoveredHabit, setHoveredHabit] = useState(null);
@@ -324,6 +328,125 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
       return metricDate === dateStr && m.metric_name === 'sleep_hours';
     });
     return sleepMetric ? sleepMetric.metric_value : null;
+  };
+
+  const getMetricValue = (dayNum, metricName) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const metric = metrics.find(m => {
+      const metricDate = m.recorded_at?.split('T')[0];
+      return metricDate === dateStr && m.metric_name === metricName;
+    });
+    return metric ? metric.metric_value : null;
+  };
+
+  const reloadMetrics = async () => {
+    const startDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-01`;
+    const lastDay = new Date(currentYear, currentMonth, 0).getDate();
+    const endDate = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${lastDay}`;
+    const { data: metricsData } = await supabase
+      .from('life_metrics')
+      .select('*')
+      .eq('user_id', user.uid)
+      .gte('recorded_at', startDate)
+      .lte('recorded_at', endDate);
+    setMetrics(metricsData || []);
+  };
+
+  const saveMetric = async (dayNum, metricName, value, setEditing, setValue) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+
+    const { data: existing } = await supabase
+      .from('life_metrics')
+      .select('id')
+      .eq('user_id', user.uid)
+      .eq('recorded_at', dateStr)
+      .eq('metric_name', metricName)
+      .maybeSingle();
+
+    let error;
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from('life_metrics')
+        .update({ metric_value: value, updated_at: new Date().toISOString() })
+        .eq('id', existing.id);
+      error = updateError;
+    } else {
+      const { error: insertError } = await supabase
+        .from('life_metrics')
+        .insert({
+          user_id: user.uid,
+          recorded_at: dateStr,
+          metric_type: 'manual',
+          metric_name: metricName,
+          metric_value: value,
+          created_at: new Date().toISOString()
+        });
+      error = insertError;
+    }
+
+    if (error) console.error(`Error saving ${metricName}:`, error);
+    await reloadMetrics();
+    setEditing(null);
+    setValue('');
+  };
+
+  const handleMoodScoreSave = async (dayNum) => {
+    const val = parseFloat(editingMoodScoreValue);
+    if (isNaN(val) || val < 1 || val > 10) {
+      setEditingMoodScore(null);
+      setEditingMoodScoreValue('');
+      return;
+    }
+    await saveMetric(dayNum, 'mood', val, setEditingMoodScore, setEditingMoodScoreValue);
+  };
+
+  const handleEnergySave = async (dayNum) => {
+    const val = parseFloat(editingEnergyValue);
+    if (isNaN(val) || val < 1 || val > 10) {
+      setEditingEnergy(null);
+      setEditingEnergyValue('');
+      return;
+    }
+    await saveMetric(dayNum, 'energy', val, setEditingEnergy, setEditingEnergyValue);
+  };
+
+  const handleWorkoutToggle = async (dayNum) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    const existing = getWorkoutForDay(dayNum);
+
+    let error;
+    if (existing) {
+      // Remove the workout entry
+      const { error: deleteError } = await supabase
+        .from('life_metrics')
+        .delete()
+        .eq('id', existing.id);
+      error = deleteError;
+    } else {
+      // Add workout entry
+      const { error: insertError } = await supabase
+        .from('life_metrics')
+        .insert({
+          user_id: user.uid,
+          recorded_at: dateStr,
+          metric_type: 'manual',
+          metric_name: 'workout_type',
+          metric_value: 1,
+          created_at: new Date().toISOString()
+        });
+      error = insertError;
+    }
+
+    if (error) console.error('Error toggling workout:', error);
+    await reloadMetrics();
+  };
+
+  const getWorkoutForDay = (dayNum) => {
+    const dateStr = `${currentYear}-${String(currentMonth).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`;
+    return metrics.find(m => {
+      const metricDate = m.recorded_at?.split('T')[0];
+      return metricDate === dateStr && m.metric_name === 'workout_type';
+    }) || null;
   };
 
   // Calculate stats
@@ -1000,7 +1123,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
               ) : (
                 <table style={{
                   width: '100%',
-                  minWidth: Math.max(800, 500 + habits.length * 130),
+                  minWidth: Math.max(1000, 750 + habits.length * 130),
                   borderCollapse: 'separate',
                   borderSpacing: 0,
                   fontSize: 12,
@@ -1062,6 +1185,60 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                         width: '90px'
                       }}>
                         Sleep
+                      </th>
+                      <th style={{
+                        position: 'sticky',
+                        top: 0,
+                        background: config.darkMode ? '#0f172a' : '#ffffff',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: theme.textMuted,
+                        textAlign: 'center',
+                        zIndex: 100,
+                        fontFamily: theme.fontFamily,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '80px'
+                      }}>
+                        Mood /10
+                      </th>
+                      <th style={{
+                        position: 'sticky',
+                        top: 0,
+                        background: config.darkMode ? '#0f172a' : '#ffffff',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: theme.textMuted,
+                        textAlign: 'center',
+                        zIndex: 100,
+                        fontFamily: theme.fontFamily,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '80px'
+                      }}>
+                        Energy /10
+                      </th>
+                      <th style={{
+                        position: 'sticky',
+                        top: 0,
+                        background: config.darkMode ? '#0f172a' : '#ffffff',
+                        borderBottom: `2px solid ${theme.border}`,
+                        padding: '16px 20px',
+                        fontSize: 10,
+                        fontWeight: 700,
+                        color: theme.textMuted,
+                        textAlign: 'center',
+                        zIndex: 100,
+                        fontFamily: theme.fontFamily,
+                        letterSpacing: '0.08em',
+                        textTransform: 'uppercase',
+                        width: '90px'
+                      }}>
+                        Workout
                       </th>
                       <th style={{
                         position: 'sticky',
@@ -1355,6 +1532,120 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
                                 {getSleepHours(dayNum) ? `${getSleepHours(dayNum)}h` : '—'}
                               </span>
                             )}
+                          </td>
+                          {/* Mood Score */}
+                          <td style={{
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
+                            textAlign: 'center',
+                            width: '80px'
+                          }}>
+                            {editingMoodScore === dayNum ? (
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                max="10"
+                                value={editingMoodScoreValue}
+                                onChange={(e) => setEditingMoodScoreValue(e.target.value)}
+                                onBlur={() => handleMoodScoreSave(dayNum)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleMoodScoreSave(dayNum)}
+                                autoFocus
+                                style={{
+                                  width: '50px',
+                                  padding: '4px 6px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                                  border: `1px solid ${accentColor}`,
+                                  borderRadius: 4,
+                                  color: theme.text,
+                                  fontSize: 11,
+                                  fontFamily: theme.fontFamily,
+                                  textAlign: 'center'
+                                }}
+                              />
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  setEditingMoodScore(dayNum);
+                                  setEditingMoodScoreValue(getMetricValue(dayNum, 'mood') || '');
+                                }}
+                                style={{
+                                  cursor: 'pointer',
+                                  color: getMetricValue(dayNum, 'mood') ? '#f59e0b' : theme.textMuted,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  fontFamily: theme.fontFamily
+                                }}
+                              >
+                                {getMetricValue(dayNum, 'mood') ? `${getMetricValue(dayNum, 'mood')}` : '—'}
+                              </span>
+                            )}
+                          </td>
+                          {/* Energy */}
+                          <td style={{
+                            padding: '14px 20px',
+                            borderBottom: `1px solid ${theme.border}`,
+                            textAlign: 'center',
+                            width: '80px'
+                          }}>
+                            {editingEnergy === dayNum ? (
+                              <input
+                                type="number"
+                                step="1"
+                                min="1"
+                                max="10"
+                                value={editingEnergyValue}
+                                onChange={(e) => setEditingEnergyValue(e.target.value)}
+                                onBlur={() => handleEnergySave(dayNum)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleEnergySave(dayNum)}
+                                autoFocus
+                                style={{
+                                  width: '50px',
+                                  padding: '4px 6px',
+                                  background: config.darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.02)',
+                                  border: `1px solid ${accentColor}`,
+                                  borderRadius: 4,
+                                  color: theme.text,
+                                  fontSize: 11,
+                                  fontFamily: theme.fontFamily,
+                                  textAlign: 'center'
+                                }}
+                              />
+                            ) : (
+                              <span
+                                onClick={() => {
+                                  setEditingEnergy(dayNum);
+                                  setEditingEnergyValue(getMetricValue(dayNum, 'energy') || '');
+                                }}
+                                style={{
+                                  cursor: 'pointer',
+                                  color: getMetricValue(dayNum, 'energy') ? '#10b981' : theme.textMuted,
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  fontFamily: theme.fontFamily
+                                }}
+                              >
+                                {getMetricValue(dayNum, 'energy') ? `${getMetricValue(dayNum, 'energy')}` : '—'}
+                              </span>
+                            )}
+                          </td>
+                          {/* Workout */}
+                          <td
+                            onClick={() => handleWorkoutToggle(dayNum)}
+                            style={{
+                              padding: '14px 20px',
+                              borderBottom: `1px solid ${theme.border}`,
+                              textAlign: 'center',
+                              width: '90px',
+                              cursor: 'pointer',
+                              fontSize: 18,
+                              fontWeight: 700,
+                              color: getWorkoutForDay(dayNum) ? '#ec4899' : theme.border,
+                              userSelect: 'none',
+                              transition: 'all 0.15s'
+                            }}
+                          >
+                            {getWorkoutForDay(dayNum) ? '✓' : '·'}
                           </td>
                           <td style={{
                             padding: '14px 20px',
