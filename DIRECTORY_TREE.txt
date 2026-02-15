@@ -1,0 +1,177 @@
+timeline-os/
+│
+├── 📁 src/ ────────────────────────── Source Code
+│   ├── App.js (2300+ lines)          Main application
+│   ├── App.css                       Main styles
+│   ├── index.js                      React entry
+│   ├── index.css                     Global styles
+│   ├── supabaseClient.js             Database client
+│   │
+│   ├── 📂 features/ ───────────────── Feature Modules (NEW!)
+│   │   ├── 📂 auth/
+│   │   │   ├── authService.js
+│   │   │   └── userPreferencesService.js
+│   │   ├── 📂 events/
+│   │   │   ├── eventService.js
+│   │   │   ├── tagService.js
+│   │   │   ├── LinearCalendar.jsx
+│   │   │   ├── LinearCalendar.css
+│   │   │   ├── eventUtils.js
+│   │   │   └── tagUtils.js
+│   │   ├── 📂 analytics/
+│   │   │   ├── InsightsDashboard.js
+│   │   │   ├── MetricsTab.js
+│   │   │   ├── TelemetryPage.js
+│   │   │   ├── metricsService.js
+│   │   │   ├── productivityMetricsService.js
+│   │   │   ├── telemetryService.js
+│   │   │   ├── metricsCalculations.js
+│   │   │   └── 📂 charts/
+│   │   │       ├── AreaChartWidget.js
+│   │   │       ├── BarChartWidget.js
+│   │   │       ├── LineChartWidget.js
+│   │   │       ├── HeatmapWidget.js
+│   │   │       └── index.js
+│   │   └── 📂 subscription/
+│   │       └── subscriptionService.js
+│   │
+│   ├── 📂 components/
+│   │   ├── (charts - moved to features/analytics)
+│   │   ├── (InsightsDashboard - moved to features/analytics)
+│   │   ├── (MetricsTab - moved to features/analytics)
+│   │   ├── 📂 ui/          (future: extracted UI components)
+│   │   └── 📂 layouts/     (future: layout components)
+│   │
+│   ├── 📂 constants/
+│   │   ├── themes.js (28KB - 9 premium themes)
+│   │   ├── icons.js (16KB - SVG library)
+│   │   ├── quotes.js (36KB - 365+ quotes)
+│   │   ├── tags.js
+│   │   ├── config.js
+│   │   ├── layout.js
+│   │   └── index.js
+│   │
+│   ├── 📂 utils/
+│   │   ├── dateUtils.js
+│   │   ├── agentLoop.js
+│   │   ├── debugConsole.js
+│   │   ├── instrumentation.js
+│   │   ├── migrateToSupabase.js
+│   │   ├── runtimeGuards.js
+│   │   └── index.js
+│   │
+│   ├── 📂 types/
+│   │   └── metrics.js
+│   │
+│   ├── 📂 pages/
+│   │   ├── PrivacyPolicy.js
+│   │   └── TermsOfService.js
+│   │
+│   └── 📂 services/ (OLD - kept for backwards compatibility)
+│       └── (files copied to features/)
+│
+├── 📁 database/ ──────────────────── Database Layer (NEW!)
+│   ├── 📂 migrations/ (15+ files)
+│   │   ├── 001_create_life_metrics.sql
+│   │   ├── 002-009_*.sql
+│   │   ├── 010_subscriptions_table.sql
+│   │   └── add_recurring_events.sql
+│   ├── 📂 scripts/ (15+ files)
+│   │   ├── RUN_THIS_IN_SUPABASE.sql
+│   │   ├── check-tables.sql
+│   │   ├── migrate-console.js
+│   │   └── [various utilities]
+│   └── 📂 schemas/ (future)
+│
+├── 📁 docs/ ──────────────────────── Documentation (NEW!)
+│   ├── 📂 guides/ (20+ guides)
+│   │   ├── LAUNCH_GUIDE.md
+│   │   ├── DEBUG_GUIDE.md
+│   │   ├── OAUTH_BRANDING_GUIDE.md
+│   │   ├── DATABASE_SCHEMA.md
+│   │   └── [15+ more]
+│   ├── 📂 fixes/ (10+ fix docs)
+│   │   ├── COMPLETE_FIX_GUIDE.md
+│   │   ├── METRICS_FIX_GUIDE.md
+│   │   └── [8+ more]
+│   ├── 📂 launch/
+│   │   ├── LAUNCH_GUIDE.md
+│   │   └── LAUNCH_CHECKLIST.md
+│   └── 📂 planning/
+│       ├── PROJECT.md
+│       ├── REQUIREMENTS.md
+│       ├── ROADMAP.md
+│       ├── STATE.md
+│       ├── 📂 codebase/ (7 analysis docs)
+│       └── 📂 intel/ (AI intelligence)
+│
+├── 📁 config/ ────────────────────── Configuration (NEW!)
+│   ├── vercel.json
+│   ├── .npmrc
+│   └── README.md
+│
+├── 📁 public/ ───────────────────── Static Assets
+│   ├── index.html
+│   ├── manifest.json
+│   ├── robots.txt
+│   ├── favicon.ico/svg
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   └── og-image.png
+│
+├── 📁 tests/ ────────────────────── Test Suites
+│   ├── metricsCalculations.test.js
+│   ├── performance.test.js
+│   ├── run-performance-tests.js
+│   └── browser-performance-test.html
+│
+├── 📁 .claude/ ──────────────────── AI Skills (15 skills)
+│   ├── skills/
+│   │   ├── code-reviewer/
+│   │   ├── senior-architect/
+│   │   ├── senior-backend/
+│   │   ├── senior-frontend/
+│   │   ├── frontend-design/
+│   │   ├── ui-design-system/
+│   │   ├── theme-factory/
+│   │   └── [8+ more]
+│   └── settings.local.json
+│
+├── 📁 .planning/ (symlinked to docs/planning)
+│
+├── 📄 Root Files
+│   ├── package.json              Dependencies & scripts
+│   ├── package-lock.json
+│   ├── .gitignore               Git exclusions
+│   ├── .claudeignore            Claude exclusions
+│   ├── .npmrc                   npm config (also in config/)
+│   ├── vercel.json              Vercel config (also in config/)
+│   ├── .env.local               Environment vars
+│   ├── README.md                Project readme
+│   ├── STRUCTURE.md             This structure guide (NEW!)
+│   └── DIRECTORY_TREE.txt       Visual tree (NEW!)
+│
+└── 📁 Generated (gitignored)
+    ├── node_modules/            Dependencies
+    └── build/                   Production build
+
+────────────────────────────────────────────────────────
+
+LEGEND:
+📁 = Major directory
+📂 = Subdirectory
+📄 = Important file
+(NEW!) = Created during restructure
+(future) = Planned for future refactor
+
+────────────────────────────────────────────────────────
+
+FEATURE SUMMARY:
+✅ 4 feature modules (auth, events, analytics, subscription)
+✅ Database layer centralized (migrations + scripts)
+✅ Documentation organized (guides, fixes, launch, planning)
+✅ Config files grouped
+✅ 200+ files in logical structure
+✅ Backwards compatible (old paths still work)
+
+────────────────────────────────────────────────────────

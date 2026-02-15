@@ -1,6 +1,6 @@
 # Testing Patterns
 
-**Analysis Date:** 2026-01-25
+**Analysis Date:** 2026-02-08
 
 ## Test Framework
 
@@ -27,82 +27,89 @@ npm run test:perf        # Run performance test suite (node tests/run-performanc
 ## Test File Organization
 
 **Location:**
-- Co-located with source files: `src/App.test.js` sits alongside `src/App.js`
+- Co-located with source files: `src/App.test.js` alongside `src/App.js`
 - Separate test directory: `tests/` directory at project root for custom test runners
 - Pattern: `.test.js` suffix for Jest-discovered tests, custom test files in `tests/` directory
 
 **Naming:**
 - `.test.js` extension for Jest-picked-up tests (e.g., `App.test.js`)
 - `.spec.js` not used in current codebase
-- Custom test runners: descriptive names (e.g., `performance.test.js`, `run-performance-tests.js`)
+- Custom test runners: descriptive names (e.g., `performance.test.js`, `metricsCalculations.test.js`)
 
 **Structure:**
 ```
 src/
 ├── App.test.js          # Tests for App.js
-└── setupTests.js        # Jest setup file
+└── setupTests.js        # Jest setup file - imports @testing-library/jest-dom
 
 tests/
-├── performance.test.js  # Performance test suite
-└── run-performance-tests.js  # Performance test runner
+├── performance.test.js  # Performance test suite with mock data generation
+├── metricsCalculations.test.js  # Unit tests for metrics calculations
+└── run-performance-tests.js  # Custom Node.js performance test runner
 ```
 
 ## Test Structure
 
 **Suite Organization:**
-```javascript
-// From App.test.js - minimal test structure
-import { render, screen } from '@testing-library/react';
-import App from './App';
 
-test('renders learn react link', () => {
-  render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+Unit test example from `tests/metricsCalculations.test.js`:
+```javascript
+import {
+  calculateProductivityScore,
+  calculateFocusTime,
+  calculateContextSwitches,
+  calculateGoalCompletionRate
+} from '../src/utils/metricsCalculations';
+
+describe('calculateProductivityScore', () => {
+  test('returns 0 for no tracked time', () => {
+    const result = calculateProductivityScore({
+      focusTimeMinutes: 0,
+      goalCompletionRate: 0,
+      contextSwitches: 0,
+      totalTrackedMinutes: 0
+    });
+    expect(result).toBe(0);
+  });
+
+  test('returns 100 for perfect inputs', () => {
+    const result = calculateProductivityScore({
+      focusTimeMinutes: 480,
+      goalCompletionRate: 100,
+      contextSwitches: 0,
+      totalTrackedMinutes: 480
+    });
+    expect(result).toBe(100);
+  });
 });
 ```
 
 **Patterns:**
-- Setup: `src/setupTests.js` imports `@testing-library/jest-dom` (provides custom matchers)
-- Test definition: `test()` or `it()` with description string and test function
-- Rendering: `render()` function from @testing-library/react
-- Selection: `screen.getByText()`, similar query utilities from @testing-library
-- Assertion: `expect()` with jest-dom matchers
+- Setup: `src/setupTests.js` imports `@testing-library/jest-dom`
+- Test definition: `describe()` for grouping related tests, `test()` for individual assertions
+- Rendering: `render()` function from @testing-library/react (used in App.test.js)
+- Selection: `screen.getByText()` and similar query utilities from @testing-library
+- Assertion: `expect()` with jest-dom matchers (toBeInTheDocument, toBe, toBeGreaterThan, etc.)
 
 ## Mocking
 
 **Framework:** Jest built-in mocking (jest.fn(), jest.mock())
 
 **Patterns:**
-Not extensively demonstrated in current test files. Opportunity exists:
-- Supabase client could be mocked in service tests
-- Google OAuth could be mocked in auth tests
-- Performance tests generate mock data instead:
-  ```javascript
-  const generateMockEvents = (count) => {
-    const events = [];
-    const startDate = new Date('2024-01-01');
-    // ... generate synthetic event data
-    return events;
-  };
-  ```
 
-**What to Mock:**
-- External API calls (Supabase auth, database operations)
-- Third-party services (Google OAuth, etc.)
-- Browser APIs that don't exist in test environment (window.matchMedia, etc.)
-- Date/time for consistent testing (use jest.useFakeTimers())
+Service function mocking for Supabase operations:
+```javascript
+// Pattern not yet implemented but should follow:
+jest.mock('../supabaseClient', () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => Promise.resolve({ data: [], error: null }))
+    }))
+  }
+}));
+```
 
-**What NOT to Mock:**
-- React component rendering (use render() instead)
-- User interactions (use @testing-library/user-event)
-- Utility functions in the same module
-- Business logic you want to validate
-
-## Fixtures and Factories
-
-**Test Data:**
-Performance test suite demonstrates data generation:
+Mock data generation pattern from `tests/performance.test.js`:
 ```javascript
 const generateMockEvents = (count) => {
   const events = [];
@@ -118,7 +125,6 @@ const generateMockEvents = (count) => {
       id: `event-${i}`,
       title: `Event ${i}`,
       description: `Description for event ${i}`,
-      location: i % 5 === 0 ? `Location ${i}` : '',
       category: categories[i % categories.length],
       context: contexts[i % contexts.length],
       start: start.toISOString(),
@@ -133,8 +139,45 @@ const generateMockEvents = (count) => {
 };
 ```
 
+**What to Mock:**
+- External API calls (Supabase auth, database operations)
+- Third-party services (Google OAuth)
+- Browser APIs that don't exist in test environment (window.matchMedia)
+- Date/time for consistent testing (use jest.useFakeTimers())
+
+**What NOT to Mock:**
+- React component rendering (use render() instead)
+- User interactions (use @testing-library/user-event)
+- Utility functions in the same module
+- Business logic you want to validate
+
+## Fixtures and Factories
+
+**Test Data:**
+
+Performance test demonstrates factory pattern:
+```javascript
+const generateMockEvents = (count) => {
+  const events = [];
+  // ... generates count events with realistic structure
+  return events;
+};
+
+const measureEventProcessing = (events) => {
+  const startTime = performance.now();
+  // Filter, sort, detect conflicts
+  const endTime = performance.now();
+  return {
+    duration: endTime - startTime,
+    eventCount: events.length,
+    filteredCount: filtered.length,
+    conflictCount: conflicts.length
+  };
+};
+```
+
 **Location:**
-- No dedicated factory directory; factories are defined inline in test files
+- No dedicated factory directory; factories defined inline in test files
 - Performance test suite includes factory functions at module level (`tests/performance.test.js`)
 - Mock data generation: embedded in test function, not separated into dedicated files
 
@@ -153,13 +196,34 @@ npm test -- --coverage
 **Unit Tests:**
 - Scope: individual functions and components
 - Approach: Render component or call function in isolation
-- Current example: `App.test.js` tests that App component renders
-- Service tests: opportunities exist but not yet implemented for event/auth/tag services
+- Current example: `tests/metricsCalculations.test.js` tests pure utility functions
+- Test cases include:
+  - Edge cases (empty input, zero values)
+  - Normal operation (valid inputs)
+  - Boundary conditions (max/min values)
+  - Side effects (state changes, penalties)
+
+Example from `tests/metricsCalculations.test.js`:
+```javascript
+describe('calculateFocusTime', () => {
+  test('returns 0 for empty events', () => {
+    expect(calculateFocusTime([])).toBe(0);
+  });
+
+  test('sums duration of focus categories', () => {
+    const events = [
+      { category: 'work', duration: 60 },
+      { category: 'deep-work', duration: 120 }
+    ];
+    expect(calculateFocusTime(events)).toBe(180);
+  });
+});
+```
 
 **Integration Tests:**
 - Scope: multiple modules interacting
 - Approach: Set up realistic scenarios with mock data
-- Current example: Performance tests measure full event processing pipeline
+- Current example: Performance tests measure full event processing pipeline:
   ```javascript
   const measureEventProcessing = (events) => {
     const startTime = performance.now();
@@ -167,47 +231,38 @@ npm test -- --coverage
     const sorted = [...filtered].sort((a, b) =>
       new Date(a.start).getTime() - new Date(b.start).getTime()
     );
-    // ... conflict detection
+    // ... conflict detection (O(n²) algorithm)
     const endTime = performance.now();
-    return { duration: endTime - startTime, ... };
+    return { duration: endTime - startTime, conflictCount: conflicts.length };
   };
   ```
 
 **E2E Tests:**
 - Framework: Not used
 - Pattern: No Cypress, Playwright, or Webdriver configuration
-- Opportunity: Could add for user workflows like create-event-check-conflicts
+- Opportunity: Could add for user workflows
 
 **Performance Tests:**
-- Framework: Custom Node.js script
+- Framework: Custom Node.js script (not Jest)
 - Location: `tests/performance.test.js` and `tests/run-performance-tests.js`
-- Execution: `npm run test:perf` via Node (not Jest)
+- Execution: `npm run test:perf` via Node
 - Metrics measured:
   - Generation time: how long to create mock events
   - Processing time: filtering, sorting, conflict detection
   - Conflicts: number of overlapping events detected
+  - Per-event overhead in milliseconds
 - Thresholds:
   - Total time > 1s: flagged as warning
   - Per-event overhead > 0.1ms: flagged as warning
   - Total time > 5s: hard failure (exit code 1)
-- Example output from `performance.test.js`:
-  ```
-  Testing 100 events...
-    Generation: 0.50ms
-    Processing: 2.15ms
-    Conflicts: 5
-
-  === SUMMARY ===
-  100 events:
-    Total time: 2.65ms
-    Avg time per event: 0.0265ms
-  ```
 
 ## Common Patterns
 
 **Async Testing:**
+
+React hook pattern in components:
 ```javascript
-// App.js shows async operations in useEffect
+// From App.js
 useEffect(() => {
   const loadData = async () => {
     try {
@@ -232,35 +287,43 @@ Testing async operations with React Testing Library:
 - Wrap renders in `waitFor()` for state updates after async completion
 - Use `screen.findBy*` queries (automatically wait for element)
 - Example pattern:
-  ```javascript
-  test('loads events on mount', async () => {
-    render(<App userId="test-user" />);
-    const eventElement = await screen.findByText(/Event 1/i);
-    expect(eventElement).toBeInTheDocument();
-  });
-  ```
+```javascript
+test('loads events on mount', async () => {
+  render(<App userId="test-user" />);
+  const eventElement = await screen.findByText(/Event 1/i);
+  expect(eventElement).toBeInTheDocument();
+});
+```
 
 **Error Testing:**
+
+Service error handling pattern from `src/services/eventService.js`:
 ```javascript
-// Service pattern for error handling
 export const loadEvents = async (userId) => {
   try {
-    // operation
+    const [eventsResult, tagsResult] = await Promise.all([...]);
+    if (eventsResult.error) {
+      console.error('Supabase events query error:', eventsResult.error);
+      return { data: [], error: eventsResult.error };
+    }
     return { data: events, error: null };
   } catch (error) {
     console.error('Error loading events:', error);
     return { data: [], error };
   }
 };
+```
 
-// Test error scenario
-test('returns error when load fails', async () => {
-  // Mock Supabase to throw
-  jest.spyOn(supabase, 'from').mockImplementation(() => ({
-    select: () => ({
-      then: () => Promise.reject(new Error('DB error'))
+Test error scenario:
+```javascript
+test('returns error tuple when load fails', async () => {
+  // Mock Supabase to return error
+  jest.spyOn(supabase, 'from').mockReturnValue({
+    select: jest.fn().mockResolvedValue({
+      data: null,
+      error: new Error('DB connection failed')
     })
-  }));
+  });
 
   const { data, error } = await loadEvents('user-123');
   expect(error).toBeDefined();
@@ -271,16 +334,17 @@ test('returns error when load fails', async () => {
 ## Test Gaps
 
 **Current Coverage:**
-- Minimal: Only App.test.js exists with basic render test
+- Minimal unit tests: Only `tests/metricsCalculations.test.js` and `src/App.test.js`
 - Performance tests exist but in custom Node.js format, not Jest
+- No E2E tests or service integration tests
 
 **Recommended Areas to Add Tests:**
-- Service functions: `eventService.js`, `authService.js`, `tagService.js` (complex business logic)
-- Utility functions: `eventUtils.js`, `dateUtils.js` (pure functions, easy to test)
-- Component logic: Calendar rendering, event display, tag management
+- Service functions in `src/services/`: eventService.js, authService.js, tagService.js (complex business logic)
+- Utility functions: `src/utils/eventUtils.js`, `src/utils/dateUtils.js` (pure functions, easy to test)
+- Component logic: Calendar rendering, event display, tag management, MetricsTab
 - Error scenarios: Invalid data, auth failures, database errors
-- Integration: Event creation -> display -> conflict detection flow
+- Integration: Event creation → display → conflict detection flow
 
 ---
 
-*Testing analysis: 2026-01-25*
+*Testing analysis: 2026-02-08*

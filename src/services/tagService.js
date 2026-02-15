@@ -25,7 +25,7 @@ export const loadTags = async (userId) => {
     // Transform Supabase data to match app format
     const tags = (data || []).map(tag => ({
       id: tag.id, // Database UUID (needed for update/delete)
-      tagId: tag.tag_id, // The string identifier like 'work', 'health'
+      tagId: tag.tag_id || tag.name?.toLowerCase().replace(/\s+/g, '-') || tag.id, // Fallback if tag_id is null
       name: tag.name,
       iconName: tag.icon_name,
       context: tag.context,
@@ -72,7 +72,7 @@ export const createTag = async (userId, tagData) => {
 
     const tag = {
       id: data.id,
-      tagId: data.tag_id,
+      tagId: data.tag_id || data.name?.toLowerCase().replace(/\s+/g, '-') || data.id,
       name: data.name,
       iconName: data.icon_name,
       context: data.context,
@@ -121,7 +121,7 @@ export const updateTag = async (tagUuid, userId, updates) => {
 
     const tag = {
       id: data.id,
-      tagId: data.tag_id,
+      tagId: data.tag_id || data.name?.toLowerCase().replace(/\s+/g, '-') || data.id,
       name: data.name,
       iconName: data.icon_name,
       context: data.context,
@@ -200,7 +200,7 @@ export const getTagsByContext = async (userId, context) => {
 
     const tags = data.map(tag => ({
       id: tag.id,
-      tagId: tag.tag_id,
+      tagId: tag.tag_id || tag.name?.toLowerCase().replace(/\s+/g, '-') || tag.id,
       name: tag.name,
       iconName: tag.icon_name,
       context: tag.context,
@@ -240,7 +240,7 @@ export const getTagByTagId = async (userId, tagId, context) => {
 
     const tag = {
       id: data.id,
-      tagId: data.tag_id,
+      tagId: data.tag_id || data.name?.toLowerCase().replace(/\s+/g, '-') || data.id,
       name: data.name,
       iconName: data.icon_name,
       context: data.context,

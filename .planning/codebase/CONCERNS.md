@@ -1,14 +1,26 @@
 # Codebase Concerns
 
-**Analysis Date:** 2026-01-25
+**Analysis Date:** 2026-02-08
 
 ## Tech Debt
 
 **Monolithic App Component:**
-- Issue: The main component at `src/App.js` contains 10,943 lines of code, mixing state management, calendar logic, event handlers, rendering, and inline SVG icons. This creates tight coupling and makes the code difficult to test, maintain, and reuse.
-- Files: `src/App.js` (lines 1-10943)
-- Impact: Difficult to isolate bugs, refactor features, or test individual functionality. Adding new features requires modifying a massive file. Performance optimization is hindered because the entire component tree re-renders together.
+- Issue: The main component at `src/App.js` contains 11,825 lines of code (expanded from 10,943 lines), mixing state management, calendar logic, event handlers, rendering, and inline SVG icons. This creates tight coupling and makes the code difficult to test, maintain, and reuse.
+- Files: `src/App.js` (lines 1-11825)
+- Impact: Difficult to isolate bugs, refactor features, or test individual functionality. Adding new features requires modifying a massive file. Performance optimization is hindered because the entire component tree re-renders together. Code becomes increasingly harder to navigate and understand as it grows.
 - Fix approach: Split into smaller composable components: separate event handlers into custom hooks, extract calendar rendering into dedicated components, move icon definitions to a constant file, implement proper separation of concerns with clear data flow patterns.
+
+**Duplicate Code in src/services/ and src/features/:**
+- Issue: Identical copies of service files exist in both locations:
+  - `src/services/eventService.js` and `src/features/events/eventService.js` (536 lines each)
+  - `src/services/tagService.js` and `src/features/events/tagService.js` (260 lines each)
+  - `src/services/subscriptionService.js` and `src/features/subscription/subscriptionService.js` (353 lines each)
+  - `src/components/MetricsTab.js` and `src/features/analytics/MetricsTab.js` (1,499 lines each)
+  - `src/components/TelemetryPage.js` and `src/features/analytics/TelemetryPage.js` (1,535 lines each)
+  - `src/components/InsightsDashboard.js` and `src/features/analytics/InsightsDashboard.js` (592 lines each)
+- Files: Multiple files in both `src/services/`, `src/components/` and `src/features/`
+- Impact: Changes to one copy don't propagate to the other, causing logic divergence and bugs. Maintenance is doubled. Developers don't know which version to modify. Total duplicated code: ~5,000+ lines. Takes up disk space, increases build size, and slows down development.
+- Fix approach: Choose one location (recommend `src/features/` structure for future-proofing), delete duplicates, update all imports in `src/App.js` and other files to use the canonical location. Remove either `src/services/` or `src/features/` directory entirely to prevent re-duplication.
 
 **Missing Firebase Cleanup:**
 - Issue: `src/utils/migrateToSupabase.js` still imports Firebase (`import { db } from '../firebase'` and `import { collection, getDocs, query, where } from 'firebase/firestore'`), but the firebase module doesn't exist in the codebase (`src/firebase.js` file is missing).
@@ -27,6 +39,16 @@
 - Files: `src/App.js` (lines 1531-1561, 1454-1510)
 - Impact: Users experience lag and "event jumping" when dragging or editing. Network latency directly impacts perceived performance. Users see delayed updates which feels broken. Comments at lines 1529-1530 and 1452-1453 acknowledge this need but it's unimplemented.
 - Fix approach: Update local state immediately on user action, show optimistic UI changes, sync with server in background, reconcile conflicts if server rejects update. Add visual indicators for pending changes.
+
+**Uncleared Memory Intervals:**
+- Issue: Multiple `setInterval()` calls throughout the codebase are not properly tracked or cleaned up:
+  - Timer updates at `src/App.js:773` use `setInterval()` with `intervals[timer.id]` but cleanup may not execute if component unmounts unexpectedly
+  - Live time updates at `src/App.js:921` set up interval without memory leak protection
+  - Quote fetching at `src/App.js:929` sets interval without tracking
+  - Analysis cycle at `src/App.js:1268` sets interval that runs in development mode continuously
+- Files: `src/App.js` (lines 773, 921, 929, 1268, 4212)
+- Impact: Memory leaks accumulate over time as users interact with the app. Browser memory grows unbounded. Performance degrades. Long-lived browser sessions (like during work day) experience slowdowns. Multiple intervals may fire simultaneously if cleanup fails.
+- Fix approach: Audit all `setInterval()` and `setTimeout()` calls. Wrap in `useEffect()` cleanup functions. Track interval IDs in refs. Implement centralizedinterval manager to ensure all timers are cancelled on unmount.
 
 ## Known Bugs
 
@@ -54,7 +76,7 @@
 **Auth Timing Bug with User Record Creation:**
 - Bug: When a user signs in, there's a race between Supabase auth creating the user and the database trigger creating the user record. The code waits 1 second then re-checks at `src/services/authService.js:70`, but this may not be enough on slow networks.
 - Symptoms: User record doesn't exist when app tries to load events immediately after sign-in. First-time sign-in may show empty calendar briefly.
-- Files: `src/services/authService.js` (lines 53-88)
+- Files: `src/services/authService.js` (lines 53-88), equivalent in `src/features/auth/authService.js`
 - Trigger: Sign in with Google for the first time on a slow network connection.
 - Workaround: The app gracefully falls back to empty state and doesn't crash, but user experience is poor on first sign-in.
 
@@ -67,8 +89,8 @@
 - Recommendations: (1) Audit all RLS policies in Supabase to ensure they properly restrict user access, (2) add server-side authentication checks for sensitive operations if available, (3) rotate anon key regularly, (4) monitor for unusual data access patterns.
 
 **OAuth Token Cleanup:**
-- Risk: `src/services/authService.js:1283-1285` cleans up OAuth tokens from the URL after sign-in using `window.history.replaceState()`. However, tokens may be logged in browser console or error logs before cleanup.
-- Files: `src/services/authService.js` (lines 1283-1285)
+- Risk: `src/services/authService.js:1283-1285` cleans up OAuth tokens from the URL after sign-in using `window.history.replaceState()`. However, tokens may be logged in browser console or error logs before cleanup. Equivalent code in `src/features/auth/authService.js`.
+- Files: `src/services/authService.js` (lines 1283-1285), `src/features/auth/authService.js` (same lines)
 - Current mitigation: URL cleanup prevents token exposure in browser history.
 - Recommendations: (1) Review error logs for token leaks, (2) implement error boundary that sanitizes logged tokens, (3) disable token logging in production.
 
@@ -80,7 +102,7 @@
 
 **Soft Delete Without Audit Trail:**
 - Risk: Events are marked as deleted (`deleted: true`) at `src/services/eventService.js:230-233` without audit logging. There's no record of who deleted what or when (except `deleted_at` timestamp). Malicious users with database access could delete events without accountability.
-- Files: `src/services/eventService.js` (lines 226-243)
+- Files: `src/services/eventService.js` (lines 226-243), equivalent in `src/features/events/eventService.js`
 - Current mitigation: `deleted_at` timestamp records when deletion occurred.
 - Recommendations: (1) Implement audit logging for all data modifications, (2) store deleted-by user ID with each deletion, (3) add admin interface to view deletion history, (4) consider implementing logical deletion at DB layer with audit triggers.
 
@@ -99,7 +121,7 @@
 - Improvement path: Wrap filter logic in `useMemo()` with proper dependencies. Use Map for tag lookups instead of array `.includes()` check on line 1362.
 
 **Full Component Re-render on State Change:**
-- Problem: Any state change (events, tags, config, timers) triggers re-render of the entire 10,943-line component including calendar rendering, event list rendering, and all event handlers. No component splitting means no memoization opportunities.
+- Problem: Any state change (events, tags, config, timers) triggers re-render of the entire 11,825-line component including calendar rendering, event list rendering, and all event handlers. No component splitting means no memoization opportunities.
 - Files: `src/App.js` (entire component, especially lines 2500+ where rendering occurs)
 - Cause: Monolithic component architecture. No `React.memo()` or component extraction.
 - Improvement path: Split into smaller components with `React.memo()`. Use context or state management library to prevent unnecessary re-renders. Implement virtual scrolling for event lists if they're large.
@@ -136,6 +158,12 @@
 - Safe modification: (1) Review `fetchLiveQuote()` implementation for null checks and error handling. (2) Wrap in try-catch or Promise.catch(). (3) Add timeout to prevent hanging requests. (4) Test with network errors and slow connections.
 - Test coverage: No tests for quote fetching.
 
+**Import Duplication Risk:**
+- Files: All files in `src/App.js` that import from either `src/services/` or `src/features/` directories
+- Why fragile: With duplicate code in two locations, imports can point to either location. If one file is updated and the other isn't, subtle bugs emerge where the wrong version is imported. Example: `import { loadEvents } from './services/eventService'` vs `import { loadEvents } from './features/events/eventService'` - both are identical now, but future changes to one won't affect the other.
+- Safe modification: (1) Establish single source of truth immediately. (2) Audit all imports to ensure they use the canonical location. (3) Add linting rule to prevent imports from the deprecated directory. (4) Run comparison checks during CI to detect re-duplication.
+- Test coverage: No tests that verify imports resolve to correct implementations.
+
 ## Scaling Limits
 
 **Event Count Scaling:**
@@ -152,6 +180,11 @@
 - Current capacity: No real-time subscriptions currently implemented (app uses polling via `loadData()` refetches). If switching to Supabase real-time, each user connection requires a WebSocket, multiplying server load.
 - Limit: Each user maintains a persistent WebSocket connection. With 1000 concurrent users, server must handle 1000 subscriptions. Supabase has limits on concurrent connections per project.
 - Scaling path: (1) Use Supabase real-time for personal calendars only, not family (fewer subscribers per event). (2) Implement connection pooling or subscription sharing. (3) Monitor real-time connection count and connection failures. (4) Have a fallback to polling if real-time fails.
+
+**Code Size and Build Time:**
+- Current capacity: With 11,825 lines in a single file and 5,000+ lines of duplicated code across directories, the bundle is larger than necessary. Build times increase. Hot reload times increase during development.
+- Limit: As App.js grows beyond 12,000 lines, code becomes unmaintainable and IDE performance degrades.
+- Scaling path: (1) Split App.js into feature-based components. (2) Remove duplicate code. (3) Enable code splitting and lazy loading for non-critical features. (4) Use dynamic imports for heavy analytics components (MetricsTab, TelemetryPage, InsightsDashboard are each 500+ lines).
 
 ## Dependencies at Risk
 
@@ -196,7 +229,7 @@
 
 **Missing Unit Tests for Event Service:**
 - What's not tested: `src/services/eventService.js` - validation logic, tag lookup, event transformation, error handling
-- Files: `src/services/eventService.js` (entire file, 310 lines)
+- Files: `src/services/eventService.js` (entire file, 536 lines), `src/features/events/eventService.js` (identical copy)
 - Risk: Tag lookup failures (line 92-93) may not be caught. Event transformation can silently drop fields. Tag ID mismatch could cause data corruption.
 - Priority: High - event creation/update is core functionality
 
@@ -208,7 +241,7 @@
 
 **Missing Integration Tests for Auth:**
 - What's not tested: Google OAuth flow, user record creation, session persistence, sign-in/sign-out
-- Files: `src/services/authService.js` (entire file, 88 lines), `src/App.js` (auth setup, lines 1275-1341)
+- Files: `src/services/authService.js` (entire file, 88 lines), `src/features/auth/authService.js` (identical copy), `src/App.js` (auth setup, lines 1275-1341)
 - Risk: Auth race condition (line 70 timeout) won't be caught until production. Session persists incorrectly on refresh.
 - Priority: High - blocks user access to app
 
@@ -226,4 +259,4 @@
 
 ---
 
-*Concerns audit: 2026-01-25*
+*Concerns audit: 2026-02-08*

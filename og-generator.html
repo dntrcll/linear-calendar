@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1200">
+<title>Timeline OS - OG Image</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 630px;
+    overflow: hidden;
+    font-family: 'Inter', -apple-system, sans-serif;
+    background: #0f172a;
+  }
+  .container {
+    width: 1200px;
+    height: 630px;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
+    display: flex;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Subtle background glow */
+  .bg-glow {
+    position: absolute;
+    width: 600px;
+    height: 600px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.07;
+    pointer-events: none;
+  }
+  .bg-glow-1 {
+    top: -200px;
+    right: 100px;
+    background: #F97316;
+  }
+  .bg-glow-2 {
+    bottom: -300px;
+    left: -100px;
+    background: #3b82f6;
+  }
+
+  /* Grid pattern overlay */
+  .grid-pattern {
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+
+  /* Left content */
+  .left {
+    flex: 0 0 540px;
+    padding: 72px 60px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+  }
+
+  .logo-row {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 32px;
+  }
+
+  .logo-circle {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, #F97316, #ea580c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 24px rgba(249, 115, 22, 0.3);
+    position: relative;
+  }
+
+  .logo-circle svg {
+    width: 30px;
+    height: 30px;
+  }
+
+  .logo-text {
+    font-size: 32px;
+    font-weight: 800;
+    color: #f8fafc;
+    letter-spacing: -0.5px;
+  }
+
+  .tagline {
+    font-size: 22px;
+    font-weight: 500;
+    color: #94a3b8;
+    line-height: 1.5;
+    margin-bottom: 40px;
+    max-width: 420px;
+  }
+
+  .tagline strong {
+    color: #e2e8f0;
+    font-weight: 600;
+  }
+
+  .domain {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: rgba(249, 115, 22, 0.1);
+    border: 1px solid rgba(249, 115, 22, 0.2);
+    border-radius: 100px;
+    color: #F97316;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+  }
+
+  .domain-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #F97316;
+  }
+
+  /* Right side - Calendar UI mockup */
+  .right {
+    flex: 1;
+    position: relative;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding-right: 20px;
+  }
+
+  .cal-card {
+    width: 560px;
+    background: linear-gradient(145deg, rgba(30, 41, 59, 0.9), rgba(15, 23, 42, 0.95));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 20px;
+    padding: 28px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.05),
+      0 20px 60px rgba(0,0,0,0.5),
+      0 0 80px rgba(249, 115, 22, 0.05);
+    transform: perspective(1000px) rotateY(-4deg) rotateX(2deg);
+  }
+
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .cal-month {
+    font-size: 17px;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+
+  .cal-dots {
+    display: flex;
+    gap: 6px;
+  }
+  .cal-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+  }
+
+  /* Timeline view */
+  .timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .time-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    height: 44px;
+  }
+
+  .time-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: #475569;
+    width: 48px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .time-line {
+    width: 1px;
+    height: 100%;
+    background: rgba(255,255,255,0.06);
+    flex-shrink: 0;
+    position: relative;
+  }
+
+  .time-line::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: -3px;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #334155;
+    transform: translateY(-50%);
+  }
+
+  .time-row.active .time-line::before {
+    background: #F97316;
+    box-shadow: 0 0 8px rgba(249, 115, 22, 0.4);
+  }
+
+  .event-block {
+    flex: 1;
+    height: 38px;
+    border-radius: 10px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    font-size: 13px;
+    font-weight: 600;
+    gap: 8px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .event-block::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    border-radius: 3px 0 0 3px;
+  }
+
+  .event-orange {
+    background: rgba(249, 115, 22, 0.12);
+    color: #fb923c;
+    border: 1px solid rgba(249, 115, 22, 0.15);
+  }
+  .event-orange::before { background: #F97316; }
+
+  .event-blue {
+    background: rgba(59, 130, 246, 0.12);
+    color: #60a5fa;
+    border: 1px solid rgba(59, 130, 246, 0.15);
+  }
+  .event-blue::before { background: #3b82f6; }
+
+  .event-green {
+    background: rgba(34, 197, 94, 0.12);
+    color: #4ade80;
+    border: 1px solid rgba(34, 197, 94, 0.15);
+  }
+  .event-green::before { background: #22c55e; }
+
+  .event-purple {
+    background: rgba(168, 85, 247, 0.12);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.15);
+  }
+  .event-purple::before { background: #a855f7; }
+
+  .event-empty {
+    border: 1px dashed rgba(255,255,255,0.06);
+    border-radius: 10px;
+  }
+
+  .event-time {
+    font-size: 11px;
+    font-weight: 500;
+    opacity: 0.6;
+    margin-left: auto;
+  }
+
+  /* Mini stats row */
+  .stats-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .stat-pill {
+    flex: 1;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.05);
+    border-radius: 10px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-size: 18px;
+    font-weight: 700;
+    color: #f1f5f9;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: #475569;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 2px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="bg-glow bg-glow-1"></div>
+  <div class="bg-glow bg-glow-2"></div>
+  <div class="grid-pattern"></div>
+
+  <!-- Left: Branding -->
+  <div class="left">
+    <div class="logo-row">
+      <div class="logo-circle">
+        <svg viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <!-- Timeline/nodes icon -->
+          <circle cx="7" cy="7" r="3" fill="white"/>
+          <circle cx="15" cy="15" r="3.5" fill="white"/>
+          <circle cx="23" cy="10" r="2.5" fill="white"/>
+          <circle cx="22" cy="23" r="3" fill="white"/>
+          <line x1="9.5" y1="8.5" x2="12.5" y2="13" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="17.5" y1="14" x2="21" y2="11" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+          <line x1="17" y1="17.5" x2="20" y2="21.5" stroke="white" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span class="logo-text">Timeline OS</span>
+    </div>
+
+    <p class="tagline">
+      Your <strong>intelligent calendar</strong> for time management and productivity.
+    </p>
+
+    <div class="domain">
+      <span class="domain-dot"></span>
+      timeline.solutions
+    </div>
+  </div>
+
+  <!-- Right: Calendar UI Mock -->
+  <div class="right">
+    <div class="cal-card">
+      <div class="cal-header">
+        <span class="cal-month">February 2026</span>
+        <div class="cal-dots">
+          <div class="cal-dot"></div>
+          <div class="cal-dot"></div>
+          <div class="cal-dot"></div>
+        </div>
+      </div>
+
+      <div class="timeline">
+        <div class="time-row">
+          <span class="time-label">8 AM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-blue">
+            <span>Morning Standup</span>
+            <span class="event-time">30m</span>
+          </div>
+        </div>
+
+        <div class="time-row active">
+          <span class="time-label">9 AM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-orange">
+            <span>Deep Work Block</span>
+            <span class="event-time">2h</span>
+          </div>
+        </div>
+
+        <div class="time-row">
+          <span class="time-label">11 AM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-purple">
+            <span>Design Review</span>
+            <span class="event-time">1h</span>
+          </div>
+        </div>
+
+        <div class="time-row">
+          <span class="time-label">12 PM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-empty" style="flex:1; height:38px;"></div>
+        </div>
+
+        <div class="time-row">
+          <span class="time-label">1 PM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-green">
+            <span>Sprint Planning</span>
+            <span class="event-time">45m</span>
+          </div>
+        </div>
+
+        <div class="time-row">
+          <span class="time-label">2 PM</span>
+          <div class="time-line"></div>
+          <div class="event-block event-blue">
+            <span>Focus Time</span>
+            <span class="event-time">1.5h</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-pill">
+          <div class="stat-value">6.2h</div>
+          <div class="stat-label">Productive</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-value">92%</div>
+          <div class="stat-label">Focus Score</div>
+        </div>
+        <div class="stat-pill">
+          <div class="stat-value" style="color: #F97316;">A+</div>
+          <div class="stat-label">Day Rating</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
