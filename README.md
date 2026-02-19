@@ -1,70 +1,89 @@
-# Getting Started with Create React App
+# Timeline OS
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A premium calendar and life-tracking app built with React. Visualize your time across day, week, month, and year views. Track habits, metrics, and goals — all in one place.
 
-## Available Scripts
+**Live at [timeline.solutions](https://timeline.solutions)**
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **Calendar views** — Day, week, month, and linear year heatmap
+- **Dual contexts** — Separate work and personal calendars
+- **Focus mode** — Pomodoro timer with goals tracking
+- **Habits tracking** — Daily habit completion with mood scores
+- **Life metrics** — Sleep, weight, workout trends over time
+- **Life view** — Visualize your life in weeks
+- **12 themes** — Sky, Dark, Midnight, Forest, Sunset, Lavender, Barbie, Arctic, Monochrome, Golden, Emerald, Rose
+- **Recurring events** — Daily, weekly, fortnightly, monthly, yearly
+- **Tag system** — Custom categories with icons and colors
+- **Family sharing** — Share calendars with others
+- **Stripe billing** — Free trial with Pro subscription
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Tech Stack
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- React 19 (Create React App)
+- Supabase (Auth + Postgres)
+- Google OAuth (PKCE flow)
+- Stripe (subscriptions)
+- Recharts + visx (charts/heatmaps)
+- date-fns, lucide-react
+- Deployed on Vercel
 
-### `npm test`
+## Getting Started
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Prerequisites
 
-### `npm run build`
+- Node.js 18+
+- A Supabase project
+- A Stripe account (for billing features)
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Setup
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+1. Clone the repo
+2. Copy environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
+3. Fill in your Supabase and Stripe keys in `.env.local`
+4. Install dependencies:
+   ```bash
+   npm install --legacy-peer-deps
+   ```
+5. Start the dev server:
+   ```bash
+   npm start
+   ```
+   Open [http://localhost:3000](http://localhost:3000)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Scripts
 
-### `npm run eject`
+| Command | Description |
+|---------|-------------|
+| `npm start` | Dev server on port 3000 |
+| `npm run build` | Production build |
+| `npm test` | Run tests |
+| `npm run test:perf` | Performance tests |
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+## Project Structure
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```
+src/
+  App.js                 # Main app (~12,450 lines — all UI components)
+  supabaseClient.js      # Supabase client init
+  services/              # Supabase CRUD operations
+    authService.js       # Google OAuth + email auth
+    eventService.js      # Calendar events
+    tagService.js        # Tags/categories
+    metricsService.js    # Life metrics (sleep, weight, etc.)
+    telemetryService.js  # Habits tracking
+    subscriptionService.js # Stripe billing
+  constants/             # Themes, tags, icons, config
+  components/            # Charts, telemetry page, layouts
+  utils/                 # Date helpers, event logic, instrumentation
+  pages/                 # Privacy policy, terms of service
+api/                     # Vercel serverless functions (Stripe)
+database/                # SQL migrations and scripts
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+## License
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+Private. All rights reserved.
