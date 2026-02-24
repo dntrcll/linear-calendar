@@ -166,7 +166,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   const handleDeleteHabit = async (habitId) => {
     if (!window.confirm('Delete this habit? Completion data will be preserved.')) return;
-    await archiveHabit(habitId);
+    await archiveHabit(user.uid, habitId);
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setHabits(result.habits);
   };
@@ -182,8 +182,8 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     [newHabits[habitIndex], newHabits[newIndex]] = [newHabits[newIndex], newHabits[habitIndex]];
 
     // Update display_order for both habits
-    await updateHabit(newHabits[habitIndex].id, { display_order: habitIndex });
-    await updateHabit(newHabits[newIndex].id, { display_order: newIndex });
+    await updateHabit(user.uid, newHabits[habitIndex].id, { display_order: habitIndex });
+    await updateHabit(user.uid, newHabits[newIndex].id, { display_order: newIndex });
 
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setHabits(result.habits);
@@ -196,7 +196,7 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
   const handleSaveHabitName = async () => {
     if (!editingHabitName.trim() || !editingHabit) return;
-    await updateHabit(editingHabit, { name: editingHabitName.trim() });
+    await updateHabit(user.uid, editingHabit, { name: editingHabitName.trim() });
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
     setHabits(result.habits);
     setEditingHabit(null);

@@ -66,15 +66,17 @@ export const insertMetric = async (metric) => {
 /**
  * Update an existing metric
  * @param {string} id - Metric ID
+ * @param {string} userId - User ID (for ownership verification)
  * @param {Partial<import('../types/metrics').LifeMetric>} updates
  * @returns {Promise<{data: any, error: any}>}
  */
-export const updateMetric = async (id, updates) => {
+export const updateMetric = async (id, userId, updates) => {
   try {
     const { data, error } = await supabase
       .from('life_metrics')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -89,14 +91,16 @@ export const updateMetric = async (id, updates) => {
 /**
  * Delete a metric
  * @param {string} id - Metric ID
+ * @param {string} userId - User ID (for ownership verification)
  * @returns {Promise<{error: any}>}
  */
-export const deleteMetric = async (id) => {
+export const deleteMetric = async (id, userId) => {
   try {
     const { error } = await supabase
       .from('life_metrics')
       .delete()
-      .eq('id', id);
+      .eq('id', id)
+      .eq('user_id', userId);
 
     if (error) throw error;
     return { error: null };

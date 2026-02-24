@@ -3,7 +3,7 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
 // Disable body parsing — Stripe needs the raw body for signature verification
@@ -29,20 +29,24 @@ module.exports = async (req, res) => {
   const sig = req.headers['stripe-signature'];
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
+  // Require both webhook secret and signature — no bypass
+  if (!webhookSecret) {
+    console.error('STRIPE_WEBHOOK_SECRET is not configured');
+    return res.status(500).json({ error: 'Webhook not configured' });
+  }
+
+  if (!sig) {
+    return res.status(400).json({ error: 'Missing stripe-signature header' });
+  }
+
   let event;
 
   try {
-    if (webhookSecret && sig) {
-      const rawBody = await getRawBody(req);
-      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-    } else {
-      // For testing without webhook secret
-      const rawBody = await getRawBody(req);
-      event = JSON.parse(rawBody.toString());
-    }
+    const rawBody = await getRawBody(req);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    console.error('Webhook signature verification failed');
+    return res.status(400).json({ error: 'Webhook signature verification failed' });
   }
 
   try {
@@ -113,7 +117,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({ received: true });
   } catch (error) {
-    console.error('Webhook handler error:', error);
+    console.error('Webhook handler error:', error.message);
     return res.status(500).json({ error: 'Webhook handler failed' });
   }
 };

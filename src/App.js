@@ -8136,12 +8136,14 @@ function SubscriptionContent({ theme, user }) {
         ? (process.env.REACT_APP_STRIPE_PRO_YEARLY_PRICE_ID || SUBSCRIPTION_PLANS.PRO.yearlyPriceId)
         : (process.env.REACT_APP_STRIPE_PRO_PRICE_ID || SUBSCRIPTION_PLANS.PRO.priceId);
 
+      const { data: { session: authSession } } = await supabase.auth.getSession();
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authSession?.access_token}`,
+        },
         body: JSON.stringify({
-          userId: user?.uid,
-          userEmail: user?.email,
           priceId,
           isYearly: billingPeriod === 'yearly',
         }),
@@ -8163,10 +8165,14 @@ function SubscriptionContent({ theme, user }) {
   const handleManageSubscription = async () => {
     setIsProcessing(true);
     try {
+      const { data: { session: portalAuthSession } } = await supabase.auth.getSession();
       const response = await fetch('/api/create-portal-session', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userEmail: user?.email }),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${portalAuthSession?.access_token}`,
+        },
+        body: JSON.stringify({}),
       });
 
       const data = await response.json();
@@ -8196,10 +8202,14 @@ function SubscriptionContent({ theme, user }) {
       const verifyAndSync = async () => {
         try {
           if (sessionId) {
+            const { data: { session: verifyAuthSession } } = await supabase.auth.getSession();
             const res = await fetch('/api/verify-session', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ sessionId, userId: user.uid }),
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${verifyAuthSession?.access_token}`,
+              },
+              body: JSON.stringify({ sessionId }),
             });
             const data = await res.json();
             if (data.success) {

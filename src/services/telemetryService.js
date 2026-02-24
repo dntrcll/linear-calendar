@@ -200,16 +200,18 @@ export const createHabit = async (userId, name, habitType, displayOrder) => {
 
 /**
  * Update habit name or order
+ * @param {string} userId - User ID (for ownership verification)
  * @param {string} habitId - Habit ID
  * @param {object} updates - Fields to update
  * @returns {Promise<{data, error}>}
  */
-export const updateHabit = async (habitId, updates) => {
+export const updateHabit = async (userId, habitId, updates) => {
   try {
     const { data, error } = await supabase
       .from('telemetry_habits')
       .update(updates)
       .eq('id', habitId)
+      .eq('user_id', userId)
       .select()
       .single();
 
@@ -223,15 +225,17 @@ export const updateHabit = async (habitId, updates) => {
 
 /**
  * Archive a habit (soft delete)
+ * @param {string} userId - User ID (for ownership verification)
  * @param {string} habitId - Habit ID
  * @returns {Promise<{error}>}
  */
-export const archiveHabit = async (habitId) => {
+export const archiveHabit = async (userId, habitId) => {
   try {
     const { error } = await supabase
       .from('telemetry_habits')
       .update({ active: false })
-      .eq('id', habitId);
+      .eq('id', habitId)
+      .eq('user_id', userId);
 
     if (error) throw error;
     return { error: null };

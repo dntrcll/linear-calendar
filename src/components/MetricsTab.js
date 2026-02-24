@@ -242,13 +242,13 @@ export const MetricsTab = ({ theme, config, accentColor, user, events = [] }) =>
             config={config}
             accentColor={accentColor}
             onUpdate={async (id, updates) => {
-              const { data } = await updateMetric(id, updates);
+              const { data } = await updateMetric(id, user?.uid, updates);
               if (data) {
                 setMetrics(prev => prev.map(m => m.id === id ? data : m));
               }
             }}
             onDelete={async (id) => {
-              const { error } = await deleteMetric(id);
+              const { error } = await deleteMetric(id, user?.uid);
               if (!error) {
                 setMetrics(prev => prev.filter(m => m.id !== id));
               }

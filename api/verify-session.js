@@ -3,8 +3,23 @@ const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.REACT_APP_SUPABASE_ANON_KEY
+  process.env.SUPABASE_SERVICE_ROLE_KEY
 );
+
+// Verify Supabase JWT from Authorization header
+const verifyAuth = async (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.replace('Bearer ', '');
+  const authSupabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_ANON_KEY
+  );
+  const { data: { user }, error } = await authSupabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+};
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -12,10 +27,22 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  try {
-    const { sessionId, userId } = req.body;
+  // Fail if service role key is not configured
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    console.error('SUPABASE_SERVICE_ROLE_KEY is not configured');
+    return res.status(500).json({ error: 'Server configuration error' });
+  }
 
-    if (!sessionId) {
+  try {
+    // Verify authentication
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const { sessionId } = req.body;
+
+    if (!sessionId || typeof sessionId !== 'string') {
       return res.status(400).json({ error: 'Missing sessionId' });
     }
 
@@ -25,15 +52,22 @@ module.exports = async (req, res) => {
     });
 
     if (session.payment_status !== 'paid') {
-      return res.status(400).json({ error: 'Payment not completed', status: session.payment_status });
+      return res.status(400).json({ error: 'Payment not completed' });
+    }
+
+    // Use ONLY the metadata user ID — never trust client-supplied userId
+    const supabaseUserId = session.metadata?.supabase_user_id;
+
+    if (!supabaseUserId) {
+      return res.status(400).json({ error: 'No user ID in session metadata' });
+    }
+
+    // Verify the authenticated user matches the session owner
+    if (supabaseUserId !== authUser.id) {
+      return res.status(403).json({ error: 'Session does not belong to authenticated user' });
     }
 
     const subscription = session.subscription;
-    const supabaseUserId = session.metadata?.supabase_user_id || userId;
-
-    if (!supabaseUserId) {
-      return res.status(400).json({ error: 'No user ID found' });
-    }
 
     // Update Supabase with the subscription info
     const { error } = await supabase.from('subscriptions').upsert({
@@ -53,8 +87,8 @@ module.exports = async (req, res) => {
     }, { onConflict: 'user_id' });
 
     if (error) {
-      console.error('Supabase upsert error:', error);
-      return res.status(500).json({ error: 'Failed to update subscription', details: error.message });
+      console.error('Supabase upsert error:', error.message);
+      return res.status(500).json({ error: 'Failed to update subscription' });
     }
 
     return res.status(200).json({
@@ -66,7 +100,7 @@ module.exports = async (req, res) => {
         : null,
     });
   } catch (error) {
-    console.error('Verify session error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Verify session error:', error.message);
+    return res.status(500).json({ error: 'Failed to verify session' });
   }
 };

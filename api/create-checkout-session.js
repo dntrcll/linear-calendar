@@ -1,4 +1,25 @@
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { createClient } = require('@supabase/supabase-js');
+
+const ALLOWED_ORIGIN = 'https://timeline.solutions';
+
+// UUID v4 format validation
+const isValidUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+// Verify Supabase JWT from Authorization header
+const verifyAuth = async (req) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+
+  const token = authHeader.replace('Bearer ', '');
+  const supabase = createClient(
+    process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
+    process.env.REACT_APP_SUPABASE_ANON_KEY
+  );
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) return null;
+  return user;
+};
 
 module.exports = async (req, res) => {
   if (req.method !== 'POST') {
@@ -7,10 +28,25 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { userId, userEmail, priceId, isYearly } = req.body;
+    // Verify authentication
+    const authUser = await verifyAuth(req);
+    if (!authUser) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
 
-    if (!userId || !priceId) {
-      return res.status(400).json({ error: 'Missing userId or priceId' });
+    const { priceId, isYearly } = req.body;
+
+    // Use authenticated user's ID and email — ignore client-supplied values
+    const userId = authUser.id;
+    const userEmail = authUser.email;
+
+    if (!priceId || typeof priceId !== 'string') {
+      return res.status(400).json({ error: 'Missing or invalid priceId' });
+    }
+
+    // Validate priceId looks like a Stripe price ID
+    if (!priceId.startsWith('price_')) {
+      return res.status(400).json({ error: 'Invalid priceId format' });
     }
 
     // Look up or create a Stripe customer
@@ -40,8 +76,8 @@ module.exports = async (req, res) => {
         },
       ],
       mode: 'subscription',
-      success_url: `${req.headers.origin || 'https://timeline.solutions'}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${req.headers.origin || 'https://timeline.solutions'}/?payment=cancelled`,
+      success_url: `${ALLOWED_ORIGIN}/?payment=success&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${ALLOWED_ORIGIN}/?payment=cancelled`,
       metadata: {
         supabase_user_id: userId,
       },
@@ -54,7 +90,7 @@ module.exports = async (req, res) => {
 
     return res.status(200).json({ sessionId: session.id, url: session.url });
   } catch (error) {
-    console.error('Checkout session error:', error);
-    return res.status(500).json({ error: error.message });
+    console.error('Checkout session error:', error.message);
+    return res.status(500).json({ error: 'Failed to create checkout session' });
   }
 };

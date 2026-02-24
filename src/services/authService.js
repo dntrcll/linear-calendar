@@ -31,6 +31,21 @@ export const signOut = async () => {
   try {
     const { error } = await supabase.auth.signOut();
     if (error) throw error;
+
+    // Clear all cached user data from localStorage
+    const keysToRemove = [
+      'timeline_subscription',
+      'timeline_tags_v5',
+      'timeline_v5_cfg',
+      'timeline_timers',
+      'timeline_goals',
+      'quickNotes',
+      'weightUnit',
+      'userBirthDate',
+      'lifeExpectancy',
+    ];
+    keysToRemove.forEach(key => localStorage.removeItem(key));
+
     return { error: null };
   } catch (error) {
     console.error('Error signing out:', error);
