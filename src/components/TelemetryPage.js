@@ -45,25 +45,10 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const [editingEnergyValue, setEditingEnergyValue] = useState('');
 
   const [visibleHabits, setVisibleHabits] = useState({});
-  const [hoveredHabit, setHoveredHabit] = useState(null);
-  const [hoverTimeout, setHoverTimeout] = useState(null);
   const [selectedHabit, setSelectedHabit] = useState(null);
 
   const [editingHabit, setEditingHabit] = useState(null);
   const [editingHabitName, setEditingHabitName] = useState('');
-
-  // Responsive layout tracking
-  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200);
-
-  useEffect(() => {
-    const handleResize = () => setWindowWidth(window.innerWidth);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
-
-  // Determine responsive breakpoints
-  const isMobile = windowWidth < 768;
-  const isTablet = windowWidth >= 768 && windowWidth < 1024;
 
   // Load data
   useEffect(() => {
@@ -102,15 +87,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
 
     loadData();
   }, [user?.uid, currentYear, currentMonth]);
-
-  // Cleanup hoverTimeout on unmount
-  useEffect(() => {
-    return () => {
-      if (hoverTimeout) {
-        clearTimeout(hoverTimeout);
-      }
-    };
-  }, [hoverTimeout]);
 
   const reloadData = async () => {
     const result = await loadMonthTelemetry(user.uid, currentYear, currentMonth);
@@ -216,7 +192,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
   const handleEditHabit = (habit) => {
     setEditingHabit(habit.id);
     setEditingHabitName(habit.name);
-    setHoveredHabit(null); // Close hover menu
   };
 
   const handleSaveHabitName = async () => {
@@ -233,20 +208,6 @@ export const TelemetryPage = ({ theme, config, accentColor, user }) => {
     setEditingHabitName('');
   };
 
-  const handleHabitHover = (habitId) => {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    if (hoveredHabit !== habitId) {
-      setHoveredHabit(habitId);
-    }
-  };
-
-  const handleHabitLeave = () => {
-    if (hoverTimeout) clearTimeout(hoverTimeout);
-    const timeout = setTimeout(() => {
-      setHoveredHabit(null);
-    }, 300);
-    setHoverTimeout(timeout);
-  };
 
   const toggleHabitVisibility = (habitId) => {
     setVisibleHabits(prev => ({

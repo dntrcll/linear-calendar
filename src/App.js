@@ -51,8 +51,6 @@ import {
   TRIAL_CONFIG,
   getSubscriptionStatus,
   startFreeTrial,
-  canUseFeature,
-  hasReachedLimit,
   getTrialDaysRemaining,
   localSubscriptionManager
 } from "./services/subscriptionService";
@@ -609,16 +607,6 @@ const CSS = `
 
 function TimelineOS() {
   const [user, setUser] = useState(null);
-  const [subscription, setSubscription] = useState(() => {
-    // Initialize from localStorage for demo mode
-    const local = localSubscriptionManager.getLocalSubscription();
-    return local || {
-      plan: 'free',
-      status: 'active',
-      trialActive: false,
-      features: SUBSCRIPTION_PLANS.FREE.features
-    };
-  });
   const [loading, setLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [nowTime, setNowTime] = useState(() => new Date()); // Separate state for current time display
@@ -5425,7 +5413,8 @@ for (let i = 1; i <= nextMonthDays; i++) {
 }
 
 return dayArray;
-}, [currentDate, startDay, daysInMonth, config.weekStartMon]);
+// eslint-disable-next-line react-hooks/exhaustive-deps
+}, [currentDate, startDay, daysInMonth]);
 
 // Check if an event has conflicts across all calendars
 const hasConflict = (event) => {
@@ -11039,6 +11028,7 @@ bottom: 0
 }
 
 // MetricsView Component - Track and visualize life metrics
+// eslint-disable-next-line no-unused-vars
 function MetricsView({ theme, accentColor, user }) {
   const [metrics, setMetrics] = React.useState([]);
   const [timeRange, setTimeRange] = React.useState('month'); // week, month, year, all
@@ -11746,6 +11736,7 @@ function MultiLineChart({ data, theme, accentColor, selectedMetrics, loading }) 
 }
 
 // LifeView Component - Visualize life in weeks
+// eslint-disable-next-line no-unused-vars
 function LifeView({ theme, config, accentColor }) {
   const [birthDate, setBirthDate] = React.useState(() => {
     const saved = localStorage.getItem('userBirthDate');
