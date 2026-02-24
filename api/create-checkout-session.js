@@ -2,23 +2,25 @@ const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { createClient } = require('@supabase/supabase-js');
 
 const ALLOWED_ORIGIN = 'https://timeline.solutions';
-
-// UUID v4 format validation
-const isValidUUID = (str) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+const SUPABASE_URL = process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.REACT_APP_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 // Verify Supabase JWT from Authorization header
 const verifyAuth = async (req) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null;
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return null;
 
-  const token = authHeader.replace('Bearer ', '');
-  const supabase = createClient(
-    process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
-    process.env.REACT_APP_SUPABASE_ANON_KEY
-  );
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return null;
-  return user;
+    const token = authHeader.replace('Bearer ', '');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) return null;
+    return user;
+  } catch (err) {
+    console.error('Auth verification error:', err.message);
+    return null;
+  }
 };
 
 module.exports = async (req, res) => {

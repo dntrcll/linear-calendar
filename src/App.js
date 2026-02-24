@@ -8137,11 +8137,14 @@ function SubscriptionContent({ theme, user }) {
         : (process.env.REACT_APP_STRIPE_PRO_PRICE_ID || SUBSCRIPTION_PLANS.PRO.priceId);
 
       const { data: { session: authSession } } = await supabase.auth.getSession();
+      if (!authSession?.access_token) {
+        throw new Error('Not authenticated. Please sign in again.');
+      }
       const response = await fetch('/api/create-checkout-session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authSession?.access_token}`,
+          'Authorization': `Bearer ${authSession.access_token}`,
         },
         body: JSON.stringify({
           priceId,
@@ -8149,12 +8152,17 @@ function SubscriptionContent({ theme, user }) {
         }),
       });
 
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Server error (${response.status})`);
+      }
+
       const data = await response.json();
       if (data.url) {
         window.location.href = data.url;
         return;
       }
-      throw new Error(data.error || 'Failed to create checkout session');
+      throw new Error('No checkout URL returned');
     } catch (err) {
       console.error('Checkout error:', err);
       alert('Unable to start checkout. Please try again.');
