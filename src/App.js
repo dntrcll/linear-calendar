@@ -3306,6 +3306,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
   const [password, setPassword] = React.useState('');
   const [showEmailInput, setShowEmailInput] = React.useState(false);
   const [authMode, setAuthMode] = React.useState('magic'); // 'magic', 'signin', 'signup'
+  const [showPassword, setShowPassword] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [message, setMessage] = React.useState(null);
   const [error, setError] = React.useState(null);
@@ -3339,7 +3340,16 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
         // Success - will redirect automatically
       }
     } catch (err) {
-      setError(err.message || 'An error occurred. Please try again.');
+      const raw = err?.message || '';
+      // Map opaque network failures (e.g. server unreachable / project paused)
+      // to a human-readable message instead of surfacing "Failed to fetch".
+      const isNetworkError =
+        err?.name === 'AuthRetryableFetchError' || /failed to fetch|network/i.test(raw);
+      setError(
+        isNetworkError
+          ? "Can't reach the server right now. Check your connection and try again."
+          : raw || 'An error occurred. Please try again.'
+      );
     } finally {
       setIsLoading(false);
     }
@@ -3348,7 +3358,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
   return (
     <div style={{
       height: "100vh",
-      background: `linear-gradient(135deg, ${theme.bg} 0%, ${theme.sidebar} 100%)`,
+      background: `radial-gradient(125% 80% at 50% -12%, ${theme.accent}16 0%, transparent 46%), radial-gradient(110% 65% at 50% 112%, ${theme.familyAccent || theme.accent}12 0%, transparent 52%), linear-gradient(165deg, ${theme.bg} 0%, ${theme.sidebar || theme.bg} 100%)`,
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
@@ -3356,54 +3366,49 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
       padding: 32,
       textAlign: "center",
       position: "relative",
-      overflow: "hidden"
+      overflow: "hidden",
+      WebkitFontSmoothing: "antialiased",
+      MozOsxFontSmoothing: "grayscale",
+      textRendering: "optimizeLegibility"
     }}>
-      {/* Premium Animated Background - Symmetrical */}
+      {/* Atmospheric depth — floating light fields */}
       <div style={{
-        position: "absolute",
-        top: "20%",
-        left: "10%",
-        width: 450,
-        height: 450,
-        background: `radial-gradient(circle, ${theme.accent}20 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(80px)",
-        animation: "glassFloat 12s ease-in-out infinite"
+        position: "absolute", top: "-12%", left: "50%", transform: "translateX(-50%)",
+        width: 660, height: 660,
+        background: `radial-gradient(circle, ${theme.accent}24 0%, transparent 64%)`,
+        filter: "blur(90px)", pointerEvents: "none",
+        animation: "glassFloat 16s ease-in-out infinite"
       }} />
       <div style={{
-        position: "absolute",
-        top: "20%",
-        right: "10%",
-        width: 450,
-        height: 450,
-        background: `radial-gradient(circle, ${theme.familyAccent}20 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(80px)",
-        animation: "glassFloat 12s ease-in-out infinite 1.5s"
+        position: "absolute", bottom: "-10%", left: "10%",
+        width: 440, height: 440,
+        background: `radial-gradient(circle, ${theme.familyAccent || theme.accent}1e 0%, transparent 70%)`,
+        filter: "blur(100px)", pointerEvents: "none",
+        animation: "glassFloat 20s ease-in-out infinite 2s"
       }} />
       <div style={{
-        position: "absolute",
-        bottom: "15%",
-        left: "50%",
-        width: 380,
-        height: 380,
-        background: `radial-gradient(circle, ${theme.accent}15 0%, transparent 70%)`,
-        borderRadius: "50%",
-        filter: "blur(100px)",
-        animation: "glassFloat 15s ease-in-out infinite 3s",
-        transform: "translateX(-50%)"
+        position: "absolute", top: "16%", right: "6%",
+        width: 380, height: 380,
+        background: `radial-gradient(circle, ${theme.accent}18 0%, transparent 70%)`,
+        filter: "blur(90px)", pointerEvents: "none",
+        animation: "glassFloat 18s ease-in-out infinite 4s"
+      }} />
+      {/* Vignette for focus */}
+      <div style={{
+        position: "absolute", inset: 0, pointerEvents: "none",
+        background: `radial-gradient(125% 100% at 50% 45%, transparent 52%, ${theme.id === 'dark' ? 'rgba(0,0,0,0.55)' : 'rgba(15,20,30,0.07)'} 100%)`
       }} />
 
       <div className="fade-in" style={{
-        maxWidth: 500,
+        maxWidth: 468,
         width: "100%",
-        background: theme.premiumGlass || theme.liquidGlass,
-        backdropFilter: theme.glassBlur || "blur(40px)",
-        WebkitBackdropFilter: theme.glassBlur || "blur(40px)",
-        borderRadius: 24,
-        padding: "48px 44px",
-        boxShadow: theme.premiumShadow || theme.liquidShadow,
-        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder}`,
+        background: `linear-gradient(180deg, ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.55)'} 0%, ${theme.id === 'dark' ? 'rgba(255,255,255,0.015)' : 'rgba(255,255,255,0.15)'} 40%, transparent 100%), ${theme.premiumGlass || theme.liquidGlass || (theme.id === 'dark' ? 'rgba(18,18,22,0.72)' : 'rgba(255,255,255,0.72)')}`,
+        backdropFilter: theme.glassBlur || "blur(48px) saturate(1.3)",
+        WebkitBackdropFilter: theme.glassBlur || "blur(48px) saturate(1.3)",
+        borderRadius: 30,
+        padding: "54px 48px 40px",
+        boxShadow: `0 48px 100px -24px rgba(0,0,0,${theme.id === 'dark' ? 0.7 : 0.28}), 0 12px 32px -12px rgba(0,0,0,${theme.id === 'dark' ? 0.5 : 0.16}), inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`,
+        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder || (theme.id === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.06)')}`,
         position: "relative",
         zIndex: 1
       }}>
@@ -3411,90 +3416,74 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
         <div style={{
           display: 'flex',
           justifyContent: 'center',
-          marginBottom: 24
+          marginBottom: 24,
+          animation: 'fadeIn 0.7s ease-out both'
         }}>
           <AppLogo size={64} theme={theme} animated={true} />
         </div>
 
-        {/* Brand Name - Premium Typography with Superscript OS */}
-        <div style={{ marginBottom: 16 }}>
+        {/* Brand wordmark — Timeline · OS lockup */}
+        <div style={{ marginBottom: 20, animation: 'fadeIn 0.7s ease-out 0.05s both' }}>
           <h1 style={{
-            fontSize: 44,
+            fontSize: 52,
             fontWeight: 700,
-            fontFamily: theme.fontDisplay,
-            color: theme.text,
-            letterSpacing: '-0.03em',
+            fontFamily: "'Bricolage Grotesque', " + (theme.fontFamily || 'sans-serif'),
+            letterSpacing: '-0.045em',
             lineHeight: 1,
             margin: 0,
-            marginBottom: 10,
-            background: theme.metallicAccent || `linear-gradient(135deg, ${theme.accent}, ${theme.accentHover})`,
+            display: 'inline-block',
+            background: theme.metallicAccent || `linear-gradient(118deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
-            position: 'relative',
-            display: 'inline-block'
+            WebkitFontSmoothing: 'antialiased'
           }}>
-            Timeline
-            <sup style={{
-              fontSize: 16,
+            Timeline<span style={{
+              fontSize: '0.27em',
               fontWeight: 700,
-              fontFamily: theme.fontFamily,
-              color: theme.textSec,
-              letterSpacing: '0.1em',
-              textTransform: 'uppercase',
-              opacity: 0.85,
-              marginLeft: 2,
+              letterSpacing: '0.06em',
+              marginLeft: '0.28em',
+              verticalAlign: 'baseline',
               position: 'relative',
-              top: -4,
-              background: 'none',
-              WebkitBackgroundClip: 'initial',
-              WebkitTextFillColor: 'initial'
-            }}>OS</sup>
+              top: '-1.35em',
+              background: theme.metallicAccent || `linear-gradient(118deg, ${theme.accent} 0%, ${theme.accentHover} 100%)`,
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>OS</span>
           </h1>
-
-          {/* Status Indicators - Centered */}
-          <div style={{
-            display: "flex",
-            gap: 8,
-            justifyContent: "center",
-            marginTop: 10
-          }}>
-            {[0, 0.5, 1].map((delay, i) => (
-              <div key={i} style={{
-                width: 7,
-                height: 7,
-                borderRadius: "50%",
-                background: i === 1 ? theme.familyAccent : theme.accent,
-                boxShadow: `0 0 14px ${(i === 1 ? theme.familyAccent : theme.accent)}70`,
-                animation: `pulse 2s ease-in-out infinite ${delay}s`
-              }} />
-            ))}
-          </div>
         </div>
 
-        {/* Tagline */}
+        {/* Kicker — tracked uppercase */}
         <p style={{
-          fontSize: 16,
+          fontSize: 9.5,
           fontFamily: theme.fontFamily,
-          color: theme.text,
-          marginBottom: 8,
-          lineHeight: 1.5,
-          fontWeight: 500,
-          letterSpacing: '0.01em'
+          color: theme.textSec,
+          textTransform: 'uppercase',
+          letterSpacing: '0.2em',
+          paddingLeft: '0.2em',
+          fontWeight: 600,
+          margin: '0 0 14px',
+          opacity: 0.8,
+          whiteSpace: 'nowrap',
+          animation: 'fadeIn 0.7s ease-out 0.13s both'
         }}>
           Your Personal Operating System for Time
         </p>
 
-        {/* Motto */}
+        {/* Motto — quiet supporting line */}
         <p style={{
           fontSize: 13,
-          fontStyle: "italic",
+          fontStyle: 'italic',
           fontFamily: theme.fontDisplay,
           color: theme.textSec,
-          marginBottom: 32,
-          lineHeight: 1.5
+          lineHeight: 1.5,
+          letterSpacing: '0.015em',
+          margin: '0 0 34px',
+          opacity: 0.72,
+          animation: 'fadeIn 0.8s ease-out 0.2s both'
         }}>
-          "{APP_META.motto}"
+          {APP_META.motto}
         </p>
 
         {/* Feature Pills - Premium 4K Icons */}
@@ -3545,39 +3534,43 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
             }
           ].map((feature, i) => (
             <div key={feature.name} style={{
-              padding: '11px 16px',
-              background: theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)'),
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              borderRadius: 16,
-              fontSize: 12,
+              padding: '13px 14px',
+              background: theme.id === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)',
+              backdropFilter: 'blur(12px)',
+              WebkitBackdropFilter: 'blur(12px)',
+              borderRadius: 14,
+              fontSize: 11.5,
               fontFamily: theme.fontFamily,
               fontWeight: 600,
+              letterSpacing: '0.015em',
               color: theme.text,
-              border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-              boxShadow: theme.metallicShadow || `0 2px 8px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.1)`,
-              animation: `fadeIn 0.5s ease-out ${i * 0.1}s both`,
-              textAlign: 'center',
+              border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+              boxShadow: `inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`,
+              animation: `fadeIn 0.6s ease-out ${0.3 + i * 0.07}s both`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              gap: 8,
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              gap: 9,
+              transition: 'transform 0.22s cubic-bezier(0.4,0,0.2,1), border-color 0.22s, background 0.22s, box-shadow 0.22s',
               cursor: 'default'
             }}
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-2px)';
-              e.currentTarget.style.boxShadow = theme.premiumShadow || '0 4px 12px rgba(0,0,0,0.12), inset 0 1px 1px rgba(255,255,255,0.15)';
+              e.currentTarget.style.borderColor = `${theme.accent}55`;
+              e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.boxShadow = `0 8px 22px -10px ${theme.accent}55, inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`;
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.boxShadow = theme.metallicShadow || '0 2px 8px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.1)';
+              e.currentTarget.style.borderColor = theme.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+              e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)';
+              e.currentTarget.style.boxShadow = `inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`;
             }}
             >
-              <span style={{ display: 'flex', alignItems: 'center', opacity: 0.85 }}>
+              <span style={{ display: 'flex', alignItems: 'center', color: theme.accent, opacity: 0.9 }}>
                 {feature.icon}
               </span>
-              <span style={{ letterSpacing: '0.01em' }}>{feature.name}</span>
+              <span>{feature.name}</span>
             </div>
           ))}
         </div>
@@ -3604,26 +3597,19 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               alignItems: "center",
               justifyContent: "center",
               gap: 10,
-              boxShadow: `0 6px 20px ${theme.accent}50, 0 12px 40px ${theme.accent}30, inset 0 1px 2px rgba(255,255,255,0.3)`,
+              boxShadow: `0 10px 28px -10px ${theme.accent}75, inset 0 1px 1px rgba(255,255,255,0.22)`,
               position: "relative",
               overflow: "hidden"
             }}
             onMouseEnter={e => {
-              e.currentTarget.style.transform = "translateY(-2px) scale(1.01)";
-              e.currentTarget.style.boxShadow = `0 8px 28px ${theme.accent}60, 0 16px 48px ${theme.accent}40, inset 0 1px 2px rgba(255,255,255,0.4)`;
+              e.currentTarget.style.transform = "translateY(-1px)";
+              e.currentTarget.style.boxShadow = `0 14px 34px -10px ${theme.accent}95, inset 0 1px 1px rgba(255,255,255,0.28)`;
             }}
             onMouseLeave={e => {
-              e.currentTarget.style.transform = "translateY(0) scale(1)";
-              e.currentTarget.style.boxShadow = `0 6px 20px ${theme.accent}50, 0 12px 40px ${theme.accent}30, inset 0 1px 2px rgba(255,255,255,0.3)`;
+              e.currentTarget.style.transform = "translateY(0)";
+              e.currentTarget.style.boxShadow = `0 10px 28px -10px ${theme.accent}75, inset 0 1px 1px rgba(255,255,255,0.22)`;
             }}
           >
-            <div style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%)',
-              backgroundSize: '200% 100%',
-              animation: 'shimmer 3s ease-in-out infinite'
-            }} />
             <svg width="19" height="19" viewBox="0 0 24 24" style={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
               <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
               <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -3696,7 +3682,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
                   <button
                     key={mode.id}
                     type="button"
-                    onClick={() => { setAuthMode(mode.id); setError(null); setMessage(null); }}
+                    onClick={() => { setAuthMode(mode.id); setError(null); setMessage(null); setShowPassword(false); }}
                     style={{
                       flex: 1,
                       padding: '8px 12px',
@@ -3741,6 +3727,9 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               <form onSubmit={handleEmailSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input
                   type="email"
+                  name="email"
+                  autoComplete="email"
+                  aria-label="Email address"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="your@email.com"
@@ -3773,43 +3762,86 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
 
                 {/* Password field for signin/signup modes */}
                 {(authMode === 'signin' || authMode === 'signup') && (
-                  <input
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder={authMode === 'signup' ? "Create password (min 6 chars)" : "Password"}
-                    required
-                    disabled={isLoading}
-                    minLength={authMode === 'signup' ? 6 : undefined}
-                    style={{
-                      width: '100%',
-                      padding: "14px 18px",
-                      background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
-                      color: theme.text,
-                      border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
-                      borderRadius: 12,
-                      fontSize: 14,
-                      fontFamily: theme.fontFamily,
-                      outline: 'none',
-                      transition: 'all 0.2s',
-                      boxSizing: 'border-box',
-                      opacity: isLoading ? 0.6 : 1
-                    }}
-                    onFocus={(e) => {
-                      e.currentTarget.style.borderColor = theme.accent;
-                      e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
-                    }}
-                    onBlur={(e) => {
-                      e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
-                      e.currentTarget.style.boxShadow = 'none';
-                    }}
-                  />
+                  <div style={{ position: 'relative', width: '100%' }}>
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      name="password"
+                      autoComplete={authMode === 'signup' ? 'new-password' : 'current-password'}
+                      aria-label="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder={authMode === 'signup' ? "Create password (min 6 chars)" : "Password"}
+                      required
+                      disabled={isLoading}
+                      minLength={authMode === 'signup' ? 6 : undefined}
+                      style={{
+                        width: '100%',
+                        padding: "14px 46px 14px 18px",
+                        background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                        color: theme.text,
+                        border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
+                        borderRadius: 12,
+                        fontSize: 14,
+                        fontFamily: theme.fontFamily,
+                        outline: 'none',
+                        transition: 'all 0.2s',
+                        boxSizing: 'border-box',
+                        opacity: isLoading ? 0.6 : 1
+                      }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.borderColor = theme.accent;
+                        e.currentTarget.style.boxShadow = `0 0 0 3px ${theme.accent}15`;
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
+                        e.currentTarget.style.boxShadow = 'none';
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(v => !v)}
+                      aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                      style={{
+                        position: 'absolute',
+                        right: 6,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 34,
+                        height: 34,
+                        background: 'transparent',
+                        border: 'none',
+                        borderRadius: 8,
+                        color: theme.textSec,
+                        cursor: 'pointer',
+                        padding: 0,
+                        transition: 'color 0.2s'
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.color = theme.accent; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.color = theme.textSec; }}
+                    >
+                      {showPassword ? (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/>
+                          <line x1="1" y1="1" x2="23" y2="23"/>
+                        </svg>
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                          <circle cx="12" cy="12" r="3"/>
+                        </svg>
+                      )}
+                    </button>
+                  </div>
                 )}
 
                 <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     type="button"
-                    onClick={() => { setShowEmailInput(false); setEmail(''); setPassword(''); setError(null); setMessage(null); }}
+                    onClick={() => { setShowEmailInput(false); setEmail(''); setPassword(''); setError(null); setMessage(null); setShowPassword(false); }}
                     disabled={isLoading}
                     style={{
                       padding: "14px 18px",
@@ -3870,15 +3902,17 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
 
         {/* Trust & Security Badges - Compact */}
         <div style={{
-          marginTop: 24,
+          marginTop: 28,
           display: 'flex',
-          gap: 12,
+          gap: 14,
           alignItems: 'center',
           justifyContent: 'center',
-          fontSize: 11,
+          fontSize: 10.5,
           color: theme.textSec,
           fontFamily: theme.fontFamily,
-          fontWeight: 500
+          fontWeight: 500,
+          letterSpacing: '0.02em',
+          opacity: 0.9
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={theme.accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
