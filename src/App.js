@@ -1784,14 +1784,17 @@ function TimelineOS() {
           <div style={{
             marginBottom: 16,
             display: 'flex',
+            alignItems: 'center',
             gap: 8
           }}>
             <div style={{
               flex: 1,
+              minWidth: 0,
               display: 'flex',
               alignItems: 'center',
               gap: 8,
-              padding: '8px 12px',
+              height: 36,
+              padding: '0 12px',
               background: theme.hoverBg,
               borderRadius: 8,
               border: `1px solid ${theme.border}`
@@ -1812,15 +1815,22 @@ function TimelineOS() {
             </div>
             <button
               onClick={() => setFilterOpen(!filterOpen)}
+              title="Filters"
               style={{
-                width: 36, height: 36, borderRadius: 8,
-                background: filterOpen || dateFilter.start ? `${accentColor}15` : theme.hoverBg,
-                border: `1px solid ${filterOpen || dateFilter.start ? accentColor : theme.border}`,
+                flexShrink: 0,
+                width: 34, height: 36,
+                background: 'transparent',
+                border: 'none',
+                borderRadius: 6,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', color: filterOpen || dateFilter.start ? accentColor : theme.textMuted
+                cursor: 'pointer',
+                color: filterOpen || dateFilter.start ? accentColor : theme.textMuted,
+                transition: 'color 0.2s'
               }}
+              onMouseEnter={e => { if (!(filterOpen || dateFilter.start)) e.currentTarget.style.color = theme.text; }}
+              onMouseLeave={e => { if (!(filterOpen || dateFilter.start)) e.currentTarget.style.color = theme.textMuted; }}
             >
-              <ICONS.Settings width={14} height={14} />
+              <ICONS.Settings width={15} height={15} />
             </button>
           </div>
 
@@ -2503,7 +2513,7 @@ function TimelineOS() {
             padding: 3,
             borderRadius: 10,
             border: `1px solid ${theme.premiumGlassBorder || theme.border}`,
-            boxShadow: theme.metallicShadow || `0 1px 3px ${theme.id === 'dark' ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
+            boxShadow: theme.metallicShadow || `0 1px 3px ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(0,0,0,0.3)' : 'rgba(0,0,0,0.06)'}`
           }}>
             {['day', 'week', 'month', 'year', 'focus', 'metrics', 'telemetry'].map(mode => {
               // Custom label for telemetry
@@ -2526,7 +2536,7 @@ function TimelineOS() {
                     cursor: "pointer",
                     textTransform: "capitalize",
                     transition: "all 0.2s",
-                    boxShadow: viewMode === mode ? (theme.metallicShadow || `0 1px 2px ${theme.id === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}`) : 'none'
+                    boxShadow: viewMode === mode ? (theme.metallicShadow || `0 1px 2px ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.05)'}`) : 'none'
                   }}
                 >
                   {label}
@@ -3417,21 +3427,21 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
       {/* Vignette for focus */}
       <div style={{
         position: "absolute", inset: 0, pointerEvents: "none",
-        background: `radial-gradient(125% 100% at 50% 45%, transparent 52%, ${theme.id === 'dark' ? 'rgba(0,0,0,0.55)' : 'rgba(15,20,30,0.07)'} 100%)`
+        background: `radial-gradient(125% 100% at 50% 45%, transparent 52%, ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(0,0,0,0.55)' : 'rgba(15,20,30,0.07)'} 100%)`
       }} />
 
       <div className="fade-in" style={{
         maxWidth: 468,
         width: "100%",
-        background: theme.id === 'dark'
+        background: DARK_THEME_IDS.includes(theme.id)
           ? 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, transparent 55%), rgba(15,16,21,0.95)'
           : 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, transparent 55%), rgba(255,255,255,0.95)',
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
         padding: "54px 48px 40px",
-        boxShadow: `0 48px 100px -24px rgba(0,0,0,${theme.id === 'dark' ? 0.7 : 0.28}), 0 12px 32px -12px rgba(0,0,0,${theme.id === 'dark' ? 0.5 : 0.16}), inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`,
-        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder || (theme.id === 'dark' ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.06)')}`,
+        boxShadow: `0 48px 100px -24px rgba(0,0,0,${DARK_THEME_IDS.includes(theme.id) ? 0.7 : 0.28}), 0 12px 32px -12px rgba(0,0,0,${DARK_THEME_IDS.includes(theme.id) ? 0.5 : 0.16}), inset 0 1px 0 ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`,
+        border: `1px solid ${theme.premiumGlassBorder || theme.liquidBorder || (DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.06)')}`,
         position: "relative",
         zIndex: 1
       }}>
@@ -3558,7 +3568,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
           ].map((feature, i) => (
             <div key={feature.name} style={{
               padding: '13px 14px',
-              background: theme.id === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)',
+              background: DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)',
               backdropFilter: 'blur(12px)',
               WebkitBackdropFilter: 'blur(12px)',
               borderRadius: 14,
@@ -3567,8 +3577,8 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               fontWeight: 600,
               letterSpacing: '0.015em',
               color: theme.text,
-              border: `1px solid ${theme.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
-              boxShadow: `inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`,
+              border: `1px solid ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)'}`,
+              boxShadow: `inset 0 1px 0 ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`,
               animation: `fadeIn 0.6s ease-out ${0.3 + i * 0.07}s both`,
               display: 'flex',
               alignItems: 'center',
@@ -3580,14 +3590,14 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
             onMouseEnter={e => {
               e.currentTarget.style.transform = 'translateY(-2px)';
               e.currentTarget.style.borderColor = `${theme.accent}55`;
-              e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
-              e.currentTarget.style.boxShadow = `0 8px 22px -10px ${theme.accent}55, inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`;
+              e.currentTarget.style.background = DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.04)';
+              e.currentTarget.style.boxShadow = `0 8px 22px -10px ${theme.accent}55, inset 0 1px 0 ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`;
             }}
             onMouseLeave={e => {
               e.currentTarget.style.transform = 'translateY(0)';
-              e.currentTarget.style.borderColor = theme.id === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
-              e.currentTarget.style.background = theme.id === 'dark' ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)';
-              e.currentTarget.style.boxShadow = `inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`;
+              e.currentTarget.style.borderColor = DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+              e.currentTarget.style.background = DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.035)' : 'rgba(0,0,0,0.025)';
+              e.currentTarget.style.boxShadow = `inset 0 1px 0 ${DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.6)'}`;
             }}
             >
               <span style={{ display: 'flex', alignItems: 'center', color: theme.accent, opacity: 0.9 }}>
@@ -3649,7 +3659,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               style={{
                 width: "100%",
                 padding: "15px 28px",
-                background: theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
+                background: theme.metallicGradient || (DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)'),
                 color: theme.text,
                 border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
                 borderRadius: 14,
@@ -3669,13 +3679,13 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
               }}
               onMouseEnter={e => {
                 e.currentTarget.style.transform = "translateY(-2px)";
-                e.currentTarget.style.background = theme.metallicGradientHover || (theme.id === 'dark' ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)');
+                e.currentTarget.style.background = theme.metallicGradientHover || (DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.06)');
                 e.currentTarget.style.borderColor = theme.accent;
                 e.currentTarget.style.boxShadow = `0 6px 20px rgba(0,0,0,0.08), inset 0 1px 1px rgba(255,255,255,0.15)`;
               }}
               onMouseLeave={e => {
                 e.currentTarget.style.transform = "translateY(0)";
-                e.currentTarget.style.background = theme.metallicGradient || (theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)');
+                e.currentTarget.style.background = theme.metallicGradient || (DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)');
                 e.currentTarget.style.borderColor = theme.premiumGlassBorder || theme.border;
                 e.currentTarget.style.boxShadow = theme.metallicShadow || '0 4px 12px rgba(0,0,0,0.06), inset 0 1px 1px rgba(255,255,255,0.1)';
               }}
@@ -3694,7 +3704,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
                 gap: 4,
                 marginBottom: 12,
                 padding: 4,
-                background: theme.id === 'dark' ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
+                background: DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)',
                 borderRadius: 10
               }}>
                 {[
@@ -3762,7 +3772,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
                   style={{
                     width: '100%',
                     padding: "14px 18px",
-                    background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                    background: DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
                     color: theme.text,
                     border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
                     borderRadius: 12,
@@ -3800,7 +3810,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
                       style={{
                         width: '100%',
                         padding: "14px 46px 14px 18px",
-                        background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                        background: DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
                         color: theme.text,
                         border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
                         borderRadius: 12,
@@ -3868,7 +3878,7 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
                     disabled={isLoading}
                     style={{
                       padding: "14px 18px",
-                      background: theme.id === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
+                      background: DARK_THEME_IDS.includes(theme.id) ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.03)',
                       color: theme.textSec,
                       border: `1.5px solid ${theme.premiumGlassBorder || theme.border}`,
                       borderRadius: 12,
@@ -9650,13 +9660,18 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
           {/* Theme Selector */}
           {activeTab === 'appearance' && (
             <div style={{ marginBottom: 16 }}>
-              {/* Compact 4-Column Grid for Themes */}
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(4, 1fr)',
-                gap: 6
-              }}>
-                {Object.values(THEMES).map(themeOption => {
+              {/* Themes grouped by Light / Dark */}
+              {(() => {
+                const allThemes = Object.values(THEMES);
+                const lights = allThemes.filter(t => !DARK_THEME_IDS.includes(t.id));
+                const darks = allThemes.filter(t => DARK_THEME_IDS.includes(t.id));
+                const sectionLabel = (txt) => (
+                  <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.16em', textTransform: 'uppercase', color: theme.textMuted, margin: '0 0 9px', display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <span>{txt}</span>
+                    <span style={{ flex: 1, height: 1, background: theme.border }} />
+                  </div>
+                );
+                const renderSwatch = (themeOption) => {
                   const isSelected = config.selectedTheme === themeOption.id;
                   return (
                     <button
@@ -9794,8 +9809,21 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                       )}
                     </button>
                   );
-                })}
-              </div>
+                };
+                const grid = (items) => (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6, marginBottom: 18 }}>
+                    {items.map(renderSwatch)}
+                  </div>
+                );
+                return (
+                  <>
+                    {sectionLabel('Light')}
+                    {grid(lights)}
+                    {sectionLabel('Dark')}
+                    {grid(darks)}
+                  </>
+                );
+              })()}
             </div>
           )}
 
@@ -11114,7 +11142,7 @@ function MetricsView({ theme, accentColor, user }) {
   const [saving, setSaving] = React.useState(false);
   const [saveError, setSaveError] = React.useState(null);
 
-  const isDark = theme.id === 'dark';
+  const isDark = DARK_THEME_IDS.includes(theme.id);
 
   // Load metrics from Supabase
   React.useEffect(() => {
@@ -11571,7 +11599,7 @@ function MetricsView({ theme, accentColor, user }) {
 
 // Multi-Line Chart Component
 function MultiLineChart({ data, theme, accentColor, selectedMetrics, loading }) {
-  const isDark = theme.id === 'dark';
+  const isDark = DARK_THEME_IDS.includes(theme.id);
 
   if (loading) {
     return (
