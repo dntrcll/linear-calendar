@@ -1079,25 +1079,43 @@ function TimelineOS() {
     }
   }, []);
   
+  // True while an OAuth redirect (?code / #access_token) is still being
+  // exchanged for a session — show a spinner instead of flashing the login page.
+  const [oauthPending, setOauthPending] = React.useState(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      return p.has('code') || ((window.location.hash || '').includes('access_token'));
+    } catch (e) { return false; }
+  });
+
   useEffect(() => {
     let subscription;
 
     const setupAuth = async () => {
       try {
-        // If URL has OAuth tokens, let Supabase process them first
-        const hasOAuthCallback = window.location.hash && window.location.hash.includes('access_token');
-        if (hasOAuthCallback) {
-          // Let Supabase exchange the hash tokens for a session
-          await new Promise(resolve => setTimeout(resolve, 500));
+        // OAuth redirect-back: PKCE returns "?code=..." in the query string;
+        // the older implicit flow returned "#access_token" in the hash.
+        const params = new URLSearchParams(window.location.search);
+        const hasOAuthCallback = params.has('code') || ((window.location.hash || '').includes('access_token'));
+
+        // detectSessionInUrl exchanges the code asynchronously, so poll
+        // getSession briefly instead of deciding "logged out" too early — that
+        // race is what bounced the first sign-in attempt back to the login page.
+        let session = null;
+        const maxTries = hasOAuthCallback ? 24 : 1; // up to ~6s on a callback
+        for (let i = 0; i < maxTries; i++) {
+          const res = await supabase.auth.getSession();
+          session = res.data.session;
+          if (session || !hasOAuthCallback) break;
+          await new Promise(resolve => setTimeout(resolve, 250));
         }
 
-        // First check if there's an existing session
-        const { data: { session } } = await supabase.auth.getSession();
-
-        // Clean up URL after session is established (removes ugly tokens from address bar)
+        // Clean the code/tokens out of the address bar.
         if (hasOAuthCallback) {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
+
+        setOauthPending(false);
 
         if (session?.user) {
           setUser({
@@ -1135,6 +1153,7 @@ function TimelineOS() {
         });
       } catch (error) {
         console.error('[Auth Setup] Error:', error);
+        setOauthPending(false);
         setLoading(false);
       }
     };
@@ -1520,7 +1539,7 @@ function TimelineOS() {
     };
   }, []);
   
-  if (loading && user) {
+  if ((loading && user) || oauthPending) {
     return (
       <div style={{
         height: "100vh",
