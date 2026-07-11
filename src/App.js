@@ -949,11 +949,18 @@ function TimelineOS() {
     try {
       // Load events from Supabase
       const eventsStartTime = performance.now();
-      const eventsPromise = loadEvents(u.uid);
-      const eventsResult = await Promise.race([
-        eventsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 15000))
+      let eventsResult = await Promise.race([
+        loadEvents(u.uid),
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 10000))
       ]);
+      // Retry once on a transient timeout (e.g. cold-start / connection stall)
+      if (eventsResult.error === 'timeout') {
+        console.warn('Events load timed out — retrying once...');
+        eventsResult = await Promise.race([
+          loadEvents(u.uid),
+          new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 12000))
+        ]);
+      }
       const eventsEndTime = performance.now();
 
       // Skip state updates if this request is stale
@@ -975,11 +982,18 @@ function TimelineOS() {
 
       // Load tags from Supabase
       const tagsStartTime = performance.now();
-      const tagsPromise = loadTags(u.uid);
-      const tagsResult = await Promise.race([
-        tagsPromise,
-        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 15000))
+      let tagsResult = await Promise.race([
+        loadTags(u.uid),
+        new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 10000))
       ]);
+      // Retry once on a transient timeout before falling back to defaults
+      if (tagsResult.error === 'timeout') {
+        console.warn('Tags load timed out — retrying once...');
+        tagsResult = await Promise.race([
+          loadTags(u.uid),
+          new Promise((resolve) => setTimeout(() => resolve({ data: [], error: 'timeout' }), 12000))
+        ]);
+      }
       const tagsEndTime = performance.now();
 
       // Skip state updates if this request is stale
