@@ -1,5 +1,5 @@
 // Barrel export for all constants
-export { PALETTE, THEMES } from './themes';
+export { PALETTE, THEMES, DARK_THEME_IDS } from './themes';
 export { MOTIVATIONAL_QUOTES } from './quotes';
 export { DEFAULT_TAGS, AVAILABLE_ICONS } from './tags';
 export { FOCUS_MODES, TIMER_COLORS, TIMER_ICONS, TIMER_PRESETS } from './config';

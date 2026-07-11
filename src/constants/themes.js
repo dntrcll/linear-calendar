@@ -13,6 +13,62 @@ export const PALETTE = {
   cyan: { bg: "#ECFEFF", text: "#0E7490", border: "#CFFAFE", color: "#06B6D4" }
 };
 
+// Central list of dark themes (used for darkMode detection + picker icons).
+export const DARK_THEME_IDS = ['dark', 'midnight', 'forest', 'obsidian', 'abyss', 'ember', 'graphite', 'mocha', 'aurora'];
+
+// Build a complete dark theme from a compact palette — derives the ~40
+// gradient / glass / shadow / accent props so new dark themes stay one-liners.
+const _hx = (h) => { h = h.replace('#', ''); if (h.length === 3) h = h.split('').map(c => c + c).join(''); const n = parseInt(h, 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; };
+const _rgba = (h, a) => { const [r, g, b] = _hx(h); return `rgba(${r}, ${g}, ${b}, ${a})`; };
+const makeDark = (o) => {
+  const a = o.accent, ah = o.accentHover;
+  return {
+    id: o.id,
+    name: o.name,
+    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    fontDisplay: "'Playfair Display', Georgia, serif",
+    bg: o.bg,
+    sidebar: o.sidebar,
+    card: o.card,
+    text: o.text || '#FAFAF9',
+    textSec: o.textSec || '#A8A8B3',
+    textMuted: o.textMuted || '#6B6B76',
+    border: o.border,
+    borderLight: o.borderLight,
+    accent: a,
+    accentHover: ah,
+    familyAccent: o.familyAccent || '#10B981',
+    familyAccentHover: o.familyAccentHover || '#34D399',
+    selection: _rgba(a, 0.18),
+    shadow: "0 2px 8px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)",
+    shadowLg: "0 8px 16px rgba(0, 0, 0, 0.5), 0 24px 48px rgba(0, 0, 0, 0.6)",
+    glass: _rgba(o.sidebar, 0.9),
+    indicator: "#F87171",
+    manifestoLine: o.border,
+    hoverBg: "rgba(255, 255, 255, 0.05)",
+    activeBg: "rgba(255, 255, 255, 0.1)",
+    pulse: _rgba(a, 0.25),
+    glow: `0 0 20px ${_rgba(a, 0.35)}`,
+    cardGradient: `linear-gradient(145deg, ${o.cardHi || o.card} 0%, ${o.card} 100%)`,
+    subtleBorder: "rgba(255, 255, 255, 0.06)",
+    liquidGlass: _rgba(o.card, 0.75),
+    liquidBorder: "rgba(255, 255, 255, 0.08)",
+    liquidShadow: "0 8px 32px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.05)",
+    metallicGradient: `linear-gradient(135deg, ${o.border} 0%, ${o.card} 50%, ${o.border} 100%)`,
+    metallicGradientHover: `linear-gradient(135deg, ${o.border} 0%, ${o.cardHi || o.card} 50%, ${o.border} 100%)`,
+    metallicAccent: `linear-gradient(135deg, ${ah} 0%, ${a} 55%, ${a} 100%)`,
+    chromeGradient: `linear-gradient(135deg, ${o.borderLight} 0%, ${o.card} 25%, ${o.border} 50%, ${o.card} 75%, ${o.borderLight} 100%)`,
+    premiumGlass: _rgba(o.card, 0.6),
+    premiumGlassBorder: "rgba(255, 255, 255, 0.12)",
+    premiumShadow: "0 4px 16px rgba(0,0,0,0.6), 0 8px 32px rgba(0,0,0,0.5), inset 0 1px 2px rgba(255,255,255,0.08)",
+    shimmer: "linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.15) 50%, transparent 100%)",
+    metallicShadow: "0 2px 8px rgba(0,0,0,0.5), 0 8px 24px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.5)",
+    glassBlur: "blur(32px)",
+    premiumBorder: "linear-gradient(135deg, rgba(255,255,255,0.15) 0%, rgba(100,100,100,0.1) 50%, rgba(255,255,255,0.15) 100%)",
+    weekendText: o.weekendText || "#7B7B94"
+  };
+};
+
 export const THEMES = {
   light: {
     id: 'light',
@@ -562,5 +618,11 @@ export const THEMES = {
     glassBlur: "blur(32px)",
     premiumBorder: "linear-gradient(135deg, rgba(244,63,94,0.3) 0%, rgba(200,50,80,0.15) 50%, rgba(244,63,94,0.3) 100%)",
     weekendText: "#E88A9C"
-  }
+  },
+  obsidian: makeDark({ id: 'obsidian', name: 'Obsidian', bg: '#050506', sidebar: '#0B0B0F', card: '#141419', cardHi: '#1C1C24', border: '#2B2B37', borderLight: '#191921', accent: '#8B5CF6', accentHover: '#A78BFA', familyAccent: '#22D3EE', familyAccentHover: '#67E8F9', weekendText: '#8A85A6' }),
+  abyss: makeDark({ id: 'abyss', name: 'Abyss', bg: '#060B14', sidebar: '#0A111E', card: '#111A2B', cardHi: '#17233B', border: '#233247', borderLight: '#15202F', accent: '#38BDF8', accentHover: '#7DD3FC', familyAccent: '#34D399', familyAccentHover: '#6EE7B7', weekendText: '#5E7791' }),
+  ember: makeDark({ id: 'ember', name: 'Ember', bg: '#120A07', sidebar: '#1A0F0A', card: '#241512', cardHi: '#301B16', border: '#3D251E', borderLight: '#231610', accent: '#FB7185', accentHover: '#FDA4AF', familyAccent: '#FBBF24', familyAccentHover: '#FCD34D', weekendText: '#A67B72' }),
+  graphite: makeDark({ id: 'graphite', name: 'Graphite', bg: '#0C0E11', sidebar: '#12151A', card: '#1B1F26', cardHi: '#242A34', border: '#2E343F', borderLight: '#1B1F26', accent: '#FBBF24', accentHover: '#FCD34D', familyAccent: '#38BDF8', familyAccentHover: '#7DD3FC', weekendText: '#767F8C' }),
+  mocha: makeDark({ id: 'mocha', name: 'Mocha', bg: '#100C08', sidebar: '#16110B', card: '#211A12', cardHi: '#2C221A', border: '#382C20', borderLight: '#201810', accent: '#E0B978', accentHover: '#EBCF9E', familyAccent: '#A3B18A', familyAccentHover: '#C4CFB0', weekendText: '#9C8B72' }),
+  aurora: makeDark({ id: 'aurora', name: 'Aurora', bg: '#080B12', sidebar: '#0D1119', card: '#151A26', cardHi: '#1D2434', border: '#28324A', borderLight: '#181E2C', accent: '#2DD4BF', accentHover: '#5EEAD4', familyAccent: '#A78BFA', familyAccentHover: '#C4B5FD', weekendText: '#6B7590' })
 };

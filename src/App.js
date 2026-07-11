@@ -5,6 +5,7 @@ import TermsOfService from "./pages/TermsOfService";
 import {
   PALETTE,
   THEMES,
+  DARK_THEME_IDS,
   MOTIVATIONAL_QUOTES,
   DEFAULT_TAGS,
   AVAILABLE_ICONS,
@@ -151,7 +152,7 @@ const APP_META = {
 
 // Ultra-Premium Logo Component - Clean 4K (No Orange Hue)
 const AppLogo = ({ size = 32, theme, showText = false, animated = false }) => {
-  const isDark = theme?.id === 'dark' || theme?.id === 'midnight' || theme?.id === 'monochrome';
+  const isDark = DARK_THEME_IDS.includes(theme?.id) || theme?.id === 'monochrome';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: showText ? 12 : 0 }}>
@@ -8158,7 +8159,7 @@ function SubscriptionContent({ theme, user }) {
   // Use theme-consistent styling
   const cardBg = theme.premiumGlass || theme.liquidGlass || `${theme.accent}08`;
   const cardBorder = theme.premiumGlassBorder || theme.liquidBorder || `${theme.accent}20`;
-  const isDark = theme.id === 'dark' || theme.id === 'midnight' || theme.id === 'forest';
+  const isDark = DARK_THEME_IDS.includes(theme.id);
   const font = "'Inter', -apple-system, BlinkMacSystemFont, sans-serif";
 
   // Renewal date formatting
@@ -9109,7 +9110,7 @@ function SharingContent({ theme, user }) {
 }
 
 function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, events = [], bulkDeleteRecurringEvents, softDeleteEvent }) {
-  const isDark = theme.id === 'dark' || theme.id === 'midnight' || theme.id === 'forest';
+  const isDark = DARK_THEME_IDS.includes(theme.id);
   const [activeTab, setActiveTab] = React.useState('appearance');
 
   const handleToggle = (key) => {
@@ -9661,7 +9662,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                     <button
                       key={themeOption.id}
                       onClick={() => {
-                        setConfig({ ...config, selectedTheme: themeOption.id, darkMode: themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' });
+                        setConfig({ ...config, selectedTheme: themeOption.id, darkMode: DARK_THEME_IDS.includes(themeOption.id) });
                       }}
                       style={{
                         padding: 8,
@@ -9727,10 +9728,10 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                             width: 10,
                             height: 10,
                             borderRadius: '50%',
-                            background: themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest'
+                            background: DARK_THEME_IDS.includes(themeOption.id)
                               ? 'rgba(0, 0, 0, 0.7)'
                               : 'rgba(255, 255, 255, 0.95)',
-                            border: `1.5px solid ${themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest'
+                            border: `1.5px solid ${DARK_THEME_IDS.includes(themeOption.id)
                               ? 'rgba(255, 255, 255, 0.4)'
                               : 'rgba(0, 0, 0, 0.2)'}`,
                             boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
@@ -9738,7 +9739,7 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                             alignItems: 'center',
                             justifyContent: 'center'
                           }}>
-                            {themeOption.id === 'dark' || themeOption.id === 'midnight' || themeOption.id === 'forest' ? (
+                            {DARK_THEME_IDS.includes(themeOption.id) ? (
                               // Filled circle for dark mode
                               <div style={{
                                 width: 4,
