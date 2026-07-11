@@ -14,7 +14,7 @@ export const PALETTE = {
 };
 
 // Central list of dark themes (used for darkMode detection + picker icons).
-export const DARK_THEME_IDS = ['dark', 'midnight', 'forest', 'obsidian', 'abyss', 'ember', 'graphite', 'mocha', 'aurora'];
+export const DARK_THEME_IDS = ['dark', 'midnight', 'forest', 'obsidian', 'ember', 'graphite', 'mocha', 'aurora'];
 
 // Build a complete dark theme from a compact palette — derives the ~40
 // gradient / glass / shadow / accent props so new dark themes stay one-liners.
@@ -484,51 +484,6 @@ export const THEMES = {
     premiumBorder: "linear-gradient(135deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.15) 100%)",
     weekendText: "#9A9A9A"
   },
-  golden: {
-    id: 'golden',
-    name: 'Amber',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    fontDisplay: "'Playfair Display', Georgia, serif",
-    bg: "#FFFBEB",
-    sidebar: "#FFFEF5",
-    card: "#FFFFFF",
-    text: "#78350F",
-    textSec: "#92400E",
-    textMuted: "#B45309",
-    border: "#FEF3C7",
-    borderLight: "#FEF9E7",
-    accent: "#F59E0B",
-    accentHover: "#D97706",
-    familyAccent: "#8B5CF6",
-    familyAccentHover: "#7C3AED",
-    selection: "rgba(245, 158, 11, 0.08)",
-    shadow: "0 1px 2px rgba(245, 158, 11, 0.06), 0 4px 8px rgba(245, 158, 11, 0.08)",
-    shadowLg: "0 4px 6px rgba(245, 158, 11, 0.08), 0 10px 20px rgba(245, 158, 11, 0.1)",
-    glass: "rgba(255, 255, 255, 0.85)",
-    indicator: "#EF4444",
-    manifestoLine: "#FEF3C7",
-    hoverBg: "rgba(245, 158, 11, 0.04)",
-    activeBg: "rgba(245, 158, 11, 0.08)",
-    pulse: "rgba(245, 158, 11, 0.15)",
-    glow: "0 0 16px rgba(245, 158, 11, 0.2)",
-    cardGradient: "linear-gradient(145deg, #FFFFFF 0%, #FFFBEB 100%)",
-    subtleBorder: "rgba(245, 158, 11, 0.08)",
-    liquidGlass: "rgba(255, 255, 255, 0.72)",
-    liquidBorder: "rgba(245, 158, 11, 0.15)",
-    liquidShadow: "0 8px 32px rgba(245, 158, 11, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.9)",
-    metallicGradient: "linear-gradient(135deg, #FFFBEB 0%, #FEF3C7 50%, #FFFBEB 100%)",
-    metallicGradientHover: "linear-gradient(135deg, #FFFFFF 0%, #FEF9E7 50%, #FFFFFF 100%)",
-    metallicAccent: "linear-gradient(135deg, #FCD34D 0%, #F59E0B 50%, #D97706 100%)",
-    chromeGradient: "linear-gradient(135deg, #FFFEF5 0%, #FFFBEB 25%, #FEF3C7 50%, #FFFBEB 75%, #FFFEF5 100%)",
-    premiumGlass: "rgba(255, 255, 255, 0.65)",
-    premiumGlassBorder: "rgba(245, 158, 11, 0.2)",
-    premiumShadow: "0 4px 16px rgba(245,158,11,0.08), 0 8px 32px rgba(245,158,11,0.06), inset 0 1px 2px rgba(255,255,255,0.95)",
-    shimmer: "linear-gradient(90deg, transparent 0%, rgba(245,158,11,0.15) 50%, transparent 100%)",
-    metallicShadow: "0 2px 8px rgba(245,158,11,0.1), 0 8px 24px rgba(245,158,11,0.08), inset 0 1px 0 rgba(255,255,255,1), inset 0 -1px 0 rgba(245,158,11,0.05)",
-    glassBlur: "blur(32px)",
-    premiumBorder: "linear-gradient(135deg, rgba(245,158,11,0.3) 0%, rgba(220,140,10,0.15) 50%, rgba(245,158,11,0.3) 100%)",
-    weekendText: "#E0AD4A"
-  },
   emerald: {
     id: 'emerald',
     name: 'Malachite',
@@ -620,7 +575,6 @@ export const THEMES = {
     weekendText: "#E88A9C"
   },
   obsidian: makeDark({ id: 'obsidian', name: 'Obsidian', bg: '#050506', sidebar: '#0B0B0F', card: '#141419', cardHi: '#1C1C24', border: '#2B2B37', borderLight: '#191921', accent: '#8B5CF6', accentHover: '#A78BFA', familyAccent: '#22D3EE', familyAccentHover: '#67E8F9', weekendText: '#8A85A6' }),
-  abyss: makeDark({ id: 'abyss', name: 'Abyss', bg: '#060B14', sidebar: '#0A111E', card: '#111A2B', cardHi: '#17233B', border: '#233247', borderLight: '#15202F', accent: '#38BDF8', accentHover: '#7DD3FC', familyAccent: '#34D399', familyAccentHover: '#6EE7B7', weekendText: '#5E7791' }),
   ember: makeDark({ id: 'ember', name: 'Ember', bg: '#120A07', sidebar: '#1A0F0A', card: '#241512', cardHi: '#301B16', border: '#3D251E', borderLight: '#231610', accent: '#FB7185', accentHover: '#FDA4AF', familyAccent: '#FBBF24', familyAccentHover: '#FCD34D', weekendText: '#A67B72' }),
   graphite: makeDark({ id: 'graphite', name: 'Graphite', bg: '#0C0E11', sidebar: '#12151A', card: '#1B1F26', cardHi: '#242A34', border: '#2E343F', borderLight: '#1B1F26', accent: '#FBBF24', accentHover: '#FCD34D', familyAccent: '#38BDF8', familyAccentHover: '#7DD3FC', weekendText: '#767F8C' }),
   mocha: makeDark({ id: 'mocha', name: 'Mocha', bg: '#100C08', sidebar: '#16110B', card: '#211A12', cardHi: '#2C221A', border: '#382C20', borderLight: '#201810', accent: '#E0B978', accentHover: '#EBCF9E', familyAccent: '#A3B18A', familyAccentHover: '#C4CFB0', weekendText: '#9C8B72' }),

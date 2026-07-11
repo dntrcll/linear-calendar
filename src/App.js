@@ -9680,132 +9680,44 @@ function SettingsModal({ config, setConfig, theme, onClose, user, handleLogout, 
                         setConfig({ ...config, selectedTheme: themeOption.id, darkMode: DARK_THEME_IDS.includes(themeOption.id) });
                       }}
                       style={{
-                        padding: 8,
-                        background: isSelected
-                          ? `linear-gradient(135deg, ${themeOption.selection}, ${themeOption.hoverBg})`
-                          : config.darkMode ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
-                        backdropFilter: 'blur(10px)',
-                        border: isSelected
-                          ? `1.5px solid ${themeOption.accent}`
-                          : `1px solid ${isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'}`,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '7px 9px',
+                        background: isSelected ? `${themeOption.accent}14` : 'transparent',
+                        border: `1px solid ${isSelected ? themeOption.accent : (isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)')}`,
                         borderRadius: 8,
                         cursor: 'pointer',
-                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transition: 'border-color 0.18s, background 0.18s',
                         position: 'relative',
-                        overflow: 'hidden',
-                        boxShadow: isSelected
-                          ? `0 3px 10px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
-                          : 'none'
+                        minWidth: 0
                       }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.transform = 'translateY(-2px)';
-                        e.currentTarget.style.boxShadow = isSelected
-                          ? `0 6px 16px ${themeOption.accent}30, inset 0 1px 0 rgba(255,255,255,0.1)`
-                          : `0 4px 8px ${themeOption.accent}15`;
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = themeOption.accent + '60';
-                        }
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.transform = 'translateY(0)';
-                        e.currentTarget.style.boxShadow = isSelected
-                          ? `0 4px 12px ${themeOption.accent}25, inset 0 1px 0 rgba(255,255,255,0.08)`
-                          : 'none';
-                        if (!isSelected) {
-                          e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
-                        }
-                      }}
+                      onMouseEnter={e => { if (!isSelected) e.currentTarget.style.borderColor = themeOption.accent + '70'; }}
+                      onMouseLeave={e => { if (!isSelected) e.currentTarget.style.borderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)'; }}
                     >
-                      {/* Single Large Color Circle with Mode Badge */}
-                      <div style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                        marginBottom: 6,
-                        position: 'relative'
-                      }}>
-                        <div style={{
-                          width: 28,
-                          height: 28,
-                          borderRadius: '50%',
-                          background: `linear-gradient(135deg, ${themeOption.accent}, ${themeOption.accentHover})`,
-                          border: `2px solid ${isSelected ? themeOption.accent : themeOption.liquidBorder}`,
-                          boxShadow: isSelected
-                            ? `0 3px 10px ${themeOption.accent}40, inset 0 1px 0 rgba(255,255,255,0.2)`
-                            : `0 2px 6px ${themeOption.accent}20, inset 0 1px 0 rgba(255,255,255,0.15)`,
-                          transition: 'all 0.2s',
-                          position: 'relative'
-                        }}>
-                          {/* Mode Indicator Badge */}
-                          <div style={{
-                            position: 'absolute',
-                            bottom: -1,
-                            right: -1,
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            background: DARK_THEME_IDS.includes(themeOption.id)
-                              ? 'rgba(0, 0, 0, 0.7)'
-                              : 'rgba(255, 255, 255, 0.95)',
-                            border: `1.5px solid ${DARK_THEME_IDS.includes(themeOption.id)
-                              ? 'rgba(255, 255, 255, 0.4)'
-                              : 'rgba(0, 0, 0, 0.2)'}`,
-                            boxShadow: '0 1px 3px rgba(0,0,0,0.25)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center'
-                          }}>
-                            {DARK_THEME_IDS.includes(themeOption.id) ? (
-                              // Filled circle for dark mode
-                              <div style={{
-                                width: 4,
-                                height: 4,
-                                borderRadius: '50%',
-                                background: 'rgba(255, 255, 255, 0.9)'
-                              }} />
-                            ) : (
-                              // Hollow circle for light mode
-                              <div style={{
-                                width: 5,
-                                height: 5,
-                                borderRadius: '50%',
-                                border: '1px solid rgba(0, 0, 0, 0.5)'
-                              }} />
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Theme Name */}
-                      <div style={{
-                        fontSize: 10,
+                      <span style={{
+                        flexShrink: 0,
+                        width: 16,
+                        height: 16,
+                        borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${themeOption.accent}, ${themeOption.accentHover})`,
+                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.3)'
+                      }} />
+                      <span style={{
+                        fontSize: 11,
                         fontWeight: 600,
                         color: isSelected ? themeOption.accent : theme.text,
-                        textAlign: 'center',
                         letterSpacing: '0.01em',
-                        lineHeight: 1.2
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}>
                         {themeOption.name}
-                      </div>
-
-                      {/* Selected Indicator - Checkmark inside circle */}
+                      </span>
                       {isSelected && (
-                        <div style={{
-                          position: 'absolute',
-                          top: 4,
-                          right: 4,
-                          width: 14,
-                          height: 14,
-                          borderRadius: '50%',
-                          background: themeOption.accent,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          boxShadow: `0 2px 6px ${themeOption.accent}50`
-                        }}>
-                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"></polyline>
-                          </svg>
-                        </div>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={themeOption.accent} strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: 'auto', flexShrink: 0 }}>
+                          <polyline points="20 6 9 17 4 12"></polyline>
+                        </svg>
                       )}
                     </button>
                   );
