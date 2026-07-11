@@ -3375,21 +3375,21 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
       <div style={{
         position: "absolute", top: "-12%", left: "50%", transform: "translateX(-50%)",
         width: 660, height: 660,
-        background: `radial-gradient(circle, ${theme.accent}24 0%, transparent 64%)`,
+        background: `radial-gradient(circle, ${theme.accent}16 0%, transparent 64%)`,
         filter: "blur(90px)", pointerEvents: "none",
         animation: "glassFloat 16s ease-in-out infinite"
       }} />
       <div style={{
         position: "absolute", bottom: "-10%", left: "10%",
         width: 440, height: 440,
-        background: `radial-gradient(circle, ${theme.familyAccent || theme.accent}1e 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${theme.familyAccent || theme.accent}12 0%, transparent 70%)`,
         filter: "blur(100px)", pointerEvents: "none",
         animation: "glassFloat 20s ease-in-out infinite 2s"
       }} />
       <div style={{
         position: "absolute", top: "16%", right: "6%",
         width: 380, height: 380,
-        background: `radial-gradient(circle, ${theme.accent}18 0%, transparent 70%)`,
+        background: `radial-gradient(circle, ${theme.accent}10 0%, transparent 70%)`,
         filter: "blur(90px)", pointerEvents: "none",
         animation: "glassFloat 18s ease-in-out infinite 4s"
       }} />
@@ -3402,9 +3402,11 @@ function AuthScreen({ onLogin, onEmailLogin, onEmailSignUp, onPasswordLogin, the
       <div className="fade-in" style={{
         maxWidth: 468,
         width: "100%",
-        background: `linear-gradient(180deg, ${theme.id === 'dark' ? 'rgba(255,255,255,0.05)' : 'rgba(255,255,255,0.55)'} 0%, ${theme.id === 'dark' ? 'rgba(255,255,255,0.015)' : 'rgba(255,255,255,0.15)'} 40%, transparent 100%), ${theme.premiumGlass || theme.liquidGlass || (theme.id === 'dark' ? 'rgba(18,18,22,0.72)' : 'rgba(255,255,255,0.72)')}`,
-        backdropFilter: theme.glassBlur || "blur(48px) saturate(1.3)",
-        WebkitBackdropFilter: theme.glassBlur || "blur(48px) saturate(1.3)",
+        background: theme.id === 'dark'
+          ? 'linear-gradient(180deg, rgba(255,255,255,0.045) 0%, transparent 55%), rgba(15,16,21,0.95)'
+          : 'linear-gradient(180deg, rgba(255,255,255,0.8) 0%, transparent 55%), rgba(255,255,255,0.95)',
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
         borderRadius: 30,
         padding: "54px 48px 40px",
         boxShadow: `0 48px 100px -24px rgba(0,0,0,${theme.id === 'dark' ? 0.7 : 0.28}), 0 12px 32px -12px rgba(0,0,0,${theme.id === 'dark' ? 0.5 : 0.16}), inset 0 1px 0 ${theme.id === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.7)'}`,

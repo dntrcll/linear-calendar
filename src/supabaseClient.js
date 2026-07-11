@@ -14,6 +14,12 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     detectSessionInUrl: true,
     storage: window.localStorage,
     storageKey: 'timeline-auth',
-    flowType: 'pkce'
+    flowType: 'pkce',
+    // Override the default navigatorLock. Its AbortController throws
+    // "AbortError: signal is aborted without reason" when session-lock
+    // acquisition is contended (concurrent getSession / auth-state checks).
+    // Running the callback directly avoids the abort; localStorage still
+    // persists the session across tabs.
+    lock: async (_name, _acquireTimeout, fn) => fn()
   }
 });
