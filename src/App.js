@@ -1671,49 +1671,28 @@ function TimelineOS() {
                 </button>
               </div>
             </div>
-            {/* Editorial greeting */}
             <div style={{
-              fontSize: 9.5,
-              fontFamily: theme.fontFamily,
-              color: theme.textMuted,
-              textTransform: 'uppercase',
-              letterSpacing: '0.26em',
-              fontWeight: 600,
-              marginBottom: 7
+              fontSize: 12,
+              color: theme.textSec,
+              marginBottom: 4,
+              fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+              fontWeight: 500,
+              letterSpacing: '0.01em'
             }}>
-              {nowTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </div>
-            <div style={{
-              fontSize: 21,
-              fontFamily: theme.fontDisplay,
-              color: theme.text,
-              lineHeight: 1.15,
-              letterSpacing: '-0.01em',
-              fontWeight: 600
-            }}>
-              {(() => { const h = nowTime.getHours(); return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening'; })()},{' '}
-              <span style={{
-                fontStyle: 'italic',
-                background: theme.metallicAccent || `linear-gradient(118deg, ${theme.accent}, ${theme.accentHover})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                backgroundClip: 'text'
-              }}>{user.displayName?.split(" ")[0] || 'there'}</span>
+              Welcome, {user.displayName?.split(" ")[0] || 'User'}
             </div>
             {config.showMotivationalQuotes && quote && (
               <div style={{
-                fontSize: 11.5,
+                fontSize: 11,
                 color: theme.textMuted,
                 fontStyle: "italic",
-                lineHeight: 1.6,
+                lineHeight: 1.5,
                 maxWidth: 280,
-                marginTop: 14,
-                paddingTop: 14,
-                borderTop: `1px solid ${theme.border}`,
+                letterSpacing: '0.01em',
                 fontFamily: theme.fontDisplay
               }}>
                 "{quote.text}"
-                {quote.author && <span style={{ fontStyle: 'normal', opacity: 0.6, display: 'block', marginTop: 5, fontSize: 10.5, letterSpacing: '0.02em' }}>— {quote.author}</span>}
+                {quote.author && <span style={{ fontStyle: 'normal', opacity: 0.7 }}> — {quote.author}</span>}
               </div>
             )}
           </div>
