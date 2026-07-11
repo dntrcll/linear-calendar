@@ -2375,13 +2375,14 @@ function TimelineOS() {
           <div style={{ flex: 1, display: "flex", alignItems: "center", gap: isCompact ? 8 : 16, minWidth: 0 }}>
             {viewMode !== 'day' && (
               <h2 style={{
-                fontSize: isCompact ? 18 : 28,
+                fontSize: isCompact ? 17 : 23,
                 fontWeight: 600,
                 fontFamily: theme.fontDisplay,
                 letterSpacing: '-0.02em',
                 whiteSpace: 'nowrap',
                 overflow: 'hidden',
-                textOverflow: 'ellipsis'
+                textOverflow: 'ellipsis',
+                margin: 0
               }}>
                 {viewMode === 'year'
                   ? currentDate.getFullYear()
@@ -2492,7 +2493,7 @@ function TimelineOS() {
 
           {/* Center Section - View Mode Tabs */}
           <div style={{
-            ...(isCompact ? {} : { position: 'absolute', left: '50%', transform: 'translateX(-50%)' }),
+            margin: isCompact ? '0 12px' : '0 24px',
             display: "flex",
             flexShrink: 0,
             background: theme.premiumGlass || theme.borderLight,
