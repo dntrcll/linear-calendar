@@ -2,11 +2,15 @@
 // project never hits the ~7-day inactivity auto-pause.
 // Triggered by Vercel Cron (see "crons" in vercel.json). A single lightweight
 // read counts as project activity and resets the inactivity timer.
+//
+// Uses the public anon key (not the service role) so it has no secret
+// dependency — a request that reaches Postgres registers activity even if RLS
+// returns zero rows.
 const { createClient } = require('@supabase/supabase-js');
 
 const supabase = createClient(
   process.env.REACT_APP_SUPABASE_URL || process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
+  process.env.REACT_APP_SUPABASE_ANON_KEY
 );
 
 module.exports = async (req, res) => {
@@ -20,14 +24,14 @@ module.exports = async (req, res) => {
     }
   }
 
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    console.error('SUPABASE_SERVICE_ROLE_KEY is not configured');
+  if (!process.env.REACT_APP_SUPABASE_URL && !process.env.SUPABASE_URL) {
+    console.error('Supabase URL is not configured');
     return res.status(500).json({ error: 'Server configuration error' });
   }
 
   try {
-    // Trivial read — bypasses RLS via the service role key. `head: true` fetches
-    // no rows, just enough to register database activity.
+    // Trivial read. `head: true` fetches no rows; RLS may return zero rows for
+    // the anon role, but the query still hits Postgres and registers activity.
     const { error } = await supabase
       .from('tags')
       .select('id', { count: 'exact', head: true });
